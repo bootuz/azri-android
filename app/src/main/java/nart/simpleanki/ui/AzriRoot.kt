@@ -29,8 +29,15 @@ fun AzriRoot(
 
     when (val s = state) {
         is AuthUiState.SignedIn -> {
-            LaunchedEffect(s.user.uid) { syncViewModel.sync(s.user.uid) }
-            AzriNavHost(onSignOut = viewModel::onSignOut)
+            // Foreground sync: immediately on sign-in, then periodically so local edits
+            // (and remote changes from iOS/web) propagate without a relaunch.
+            LaunchedEffect(s.user.uid) {
+                while (true) {
+                    syncViewModel.sync(s.user.uid)
+                    kotlinx.coroutines.delay(20_000)
+                }
+            }
+            AzriNavHost()
         }
         else -> SignInScreen(
             onGoogleClick = {

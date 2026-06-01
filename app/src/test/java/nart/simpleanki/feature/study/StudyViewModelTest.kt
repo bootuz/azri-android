@@ -9,7 +9,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
-import nart.simpleanki.core.domain.fsrs.SchedulingService
+import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Rating
@@ -39,7 +39,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", repo, SchedulingService(), now = { now })
+        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
         runCurrent()
 
         val s = vm.uiState.value
@@ -55,7 +55,7 @@ class StudyViewModelTest {
         val repo = CardRepository(dao, now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", repo, SchedulingService(), now = { now })
+        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
         runCurrent()
 
         vm.onReveal()
@@ -80,7 +80,7 @@ class StudyViewModelTest {
     fun ratingAllCards_finishesSession() = runTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
-        val vm = StudyViewModel("d1", repo, SchedulingService(), now = { now })
+        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
         runCurrent()
 
         vm.onRate(Rating.Easy)
@@ -95,7 +95,7 @@ class StudyViewModelTest {
     @Test
     fun emptyDeck_finishesImmediately() = runTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
-        val vm = StudyViewModel("d1", repo, SchedulingService(), now = { now })
+        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
         runCurrent()
         assertTrue(vm.uiState.value.finished)
         assertNull(vm.uiState.value.current)

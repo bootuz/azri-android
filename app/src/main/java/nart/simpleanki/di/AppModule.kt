@@ -14,11 +14,13 @@ import nart.simpleanki.core.data.local.AzriDatabase
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
+import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
+import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
 import nart.simpleanki.core.data.sync.RemoteSyncSource
 import nart.simpleanki.core.data.sync.SyncManager
-import nart.simpleanki.core.domain.fsrs.SchedulingService
 import nart.simpleanki.feature.cardform.CardFormViewModel
+import nart.simpleanki.feature.settings.SettingsViewModel
 import nart.simpleanki.feature.decksettings.DeckEditViewModel
 import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
 import nart.simpleanki.feature.library.FolderEditViewModel
@@ -69,14 +71,15 @@ val appModule = module {
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
     single { SyncManager(get(), get(), get(), get()) }
 
-    // Scheduling
-    single { SchedulingService() }
+    // Settings
+    single<SettingsRepository> { DataStoreSettingsRepository(androidContext()) }
 
     // Feature ViewModels
     viewModel { SyncViewModel(get()) }
+    viewModel { SettingsViewModel(get(), get()) }
     viewModel { LibraryViewModel(get(), get()) }
     viewModel { params -> DeckDetailViewModel(deckId = params.get(), cardRepository = get(), deckRepository = get()) }
-    viewModel { params -> StudyViewModel(deckId = params.get(), cardRepository = get(), scheduling = get()) }
+    viewModel { params -> StudyViewModel(deckId = params.get(), cardRepository = get(), settingsRepository = get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
         CardFormViewModel(deckId = a.deckId, cardRepository = get(), editingCardId = a.cardId)

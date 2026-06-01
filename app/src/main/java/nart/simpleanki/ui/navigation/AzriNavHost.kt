@@ -9,11 +9,12 @@ import nart.simpleanki.feature.deckdetail.DeckDetailScreen
 import nart.simpleanki.feature.decksettings.DeckEditScreen
 import nart.simpleanki.feature.library.FolderEditScreen
 import nart.simpleanki.feature.library.LibraryScreen
+import nart.simpleanki.feature.settings.SettingsScreen
 import nart.simpleanki.feature.study.StudyScreen
 
 /** Signed-in navigation graph. */
 @Composable
-fun AzriNavHost(onSignOut: () -> Unit) {
+fun AzriNavHost() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = "library") {
         composable("library") {
@@ -21,8 +22,11 @@ fun AzriNavHost(onSignOut: () -> Unit) {
                 onOpenDeck = { nav.navigate("deck/$it") },
                 onNewDeck = { nav.navigate("deckEdit") },
                 onNewFolder = { nav.navigate("folderEdit") },
-                onSignOut = onSignOut,
+                onSettings = { nav.navigate("settings") },
             )
+        }
+        composable("settings") {
+            SettingsScreen(onBack = { nav.popBackStack() })
         }
         composable("deck/{deckId}") { entry ->
             val deckId = entry.arguments?.getString("deckId").orEmpty()

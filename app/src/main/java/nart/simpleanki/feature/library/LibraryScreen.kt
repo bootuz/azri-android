@@ -9,7 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,7 +35,7 @@ fun LibraryScreen(
     onOpenDeck: (String) -> Unit,
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
-    onSignOut: () -> Unit,
+    onSettings: () -> Unit,
     viewModel: LibraryViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -50,8 +50,8 @@ fun LibraryScreen(
                     IconButton(onClick = onNewDeck) {
                         Icon(Icons.Default.Add, contentDescription = "New deck")
                     }
-                    IconButton(onClick = onSignOut) {
-                        Icon(Icons.Default.Logout, contentDescription = stringResource(R.string.sign_out))
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
             )

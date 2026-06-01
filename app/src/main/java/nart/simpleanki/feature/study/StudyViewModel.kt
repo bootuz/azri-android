@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.repository.CardRepository
+import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.domain.fsrs.SchedulingService
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
 import nart.simpleanki.core.domain.model.Card
@@ -24,19 +25,19 @@ data class StudyUiState(
 )
 
 /**
- * Drives one study session: builds the FSRS queue, reveals the answer on flip, and on
- * each rating applies [SchedulingService], persists the updated card, and advances.
+ * Drives one study session: reads the user's FSRS preset + daily limits from settings,
+ * builds the queue, reveals the answer on flip, and on each rating applies the scheduler,
+ * persists the updated card, and advances.
  */
 class StudyViewModel(
     private val deckId: String,
     private val cardRepository: CardRepository,
-    private val scheduling: SchedulingService,
-    private val newLimit: Int = 20,
-    private val reviewLimit: Int = 200,
+    private val settingsRepository: SettingsRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
 
     private val queue = ArrayDeque<Card>()
+    private lateinit var scheduling: SchedulingService
     private val _uiState = MutableStateFlow(StudyUiState())
     val uiState: StateFlow<StudyUiState> = _uiState.asStateFlow()
 
@@ -45,9 +46,18 @@ class StudyViewModel(
     }
 
     private suspend fun load() {
+        val settings = settingsRepository.settings.first()
+        scheduling = SchedulingService(settings.preset)
         val all = cardRepository.observeCards(deckId).first()
         queue.clear()
-        queue.addAll(StudyQueueBuilder.buildStudyQueue(all, now(), newLimit, reviewLimit))
+        queue.addAll(
+            StudyQueueBuilder.buildStudyQueue(
+                cards = all,
+                nowMillis = now(),
+                newLimit = settings.newCardsPerDay,
+                reviewLimit = settings.maxReviewsPerDay,
+            ),
+        )
         _uiState.value = StudyUiState(
             loading = false,
             current = queue.firstOrNull(),
