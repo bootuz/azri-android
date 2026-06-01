@@ -24,6 +24,7 @@ import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
 import nart.simpleanki.feature.library.FolderEditViewModel
 import nart.simpleanki.feature.library.LibraryViewModel
 import nart.simpleanki.feature.study.StudyViewModel
+import nart.simpleanki.feature.sync.SyncViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.parameter.parametersOf
@@ -72,6 +73,7 @@ val appModule = module {
     single { SchedulingService() }
 
     // Feature ViewModels
+    viewModel { SyncViewModel(get()) }
     viewModel { LibraryViewModel(get(), get()) }
     viewModel { params -> DeckDetailViewModel(deckId = params.get(), cardRepository = get(), deckRepository = get()) }
     viewModel { params -> StudyViewModel(deckId = params.get(), cardRepository = get(), scheduling = get()) }

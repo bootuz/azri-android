@@ -1,6 +1,7 @@
 package nart.simpleanki.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -10,6 +11,7 @@ import nart.simpleanki.auth.AuthUiState
 import nart.simpleanki.auth.AuthViewModel
 import nart.simpleanki.auth.GoogleSignInClient
 import nart.simpleanki.feature.auth.SignInScreen
+import nart.simpleanki.feature.sync.SyncViewModel
 import nart.simpleanki.ui.navigation.AzriNavHost
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -19,13 +21,17 @@ import org.koin.compose.koinInject
 fun AzriRoot(
     viewModel: AuthViewModel = koinViewModel(),
     googleSignInClient: GoogleSignInClient = koinInject(),
+    syncViewModel: SyncViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     when (val s = state) {
-        is AuthUiState.SignedIn -> AzriNavHost(onSignOut = viewModel::onSignOut)
+        is AuthUiState.SignedIn -> {
+            LaunchedEffect(s.user.uid) { syncViewModel.sync(s.user.uid) }
+            AzriNavHost(onSignOut = viewModel::onSignOut)
+        }
         else -> SignInScreen(
             onGoogleClick = {
                 scope.launch {
