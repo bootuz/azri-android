@@ -32,12 +32,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.R
+import nart.simpleanki.core.domain.model.ColorOption
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.ui.components.AzriCard
 import nart.simpleanki.ui.components.ColorAccentIcon
+import nart.simpleanki.ui.theme.AzriTheme
 import nart.simpleanki.ui.theme.toColor
 import org.koin.androidx.compose.koinViewModel
 
@@ -177,5 +180,46 @@ private fun EmptyLibrary(modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
+    }
+}
+
+private val sampleDecks = listOf(
+    Deck(id = "d1", name = "Spanish 101", color = ColorOption.Indigo, dateCreated = 0, lastModified = 0),
+    Deck(id = "d2", name = "Biology terms", color = ColorOption.Green, dateCreated = 0, lastModified = 0),
+    Deck(id = "d3", name = "Kanji", color = ColorOption.Red, dateCreated = 0, lastModified = 0),
+)
+
+@Preview(name = "Library", showBackground = true)
+@Composable
+private fun LibraryPreview() {
+    AzriTheme {
+        LibraryContent(
+            state = LibraryUiState(
+                folders = listOf(Folder(id = "f1", name = "Languages", emoji = "🌍", lastModified = 0)),
+                decksWithoutFolder = sampleDecks,
+                allDecks = sampleDecks,
+                cardCounts = mapOf("d1" to 42, "d2" to 1, "d3" to 0),
+            ),
+            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {},
+        )
+    }
+}
+
+@Preview(name = "Library · empty", showBackground = true)
+@Composable
+private fun LibraryEmptyPreview() {
+    AzriTheme {
+        LibraryContent(LibraryUiState(), onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {})
+    }
+}
+
+@Preview(name = "Library · dark", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun LibraryDarkPreview() {
+    AzriTheme(darkTheme = true) {
+        LibraryContent(
+            state = LibraryUiState(decksWithoutFolder = sampleDecks, allDecks = sampleDecks, cardCounts = mapOf("d1" to 42)),
+            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {},
+        )
     }
 }

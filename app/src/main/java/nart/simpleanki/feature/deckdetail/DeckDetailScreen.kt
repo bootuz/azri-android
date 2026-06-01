@@ -27,8 +27,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import nart.simpleanki.core.domain.model.Card
+import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.ui.components.AzriCard
+import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -134,5 +138,39 @@ fun DeckDetailContent(
                 }
             }
         }
+    }
+}
+
+private fun previewCard(id: String, front: String, back: String) = Card(
+    id = id, front = front, back = back, deckId = "d1",
+    dateCreated = 0, lastModified = 0, fsrsDue = 0, fsrsState = CardState.New.value,
+)
+
+@Preview(name = "Deck detail", showBackground = true)
+@Composable
+private fun DeckDetailPreview() {
+    AzriTheme {
+        DeckDetailContent(
+            state = DeckDetailUiState(
+                deckId = "d1", deckName = "Spanish 101",
+                cards = listOf(
+                    previewCard("1", "hola", "hello"),
+                    previewCard("2", "gracias", "thank you"),
+                    previewCard("3", "por favor", "please"),
+                ),
+            ),
+            onQueryChange = {}, onBack = {}, onStudy = {}, onAddCard = {}, onEditCard = {}, onSettings = {},
+        )
+    }
+}
+
+@Preview(name = "Deck detail · empty", showBackground = true)
+@Composable
+private fun DeckDetailEmptyPreview() {
+    AzriTheme {
+        DeckDetailContent(
+            state = DeckDetailUiState(deckId = "d1", deckName = "New deck"),
+            onQueryChange = {}, onBack = {}, onStudy = {}, onAddCard = {}, onEditCard = {}, onSettings = {},
+        )
     }
 }

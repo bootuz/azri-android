@@ -38,12 +38,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import nart.simpleanki.core.media.AudioRecorder
 import nart.simpleanki.di.CardFormArgs
 import nart.simpleanki.ui.components.AudioPlayButton
 import nart.simpleanki.ui.components.MediaImage
+import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -202,5 +204,33 @@ private fun UploadingRow(label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator()
         Text(label, Modifier.padding(start = 12.dp))
+    }
+}
+
+@Preview(name = "Card form · new", showBackground = true)
+@Composable
+private fun CardFormNewPreview() {
+    AzriTheme {
+        CardFormContent(
+            state = CardFormUiState(front = "Bonjour", back = "Hello", createReverse = true),
+            isRecording = false,
+            onFrontChange = {}, onBackChange = {}, onToggleReverse = {},
+            onAddImage = {}, onRemoveImage = {}, onToggleRecording = {}, onRemoveAudio = {},
+            onSave = {}, onBack = {},
+        )
+    }
+}
+
+@Preview(name = "Card form · recording", showBackground = true)
+@Composable
+private fun CardFormRecordingPreview() {
+    AzriTheme {
+        CardFormContent(
+            state = CardFormUiState(front = "cat", back = "gato", isEdit = true),
+            isRecording = true,
+            onFrontChange = {}, onBackChange = {}, onToggleReverse = {},
+            onAddImage = {}, onRemoveImage = {}, onToggleRecording = {}, onRemoveAudio = {},
+            onSave = {}, onBack = {},
+        )
     }
 }

@@ -25,8 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.R
+import nart.simpleanki.ui.theme.AzriTheme
 
 /** Stateless sign-in screen. Hosting layer wires the callbacks to [nart.simpleanki.auth.AuthViewModel]. */
 @Composable
@@ -93,5 +95,21 @@ fun SignInScreen(
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+@Preview(name = "Sign in", showBackground = true)
+@Composable
+private fun SignInScreenPreview() {
+    AzriTheme {
+        SignInScreen(onGoogleClick = {}, onGuestClick = {})
+    }
+}
+
+@Preview(name = "Sign in · dark", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SignInScreenDarkPreview() {
+    AzriTheme(darkTheme = true) {
+        SignInScreen(onGoogleClick = {}, onGuestClick = {}, errorMessage = "Sign-in cancelled")
     }
 }

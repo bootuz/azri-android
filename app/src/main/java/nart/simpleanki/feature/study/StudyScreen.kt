@@ -29,8 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import nart.simpleanki.core.domain.model.Card
+import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Rating
+import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -163,5 +167,46 @@ private fun SessionSummary(state: StudyUiState, onDone: () -> Unit) {
         }
         Spacer(Modifier.height(32.dp))
         Button(onClick = onDone) { Text("Done") }
+    }
+}
+
+private val previewStudyCard = Card(
+    id = "c1", front = "¿Cómo estás?", back = "How are you?", deckId = "d1",
+    dateCreated = 0, lastModified = 0, fsrsDue = 0, fsrsState = CardState.New.value,
+)
+
+@Preview(name = "Study · question", showBackground = true)
+@Composable
+private fun StudyQuestionPreview() {
+    AzriTheme {
+        StudyContent(
+            state = StudyUiState(loading = false, current = previewStudyCard, isRevealed = false, remaining = 5),
+            onReveal = {}, onRate = {}, onDone = {},
+        )
+    }
+}
+
+@Preview(name = "Study · answer", showBackground = true)
+@Composable
+private fun StudyAnswerPreview() {
+    AzriTheme {
+        StudyContent(
+            state = StudyUiState(loading = false, current = previewStudyCard, isRevealed = true, remaining = 5),
+            onReveal = {}, onRate = {}, onDone = {},
+        )
+    }
+}
+
+@Preview(name = "Study · summary", showBackground = true)
+@Composable
+private fun StudySummaryPreview() {
+    AzriTheme {
+        StudyContent(
+            state = StudyUiState(
+                loading = false, finished = true, completed = 12,
+                ratingCounts = mapOf(Rating.Again to 2, Rating.Good to 8, Rating.Easy to 2),
+            ),
+            onReveal = {}, onRate = {}, onDone = {},
+        )
     }
 }

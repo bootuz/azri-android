@@ -30,9 +30,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.R
+import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
+import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -131,5 +134,20 @@ private fun Stepper(label: String, value: Int, step: Int, onChange: (Int) -> Uni
         OutlinedButton(onClick = { onChange((value - step).coerceAtLeast(0)) }) { Text("−") }
         Text(value.toString(), Modifier.padding(horizontal = 16.dp), textAlign = TextAlign.Center)
         Button(onClick = { onChange(value + step) }) { Text("+") }
+    }
+}
+
+@Preview(name = "Settings", showBackground = true)
+@Composable
+private fun SettingsPreview() {
+    AzriTheme {
+        SettingsContent(
+            state = SettingsUiState(
+                settings = AppSettings(preset = FsrsPreset.Optimal, newCardsPerDay = 20, maxReviewsPerDay = 200),
+                email = "grace@example.com", uid = "abc123", isAnonymous = false,
+            ),
+            onSetPreset = {}, onSetNewCardsPerDay = {}, onSetMaxReviewsPerDay = {},
+            onSignOut = {}, onDeleteAccount = {}, onBack = {},
+        )
     }
 }
