@@ -29,7 +29,6 @@ import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     onOpenDeck: (String) -> Unit,
@@ -39,6 +38,19 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    LibraryContent(state, onOpenDeck, onNewDeck, onNewFolder, onSettings)
+}
+
+/** Stateless library UI, decoupled from the ViewModel for testing. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LibraryContent(
+    state: LibraryUiState,
+    onOpenDeck: (String) -> Unit,
+    onNewDeck: () -> Unit,
+    onNewFolder: () -> Unit,
+    onSettings: () -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(

@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeckDetailScreen(
     deckId: String,
@@ -41,6 +40,29 @@ fun DeckDetailScreen(
     viewModel: DeckDetailViewModel = koinViewModel { parametersOf(deckId) },
 ) {
     val state by viewModel.uiState.collectAsState()
+    DeckDetailContent(
+        state = state,
+        onQueryChange = viewModel::onQueryChange,
+        onBack = onBack,
+        onStudy = onStudy,
+        onAddCard = onAddCard,
+        onEditCard = onEditCard,
+        onSettings = onSettings,
+    )
+}
+
+/** Stateless deck-detail UI, decoupled from the ViewModel for testing. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeckDetailContent(
+    state: DeckDetailUiState,
+    onQueryChange: (String) -> Unit,
+    onBack: () -> Unit,
+    onStudy: () -> Unit,
+    onAddCard: () -> Unit,
+    onEditCard: (String) -> Unit,
+    onSettings: () -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -69,7 +91,7 @@ fun DeckDetailScreen(
         Column(Modifier.fillMaxSize().padding(padding)) {
             OutlinedTextField(
                 value = state.query,
-                onValueChange = viewModel::onQueryChange,
+                onValueChange = onQueryChange,
                 placeholder = { Text("Search cards") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
