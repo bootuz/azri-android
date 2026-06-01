@@ -33,7 +33,6 @@ import nart.simpleanki.core.domain.model.Rating
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyScreen(
     deckId: String,
@@ -41,6 +40,23 @@ fun StudyScreen(
     viewModel: StudyViewModel = koinViewModel { parametersOf(deckId) },
 ) {
     val state by viewModel.uiState.collectAsState()
+    StudyContent(
+        state = state,
+        onReveal = viewModel::onReveal,
+        onRate = viewModel::onRate,
+        onDone = onDone,
+    )
+}
+
+/** Stateless study UI, decoupled from the ViewModel for testing. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StudyContent(
+    state: StudyUiState,
+    onReveal: () -> Unit,
+    onRate: (Rating) -> Unit,
+    onDone: () -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -55,14 +71,14 @@ fun StudyScreen(
             when {
                 state.loading -> CircularProgressIndicator()
                 state.finished -> SessionSummary(state, onDone)
-                else -> StudyCard(state, viewModel)
+                else -> StudyCard(state, onReveal, onRate)
             }
         }
     }
 }
 
 @Composable
-private fun StudyCard(state: StudyUiState, viewModel: StudyViewModel) {
+private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating) -> Unit) {
     val card = state.current ?: return
     Column(
         Modifier.fillMaxSize().padding(24.dp),
@@ -78,13 +94,13 @@ private fun StudyCard(state: StudyUiState, viewModel: StudyViewModel) {
         }
         Spacer(Modifier.height(48.dp))
         if (!state.isRevealed) {
-            Button(onClick = viewModel::onReveal, modifier = Modifier.fillMaxWidth()) { Text("Show answer") }
+            Button(onClick = onReveal, modifier = Modifier.fillMaxWidth()) { Text("Show answer") }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RatingButton("Again", Modifier.weight(1f)) { viewModel.onRate(Rating.Again) }
-                RatingButton("Hard", Modifier.weight(1f)) { viewModel.onRate(Rating.Hard) }
-                RatingButton("Good", Modifier.weight(1f)) { viewModel.onRate(Rating.Good) }
-                RatingButton("Easy", Modifier.weight(1f)) { viewModel.onRate(Rating.Easy) }
+                RatingButton("Again", Modifier.weight(1f)) { onRate(Rating.Again) }
+                RatingButton("Hard", Modifier.weight(1f)) { onRate(Rating.Hard) }
+                RatingButton("Good", Modifier.weight(1f)) { onRate(Rating.Good) }
+                RatingButton("Easy", Modifier.weight(1f)) { onRate(Rating.Easy) }
             }
         }
     }

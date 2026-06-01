@@ -27,7 +27,6 @@ import nart.simpleanki.di.CardFormArgs
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardFormScreen(
     deckId: String,
@@ -36,20 +35,39 @@ fun CardFormScreen(
     viewModel: CardFormViewModel = koinViewModel { parametersOf(CardFormArgs(deckId, cardId)) },
 ) {
     val state by viewModel.uiState.collectAsState()
-
     LaunchedEffect(state.saved) { if (state.saved) onDone() }
+    CardFormContent(
+        state = state,
+        onFrontChange = viewModel::onFrontChange,
+        onBackChange = viewModel::onBackChange,
+        onToggleReverse = viewModel::onToggleReverse,
+        onSave = viewModel::save,
+        onBack = onDone,
+    )
+}
 
+/** Stateless card-form UI, decoupled from the ViewModel for testing. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CardFormContent(
+    state: CardFormUiState,
+    onFrontChange: (String) -> Unit,
+    onBackChange: (String) -> Unit,
+    onToggleReverse: (Boolean) -> Unit,
+    onSave: () -> Unit,
+    onBack: () -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (state.isEdit) "Edit card" else "New card") },
                 navigationIcon = {
-                    IconButton(onClick = onDone) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = viewModel::save, enabled = state.canSave) {
+                    IconButton(onClick = onSave, enabled = state.canSave) {
                         Icon(Icons.Default.Check, contentDescription = "Save")
                     }
                 },
@@ -62,19 +80,19 @@ fun CardFormScreen(
         ) {
             OutlinedTextField(
                 value = state.front,
-                onValueChange = viewModel::onFrontChange,
+                onValueChange = onFrontChange,
                 label = { Text("Front") },
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = state.back,
-                onValueChange = viewModel::onBackChange,
+                onValueChange = onBackChange,
                 label = { Text("Back") },
                 modifier = Modifier.fillMaxWidth(),
             )
             if (!state.isEdit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = state.createReverse, onCheckedChange = viewModel::onToggleReverse)
+                    Switch(checked = state.createReverse, onCheckedChange = onToggleReverse)
                     Text("Also create reverse card", Modifier.padding(start = 8.dp))
                 }
             }
