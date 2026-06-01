@@ -20,6 +20,7 @@ import org.koin.compose.koinInject
 fun MediaImage(
     imagePath: String,
     modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Fit,
     uploader: MediaUploader = koinInject(),
 ) {
     var url by remember(imagePath) { mutableStateOf<String?>(null) }
@@ -29,7 +30,7 @@ fun MediaImage(
         AsyncImage(
             model = resolved,
             contentDescription = "Card image",
-            contentScale = ContentScale.Fit,
+            contentScale = contentScale,
             modifier = modifier,
         )
     }

@@ -30,10 +30,11 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -51,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -189,15 +192,27 @@ fun CardFormContent(
 
             // Image preview
             if (state.imagePath != null) {
-                Box(Modifier.fillMaxWidth()) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(MaterialTheme.shapes.large),
+                ) {
                     MediaImage(
                         state.imagePath,
-                        Modifier.fillMaxWidth().height(180.dp).clip(MaterialTheme.shapes.large),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
                     )
-                    FilledTonalIconButton(
+                    FilledIconButton(
                         onClick = onRemoveImage,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                    ) { Icon(Icons.Default.Close, contentDescription = "Remove image") }
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(32.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = Color.Black.copy(alpha = 0.45f),
+                            contentColor = Color.White,
+                        ),
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Remove image", modifier = Modifier.size(18.dp))
+                    }
                 }
             }
             // Audio attached
