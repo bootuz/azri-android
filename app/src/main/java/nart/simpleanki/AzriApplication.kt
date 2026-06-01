@@ -1,6 +1,7 @@
 package nart.simpleanki
 
 import android.app.Application
+import nart.simpleanki.core.data.sync.SyncWorker
 import nart.simpleanki.di.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -14,5 +15,6 @@ class AzriApplication : Application() {
             androidContext(this@AzriApplication)
             modules(appModule)
         }
+        SyncWorker.schedule(this)
     }
 }
