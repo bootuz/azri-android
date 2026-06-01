@@ -102,6 +102,24 @@ class CardFormViewModelTest {
     }
 
     @Test
+    fun audioRecorded_uploads_andSavesAudioRefOnOriginalOnly() = runTest {
+        val dao = FakeCardDao()
+        val repo = CardRepository(dao, now = { now })
+        val media = FakeMediaUploader()
+        media.audioUploadResult = Result.success(MediaRef("clip.m4a", "users/u/audio/clip.m4a"))
+        val vm = CardFormViewModel("d1", repo, media, idGenerator = ids("base", "rev"), now = { now })
+        vm.onFrontChange("dog"); vm.onBackChange("perro"); vm.onToggleReverse(true)
+        vm.onAudioRecorded(byteArrayOf(9, 9)); runCurrent()
+        assertEquals(1, media.audioUploadCalls)
+        assertEquals("clip.m4a", vm.uiState.value.audioName)
+
+        vm.save(); runCurrent()
+        val cards = dao.observeByDeck("d1").first().sortedBy { it.isReverse }
+        assertEquals("users/u/audio/clip.m4a", cards[0].audioPath) // original has audio
+        assertNull(cards[1].audioPath)                              // reverse is audio-free
+    }
+
+    @Test
     fun edit_existingCard_updatesInPlace() = runTest {
         val dao = FakeCardDao()
         val repo = CardRepository(dao, now = { now })

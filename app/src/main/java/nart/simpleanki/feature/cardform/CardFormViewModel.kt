@@ -20,9 +20,13 @@ data class CardFormUiState(
     val imageName: String? = null,
     val imagePath: String? = null,
     val uploadingImage: Boolean = false,
+    val audioName: String? = null,
+    val audioPath: String? = null,
+    val uploadingAudio: Boolean = false,
     val saved: Boolean = false,
 ) {
-    val canSave: Boolean get() = front.isNotBlank() && back.isNotBlank() && !uploadingImage
+    val canSave: Boolean
+        get() = front.isNotBlank() && back.isNotBlank() && !uploadingImage && !uploadingAudio
 }
 
 /**
@@ -52,6 +56,7 @@ class CardFormViewModel(
                     _uiState.value = _uiState.value.copy(
                         front = card.front, back = card.back,
                         imageName = card.image, imagePath = card.imagePath,
+                        audioName = card.audioName, audioPath = card.audioPath,
                     )
                 }
             }
@@ -62,6 +67,7 @@ class CardFormViewModel(
     fun onBackChange(value: String) { _uiState.value = _uiState.value.copy(back = value) }
     fun onToggleReverse(value: Boolean) { _uiState.value = _uiState.value.copy(createReverse = value) }
     fun onRemoveImage() { _uiState.value = _uiState.value.copy(imageName = null, imagePath = null) }
+    fun onRemoveAudio() { _uiState.value = _uiState.value.copy(audioName = null, audioPath = null) }
 
     fun onImagePicked(bytes: ByteArray) {
         _uiState.value = _uiState.value.copy(uploadingImage = true)
@@ -76,6 +82,19 @@ class CardFormViewModel(
         }
     }
 
+    fun onAudioRecorded(bytes: ByteArray) {
+        _uiState.value = _uiState.value.copy(uploadingAudio = true)
+        viewModelScope.launch {
+            mediaUploader.uploadAudio(bytes)
+                .onSuccess { ref ->
+                    _uiState.value = _uiState.value.copy(
+                        audioName = ref.name, audioPath = ref.path, uploadingAudio = false,
+                    )
+                }
+                .onFailure { _uiState.value = _uiState.value.copy(uploadingAudio = false) }
+        }
+    }
+
     fun save() {
         val state = _uiState.value
         if (!state.canSave) return
@@ -86,6 +105,7 @@ class CardFormViewModel(
                     existing.copy(
                         front = state.front, back = state.back,
                         image = state.imageName, imagePath = state.imagePath,
+                        audioName = state.audioName, audioPath = state.audioPath,
                     ),
                 )
             } else {
@@ -93,12 +113,14 @@ class CardFormViewModel(
                 cardRepository.upsert(
                     newCard(baseId, state.front, state.back, isReverse = false,
                         pairId = if (state.createReverse) baseId else null,
-                        image = state.imageName, imagePath = state.imagePath),
+                        image = state.imageName, imagePath = state.imagePath,
+                        audioName = state.audioName, audioPath = state.audioPath),
                 )
                 if (state.createReverse) {
+                    // Reverse cards are intentionally audio-free (mirrors iOS).
                     cardRepository.upsert(
                         newCard(idGenerator(), state.back, state.front, isReverse = true, pairId = baseId,
-                            image = null, imagePath = null),
+                            image = null, imagePath = null, audioName = null, audioPath = null),
                     )
                 }
             }
@@ -108,13 +130,14 @@ class CardFormViewModel(
 
     private fun newCard(
         id: String, front: String, back: String, isReverse: Boolean, pairId: String?,
-        image: String?, imagePath: String?,
+        image: String?, imagePath: String?, audioName: String?, audioPath: String?,
     ): Card {
         val t = now()
         return Card(
             id = id, front = front, back = back, deckId = deckId,
             dateCreated = t, lastModified = t, fsrsDue = t, fsrsState = CardState.New.value,
-            image = image, imagePath = imagePath, pairId = pairId, isReverse = isReverse,
+            image = image, imagePath = imagePath, audioName = audioName, audioPath = audioPath,
+            pairId = pairId, isReverse = isReverse,
         )
     }
 }

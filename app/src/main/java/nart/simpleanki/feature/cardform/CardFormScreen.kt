@@ -1,5 +1,7 @@
 package nart.simpleanki.feature.cardform
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,11 +32,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import nart.simpleanki.core.media.AudioRecorder
 import nart.simpleanki.di.CardFormArgs
+import nart.simpleanki.ui.components.AudioPlayButton
 import nart.simpleanki.ui.components.MediaImage
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -57,13 +67,44 @@ fun CardFormScreen(
         }
     }
 
+    val recorder = remember { AudioRecorder(context) }
+    var isRecording by remember { mutableStateOf(false) }
+
+    fun startRecording() {
+        runCatching { recorder.start() }.onSuccess { isRecording = true }
+    }
+    fun stopRecording() {
+        val bytes = recorder.stop()
+        isRecording = false
+        if (bytes != null) viewModel.onAudioRecorded(bytes)
+    }
+
+    val micPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) startRecording() }
+
+    fun toggleRecording() {
+        if (isRecording) {
+            stopRecording()
+        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            startRecording()
+        } else {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
     CardFormContent(
         state = state,
+        isRecording = isRecording,
         onFrontChange = viewModel::onFrontChange,
         onBackChange = viewModel::onBackChange,
         onToggleReverse = viewModel::onToggleReverse,
         onAddImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onRemoveImage = viewModel::onRemoveImage,
+        onToggleRecording = ::toggleRecording,
+        onRemoveAudio = viewModel::onRemoveAudio,
         onSave = viewModel::save,
         onBack = onDone,
     )
@@ -74,11 +115,14 @@ fun CardFormScreen(
 @Composable
 fun CardFormContent(
     state: CardFormUiState,
+    isRecording: Boolean,
     onFrontChange: (String) -> Unit,
     onBackChange: (String) -> Unit,
     onToggleReverse: (Boolean) -> Unit,
     onAddImage: () -> Unit,
     onRemoveImage: () -> Unit,
+    onToggleRecording: () -> Unit,
+    onRemoveAudio: () -> Unit,
     onSave: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -116,11 +160,9 @@ fun CardFormContent(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            // Image
             when {
-                state.uploadingImage -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator()
-                    Text("Uploading image…", Modifier.padding(start = 12.dp))
-                }
+                state.uploadingImage -> UploadingRow("Uploading image…")
                 state.imagePath != null -> {
                     MediaImage(state.imagePath, Modifier.fillMaxWidth().height(160.dp))
                     TextButton(onClick = onRemoveImage) { Text("Remove image") }
@@ -131,6 +173,20 @@ fun CardFormContent(
                 }
             }
 
+            // Audio
+            when {
+                state.uploadingAudio -> UploadingRow("Uploading audio…")
+                state.audioPath != null -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Audio attached")
+                    AudioPlayButton(state.audioPath)
+                    TextButton(onClick = onRemoveAudio) { Text("Remove") }
+                }
+                else -> OutlinedButton(onClick = onToggleRecording) {
+                    Icon(if (isRecording) Icons.Default.Stop else Icons.Default.Mic, contentDescription = null)
+                    Text(if (isRecording) "Stop recording" else "Record audio", Modifier.padding(start = 8.dp))
+                }
+            }
+
             if (!state.isEdit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = state.createReverse, onCheckedChange = onToggleReverse)
@@ -138,5 +194,13 @@ fun CardFormContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun UploadingRow(label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator()
+        Text(label, Modifier.padding(start = 12.dp))
     }
 }

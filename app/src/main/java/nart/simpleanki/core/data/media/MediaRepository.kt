@@ -11,6 +11,7 @@ data class MediaRef(val name: String, val path: String)
 /** Media upload/lookup seam; faked in tests. */
 interface MediaUploader {
     suspend fun uploadImage(bytes: ByteArray): Result<MediaRef>
+    suspend fun uploadAudio(bytes: ByteArray): Result<MediaRef>
     suspend fun downloadUrl(storagePath: String): Result<String>
 }
 
@@ -23,10 +24,16 @@ class FirebaseMediaRepository(
     private val auth: FirebaseAuth,
 ) : MediaUploader {
 
-    override suspend fun uploadImage(bytes: ByteArray): Result<MediaRef> = runCatching {
+    override suspend fun uploadImage(bytes: ByteArray): Result<MediaRef> =
+        upload(bytes, folder = "images", ext = "jpg")
+
+    override suspend fun uploadAudio(bytes: ByteArray): Result<MediaRef> =
+        upload(bytes, folder = "audio", ext = "m4a")
+
+    private suspend fun upload(bytes: ByteArray, folder: String, ext: String): Result<MediaRef> = runCatching {
         val uid = auth.currentUser?.uid ?: error("Not signed in")
-        val name = "${UUID.randomUUID()}.jpg"
-        val path = "users/$uid/images/$name"
+        val name = "${UUID.randomUUID()}.$ext"
+        val path = "users/$uid/$folder/$name"
         storage.reference.child(path).putBytes(bytes).await()
         MediaRef(name = name, path = path)
     }

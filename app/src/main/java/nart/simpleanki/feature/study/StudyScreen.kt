@@ -90,6 +90,9 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
             Spacer(Modifier.height(16.dp))
         }
         Text(card.front, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+        card.audioPath?.let { path ->
+            nart.simpleanki.ui.components.AudioPlayButton(path)
+        }
         if (state.isRevealed) {
             Spacer(Modifier.height(16.dp))
             HorizontalDivider(Modifier.fillMaxWidth(0.6f))
