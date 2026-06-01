@@ -58,4 +58,12 @@ class SettingsViewModelTest {
         vm.signOut()
         assertEquals(1, auth.signOutCalls)
     }
+
+    @Test
+    fun deleteAccount_delegatesToAuth() = runTest {
+        val auth = FakeAuthRepository().apply { emit(FakeAuthRepository.GOOGLE_USER) }
+        val vm = SettingsViewModel(FakeSettingsRepository(), auth)
+        vm.deleteAccount(); runCurrent()
+        assertEquals(1, auth.deleteCalls)
+    }
 }

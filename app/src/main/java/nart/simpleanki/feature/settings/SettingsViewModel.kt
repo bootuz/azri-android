@@ -38,4 +38,5 @@ class SettingsViewModel(
     fun setNewCardsPerDay(value: Int) = viewModelScope.launch { settingsRepository.setNewCardsPerDay(value) }
     fun setMaxReviewsPerDay(value: Int) = viewModelScope.launch { settingsRepository.setMaxReviewsPerDay(value) }
     fun signOut() = authRepository.signOut()
+    fun deleteAccount() = viewModelScope.launch { authRepository.deleteAccount() }
 }

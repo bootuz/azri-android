@@ -11,6 +11,7 @@ class FakeAuthRepository(
     var googleResult: Result<AuthUser> = Result.success(GOOGLE_USER)
     var anonymousResult: Result<AuthUser> = Result.success(ANON_USER)
     var signOutCalls = 0
+    var deleteCalls = 0
 
     override val authState: Flow<AuthUser?> = state
 
@@ -27,6 +28,12 @@ class FakeAuthRepository(
     override fun signOut() {
         signOutCalls++
         state.value = null
+    }
+
+    override suspend fun deleteAccount(): Result<Unit> {
+        deleteCalls++
+        state.value = null
+        return Result.success(Unit)
     }
 
     fun emit(user: AuthUser?) {

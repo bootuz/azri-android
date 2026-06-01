@@ -33,6 +33,11 @@ class FirebaseAuthRepository(
     }
 
     override fun signOut() = auth.signOut()
+
+    override suspend fun deleteAccount(): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: error("No signed-in user to delete")
+        user.delete().await()
+    }
 }
 
 private fun FirebaseUser.toAuthUser(): AuthUser = AuthUser(
