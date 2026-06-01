@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -120,7 +122,7 @@ private fun SectionHeader(text: String) {
 
 @Composable
 private fun FolderRow(folder: Folder) {
-    AzriCard {
+    AzriCard(modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ColorAccentIcon(tint = MaterialTheme.colorScheme.onSurfaceVariant) {
                 if (folder.emoji != null) Text(folder.emoji) else Icon(Icons.Outlined.Folder, null, Modifier.size(18.dp))
@@ -136,7 +138,7 @@ private fun FolderRow(folder: Folder) {
 
 @Composable
 private fun DeckRow(deck: Deck, cardCount: Int, onClick: () -> Unit) {
-    AzriCard(onClick = onClick) {
+    AzriCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ColorAccentIcon(tint = deck.color.toColor()) {
                 Icon(Icons.Outlined.StickyNote2, null, Modifier.size(18.dp))

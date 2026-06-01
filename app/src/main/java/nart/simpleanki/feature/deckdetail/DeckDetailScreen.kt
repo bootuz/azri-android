@@ -1,20 +1,24 @@
 package nart.simpleanki.feature.deckdetail
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +29,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -85,38 +90,62 @@ fun DeckDetailContent(
                 },
             )
         },
-        floatingActionButton = {
-            if (state.cards.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = onStudy,
-                    icon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
-                    text = { Text("Study") },
-                )
-            }
-        },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = onQueryChange,
-                placeholder = { Text("Search cards") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-            if (state.cards.isEmpty()) {
-                Text(
-                    "No cards yet. Tap + to add one.",
-                    Modifier.padding(24.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // Stats + Study CTA header
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AzriCard(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        Stat(state.total.toString(), "Total")
+                        Stat(state.dueCount.toString(), "Due", highlight = state.dueCount > 0)
+                        Stat(state.newCount.toString(), "New")
+                    }
+                }
+                Button(
+                    onClick = onStudy,
+                    enabled = state.total > 0,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Filled.School, contentDescription = null)
+                    Text(
+                        if (state.dueCount > 0) "Study ${state.dueCount} due" else "Study",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = onQueryChange,
+                    placeholder = { Text("Search cards") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.fillMaxWidth(),
                 )
+            }
+
+            if (state.cards.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "No cards yet. Tap + to add one.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(state.visibleCards, key = { it.id }) { card ->
-                        AzriCard(onClick = { onEditCard(card.id) }) {
+                        AzriCard(onClick = { onEditCard(card.id) }, modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(14.dp)) {
                                 Text(
                                     card.front,
@@ -138,6 +167,18 @@ fun DeckDetailContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun Stat(value: String, label: String, highlight: Boolean = false) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value,
+            style = MaterialTheme.typography.headlineSmall,
+            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
