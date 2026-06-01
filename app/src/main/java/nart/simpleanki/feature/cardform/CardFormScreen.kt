@@ -70,12 +70,13 @@ import org.koin.core.parameter.parametersOf
 fun CardFormScreen(
     deckId: String,
     cardId: String?,
-    onDone: () -> Unit,
+    onClose: () -> Unit,
+    onSaved: () -> Unit,
     viewModel: CardFormViewModel = koinViewModel { parametersOf(CardFormArgs(deckId, cardId)) },
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    LaunchedEffect(state.saved) { if (state.saved) onDone() }
+    LaunchedEffect(state.saved) { if (state.saved) onSaved() }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
@@ -125,7 +126,7 @@ fun CardFormScreen(
         onToggleRecording = ::toggleRecording,
         onRemoveAudio = viewModel::onRemoveAudio,
         onSave = viewModel::save,
-        onBack = onDone,
+        onBack = onClose,
     )
 }
 
