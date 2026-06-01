@@ -23,6 +23,8 @@ class FolderRepository(
     fun observeFolders(): Flow<List<Folder>> =
         dao.observeAll().map { rows -> rows.map { it.toDomain() } }
 
+    suspend fun getById(id: String): Folder? = dao.getById(id)?.toDomain()
+
     suspend fun upsert(folder: Folder) {
         dao.upsertAll(listOf(folder.copy(lastModified = now()).toEntity(dirty = true)))
     }
