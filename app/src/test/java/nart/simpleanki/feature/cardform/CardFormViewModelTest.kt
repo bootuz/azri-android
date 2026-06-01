@@ -59,7 +59,33 @@ class CardFormViewModelTest {
         assertEquals("hello", cards.first().front)
         assertEquals(CardState.New.value, cards.first().fsrsState)
         assertNull(cards.first().pairId)
-        assertTrue(vm.uiState.value.saved)
+        // New-card save keeps the editor open: tick bumps and inputs reset for the next card.
+        assertEquals(1, vm.uiState.value.savedTick)
+        assertEquals("", vm.uiState.value.front)
+        assertEquals("", vm.uiState.value.back)
+        assertFalse(vm.uiState.value.finished)
+    }
+
+    @Test
+    fun save_newCard_resetsInputs_andBumpsTickEachSave() = runTest {
+        val dao = FakeCardDao()
+        val repo = CardRepository(dao, now = { now })
+        // First save toggles reverse (consumes two ids: original + reverse), second is a plain card.
+        val vm = CardFormViewModel(
+            "d1", repo, FakeMediaUploader(),
+            idGenerator = ids("c-1", "c-2", "c-3"), now = { now },
+        )
+        vm.onFrontChange("a"); vm.onBackChange("1"); vm.onToggleReverse(true)
+        vm.save(); runCurrent()
+        // Reverse toggle and all inputs are cleared after the first save.
+        assertEquals(1, vm.uiState.value.savedTick)
+        assertFalse(vm.uiState.value.createReverse)
+        assertEquals("", vm.uiState.value.front)
+
+        vm.onFrontChange("b"); vm.onBackChange("2")
+        vm.save(); runCurrent()
+        assertEquals(2, vm.uiState.value.savedTick)
+        assertEquals(3, dao.observeByDeck("d1").first().size) // 2 from reverse pair + 1 plain
     }
 
     @Test
@@ -139,5 +165,8 @@ class CardFormViewModelTest {
         assertEquals(1, cards.size)
         assertEquals("new", cards.first().front)
         assertEquals(CardState.Review.value, cards.first().fsrsState) // FSRS state preserved
+        // Editing one card signals the screen to close (no reset / no toast loop).
+        assertTrue(vm.uiState.value.finished)
+        assertEquals(0, vm.uiState.value.savedTick)
     }
 }

@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -25,16 +24,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,13 +50,11 @@ fun DeckDetailScreen(
     onAddCard: () -> Unit,
     onEditCard: (String) -> Unit,
     onSettings: () -> Unit,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     viewModel: DeckDetailViewModel = koinViewModel { parametersOf(deckId) },
 ) {
     val state by viewModel.uiState.collectAsState()
     DeckDetailContent(
         state = state,
-        snackbarHostState = snackbarHostState,
         onQueryChange = viewModel::onQueryChange,
         onBack = onBack,
         onStudy = onStudy,
@@ -82,19 +75,8 @@ fun DeckDetailContent(
     onAddCard: () -> Unit,
     onEditCard: (String) -> Unit,
     onSettings: () -> Unit,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     Scaffold(
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(shape = MaterialTheme.shapes.large) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null)
-                        Text(data.visuals.message, modifier = Modifier.padding(start = 12.dp))
-                    }
-                }
-            }
-        },
         topBar = {
             TopAppBar(
                 title = { Text(state.deckName.ifBlank { "Deck" }) },

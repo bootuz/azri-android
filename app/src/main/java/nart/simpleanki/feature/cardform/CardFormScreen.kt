@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
@@ -38,6 +39,9 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -71,12 +75,18 @@ fun CardFormScreen(
     deckId: String,
     cardId: String?,
     onClose: () -> Unit,
-    onSaved: () -> Unit,
     viewModel: CardFormViewModel = koinViewModel { parametersOf(CardFormArgs(deckId, cardId)) },
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    LaunchedEffect(state.saved) { if (state.saved) onSaved() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    // A new-card save keeps the editor open (the inputs reset); show a toast so the
+    // user knows it landed and can add another. Keyed on the tick so it re-fires each save.
+    LaunchedEffect(state.savedTick) {
+        if (state.savedTick > 0) snackbarHostState.showSnackbar("Card saved")
+    }
+    // Editing an existing card closes the editor when the save completes.
+    LaunchedEffect(state.finished) { if (state.finished) onClose() }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
@@ -117,6 +127,7 @@ fun CardFormScreen(
 
     CardFormContent(
         state = state,
+        snackbarHostState = snackbarHostState,
         isRecording = isRecording,
         onFrontChange = viewModel::onFrontChange,
         onBackChange = viewModel::onBackChange,
@@ -145,8 +156,19 @@ fun CardFormContent(
     onRemoveAudio: () -> Unit,
     onSave: () -> Unit,
     onBack: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(shape = MaterialTheme.shapes.large) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null)
+                        Text(data.visuals.message, modifier = Modifier.padding(start = 12.dp))
+                    }
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text(if (state.isEdit) "Edit card" else "New card") },

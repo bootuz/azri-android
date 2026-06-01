@@ -23,7 +23,10 @@ data class CardFormUiState(
     val audioName: String? = null,
     val audioPath: String? = null,
     val uploadingAudio: Boolean = false,
-    val saved: Boolean = false,
+    /** Increments on each successful new-card save; drives the "Card saved" toast (re-triggerable). */
+    val savedTick: Int = 0,
+    /** Set once after editing an existing card, signalling the screen to close. */
+    val finished: Boolean = false,
 ) {
     val canSave: Boolean
         get() = front.isNotBlank() && back.isNotBlank() && !uploadingImage && !uploadingAudio
@@ -108,6 +111,8 @@ class CardFormViewModel(
                         audioName = state.audioName, audioPath = state.audioPath,
                     ),
                 )
+                // Editing targets one card: close the editor once saved.
+                _uiState.value = _uiState.value.copy(finished = true)
             } else {
                 val baseId = idGenerator()
                 cardRepository.upsert(
@@ -123,8 +128,9 @@ class CardFormViewModel(
                             image = null, imagePath = null, audioName = null, audioPath = null),
                     )
                 }
+                // Keep the editor open for rapid entry: clear inputs and bump the toast counter.
+                _uiState.value = CardFormUiState(isEdit = false, savedTick = state.savedTick + 1)
             }
-            _uiState.value = _uiState.value.copy(saved = true)
         }
     }
 
