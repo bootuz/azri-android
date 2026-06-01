@@ -10,7 +10,7 @@ import nart.simpleanki.auth.AuthUiState
 import nart.simpleanki.auth.AuthViewModel
 import nart.simpleanki.auth.GoogleSignInClient
 import nart.simpleanki.feature.auth.SignInScreen
-import nart.simpleanki.feature.home.HomeScreen
+import nart.simpleanki.ui.navigation.AzriNavHost
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -25,7 +25,7 @@ fun AzriRoot(
     val scope = rememberCoroutineScope()
 
     when (val s = state) {
-        is AuthUiState.SignedIn -> HomeScreen(user = s.user, onSignOut = viewModel::onSignOut)
+        is AuthUiState.SignedIn -> AzriNavHost(onSignOut = viewModel::onSignOut)
         else -> SignInScreen(
             onGoogleClick = {
                 scope.launch {

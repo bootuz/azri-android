@@ -1,0 +1,64 @@
+package nart.simpleanki.ui.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import nart.simpleanki.feature.cardform.CardFormScreen
+import nart.simpleanki.feature.deckdetail.DeckDetailScreen
+import nart.simpleanki.feature.decksettings.DeckEditScreen
+import nart.simpleanki.feature.library.FolderEditScreen
+import nart.simpleanki.feature.library.LibraryScreen
+import nart.simpleanki.feature.study.StudyScreen
+
+/** Signed-in navigation graph. */
+@Composable
+fun AzriNavHost(onSignOut: () -> Unit) {
+    val nav = rememberNavController()
+    NavHost(navController = nav, startDestination = "library") {
+        composable("library") {
+            LibraryScreen(
+                onOpenDeck = { nav.navigate("deck/$it") },
+                onNewDeck = { nav.navigate("deckEdit") },
+                onNewFolder = { nav.navigate("folderEdit") },
+                onSignOut = onSignOut,
+            )
+        }
+        composable("deck/{deckId}") { entry ->
+            val deckId = entry.arguments?.getString("deckId").orEmpty()
+            DeckDetailScreen(
+                deckId = deckId,
+                onBack = { nav.popBackStack() },
+                onStudy = { nav.navigate("study/$deckId") },
+                onAddCard = { nav.navigate("cardForm/$deckId") },
+                onEditCard = { cardId -> nav.navigate("cardForm/$deckId/$cardId") },
+                onSettings = { nav.navigate("deckEdit/$deckId") },
+            )
+        }
+        composable("study/{deckId}") { entry ->
+            StudyScreen(entry.arguments?.getString("deckId").orEmpty(), onDone = { nav.popBackStack() })
+        }
+        composable("cardForm/{deckId}") { entry ->
+            CardFormScreen(entry.arguments?.getString("deckId").orEmpty(), null, onDone = { nav.popBackStack() })
+        }
+        composable("cardForm/{deckId}/{cardId}") { entry ->
+            CardFormScreen(
+                deckId = entry.arguments?.getString("deckId").orEmpty(),
+                cardId = entry.arguments?.getString("cardId"),
+                onDone = { nav.popBackStack() },
+            )
+        }
+        composable("deckEdit") {
+            DeckEditScreen(deckId = null, folderId = null, onDone = { nav.popBackStack() })
+        }
+        composable("deckEdit/{deckId}") { entry ->
+            DeckEditScreen(deckId = entry.arguments?.getString("deckId"), folderId = null, onDone = { nav.popBackStack() })
+        }
+        composable("folderEdit") {
+            FolderEditScreen(folderId = null, onDone = { nav.popBackStack() })
+        }
+        composable("folderEdit/{folderId}") { entry ->
+            FolderEditScreen(folderId = entry.arguments?.getString("folderId"), onDone = { nav.popBackStack() })
+        }
+    }
+}

@@ -2,15 +2,19 @@ package nart.simpleanki.feature.deckdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.repository.CardRepository
+import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.domain.model.Card
 
 data class DeckDetailUiState(
     val deckId: String,
+    val deckName: String = "",
     val cards: List<Card> = emptyList(),
     val query: String = "",
 ) {
@@ -24,16 +28,27 @@ data class DeckDetailUiState(
 class DeckDetailViewModel(
     private val deckId: String,
     cardRepository: CardRepository,
+    deckRepository: DeckRepository? = null,
 ) : ViewModel() {
 
-    private val queryFlow = kotlinx.coroutines.flow.MutableStateFlow("")
+    private val queryFlow = MutableStateFlow("")
+    private val deckNameFlow = MutableStateFlow("")
+
+    init {
+        if (deckRepository != null) {
+            viewModelScope.launch {
+                deckNameFlow.value = deckRepository.getById(deckId)?.name ?: ""
+            }
+        }
+    }
 
     val uiState: StateFlow<DeckDetailUiState> =
-        kotlinx.coroutines.flow.combine(
+        combine(
             cardRepository.observeCards(deckId),
             queryFlow,
-        ) { cards, query ->
-            DeckDetailUiState(deckId = deckId, cards = cards, query = query)
+            deckNameFlow,
+        ) { cards, query, name ->
+            DeckDetailUiState(deckId = deckId, deckName = name, cards = cards, query = query)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
