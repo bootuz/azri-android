@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -218,7 +219,7 @@ fun CardFormContent(
                         enabled = !state.uploadingImage,
                         leadingIcon = {
                             if (state.uploadingImage) {
-                                CircularProgressIndicator(Modifier.height(18.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                             } else {
                                 Icon(Icons.Default.Image, contentDescription = null, Modifier.height(18.dp))
                             }
@@ -232,7 +233,7 @@ fun CardFormContent(
                         enabled = !state.uploadingAudio,
                         leadingIcon = {
                             when {
-                                state.uploadingAudio -> CircularProgressIndicator(Modifier.height(18.dp), strokeWidth = 2.dp)
+                                state.uploadingAudio -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                                 isRecording -> Icon(Icons.Default.Stop, contentDescription = null, Modifier.height(18.dp), tint = MaterialTheme.colorScheme.error)
                                 else -> Icon(Icons.Default.Mic, contentDescription = null, Modifier.height(18.dp))
                             }
