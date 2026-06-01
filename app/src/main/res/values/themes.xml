@@ -1,0 +1,4 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base theme; Compose drives all UI, so this is a no-action-bar Material3 shell. -->
+    <style name="Theme.Azri" parent="Theme.Material3.DayNight.NoActionBar" />
+</resources>
