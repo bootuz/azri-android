@@ -1,8 +1,8 @@
 package nart.simpleanki.feature.cardform
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import org.junit.Assert.assertEquals
@@ -15,7 +15,7 @@ class CardFormContentTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun newCard_showsReverseToggle_andEditsInvokeCallbacks() {
+    fun newCard_showsReverseAction_andEditsInvokeCallbacks() {
         var front = ""
         composeRule.setContent {
             CardFormContent(
@@ -33,13 +33,15 @@ class CardFormContentTest {
             )
         }
         composeRule.onNodeWithText("New card").assertIsDisplayed()
-        composeRule.onNodeWithText("Also create reverse card").assertIsDisplayed()
-        composeRule.onNodeWithText("Front").performTextInput("hola")
+        // Reverse is now a toolbar action (icon) for new cards.
+        composeRule.onNodeWithContentDescription("Also create reverse card").assertExists()
+        // Type into the Front field via its placeholder.
+        composeRule.onNodeWithText("Enter the question").performTextInput("hola")
         assertEquals("hola", front)
     }
 
     @Test
-    fun editCard_hidesReverseToggle() {
+    fun editCard_hidesReverseAction() {
         composeRule.setContent {
             CardFormContent(
                 state = CardFormUiState(front = "a", back = "b", isEdit = true),
@@ -56,6 +58,6 @@ class CardFormContentTest {
             )
         }
         composeRule.onNodeWithText("Edit card").assertIsDisplayed()
-        composeRule.onNodeWithText("Also create reverse card").assertIsNotDisplayed()
+        composeRule.onNodeWithContentDescription("Also create reverse card").assertDoesNotExist()
     }
 }
