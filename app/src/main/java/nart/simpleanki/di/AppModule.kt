@@ -6,7 +6,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.storage
 import nart.simpleanki.auth.AuthRepository
+import nart.simpleanki.core.data.media.FirebaseMediaRepository
+import nart.simpleanki.core.data.media.MediaUploader
 import nart.simpleanki.auth.AuthViewModel
 import nart.simpleanki.auth.FirebaseAuthRepository
 import nart.simpleanki.auth.GoogleSignInClient
@@ -46,6 +50,8 @@ val appModule = module {
     // Firebase
     single<FirebaseAuth> { Firebase.auth }
     single<FirebaseFirestore> { Firebase.firestore }
+    single<FirebaseStorage> { Firebase.storage }
+    single<MediaUploader> { FirebaseMediaRepository(get(), get()) }
 
     // Auth
     single<AuthRepository> { FirebaseAuthRepository(get()) }
@@ -82,7 +88,7 @@ val appModule = module {
     viewModel { params -> StudyViewModel(deckId = params.get(), cardRepository = get(), settingsRepository = get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
-        CardFormViewModel(deckId = a.deckId, cardRepository = get(), editingCardId = a.cardId)
+        CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)
     }
     viewModel { params ->
         val a = params.get<DeckEditArgs>()

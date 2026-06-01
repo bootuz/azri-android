@@ -85,6 +85,10 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        card.imagePath?.let { path ->
+            nart.simpleanki.ui.components.MediaImage(path, Modifier.fillMaxWidth().height(160.dp))
+            Spacer(Modifier.height(16.dp))
+        }
         Text(card.front, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
         if (state.isRevealed) {
             Spacer(Modifier.height(16.dp))

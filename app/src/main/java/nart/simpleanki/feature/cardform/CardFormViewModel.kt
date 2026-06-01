@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import nart.simpleanki.core.data.media.MediaUploader
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
@@ -16,19 +17,23 @@ data class CardFormUiState(
     val back: String = "",
     val createReverse: Boolean = false,
     val isEdit: Boolean = false,
+    val imageName: String? = null,
+    val imagePath: String? = null,
+    val uploadingImage: Boolean = false,
     val saved: Boolean = false,
 ) {
-    val canSave: Boolean get() = front.isNotBlank() && back.isNotBlank()
+    val canSave: Boolean get() = front.isNotBlank() && back.isNotBlank() && !uploadingImage
 }
 
 /**
- * Add or edit a card. When [CardFormUiState.createReverse] is set for a new card, a
- * second reversed card is created with swapped front/back and a shared [Card.pairId],
- * matching the iOS reverse-pairing behavior.
+ * Add or edit a card. Supports attaching an image (uploaded to Firebase Storage at the
+ * iOS-matching path). When [CardFormUiState.createReverse] is set for a new card, a second
+ * reversed card is created with swapped front/back and a shared [Card.pairId].
  */
 class CardFormViewModel(
     private val deckId: String,
     private val cardRepository: CardRepository,
+    private val mediaUploader: MediaUploader,
     private val editingCardId: String? = null,
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
     private val now: () -> Long = { System.currentTimeMillis() },
@@ -44,7 +49,10 @@ class CardFormViewModel(
             viewModelScope.launch {
                 cardRepository.getById(editingCardId)?.let { card ->
                     editingCard = card
-                    _uiState.value = _uiState.value.copy(front = card.front, back = card.back)
+                    _uiState.value = _uiState.value.copy(
+                        front = card.front, back = card.back,
+                        imageName = card.image, imagePath = card.imagePath,
+                    )
                 }
             }
         }
@@ -53,6 +61,20 @@ class CardFormViewModel(
     fun onFrontChange(value: String) { _uiState.value = _uiState.value.copy(front = value) }
     fun onBackChange(value: String) { _uiState.value = _uiState.value.copy(back = value) }
     fun onToggleReverse(value: Boolean) { _uiState.value = _uiState.value.copy(createReverse = value) }
+    fun onRemoveImage() { _uiState.value = _uiState.value.copy(imageName = null, imagePath = null) }
+
+    fun onImagePicked(bytes: ByteArray) {
+        _uiState.value = _uiState.value.copy(uploadingImage = true)
+        viewModelScope.launch {
+            mediaUploader.uploadImage(bytes)
+                .onSuccess { ref ->
+                    _uiState.value = _uiState.value.copy(
+                        imageName = ref.name, imagePath = ref.path, uploadingImage = false,
+                    )
+                }
+                .onFailure { _uiState.value = _uiState.value.copy(uploadingImage = false) }
+        }
+    }
 
     fun save() {
         val state = _uiState.value
@@ -60,26 +82,23 @@ class CardFormViewModel(
         viewModelScope.launch {
             val existing = editingCard
             if (existing != null) {
-                cardRepository.upsert(existing.copy(front = state.front, back = state.back))
+                cardRepository.upsert(
+                    existing.copy(
+                        front = state.front, back = state.back,
+                        image = state.imageName, imagePath = state.imagePath,
+                    ),
+                )
             } else {
                 val baseId = idGenerator()
-                val original = newCard(
-                    id = baseId,
-                    front = state.front,
-                    back = state.back,
-                    isReverse = false,
-                    pairId = if (state.createReverse) baseId else null,
+                cardRepository.upsert(
+                    newCard(baseId, state.front, state.back, isReverse = false,
+                        pairId = if (state.createReverse) baseId else null,
+                        image = state.imageName, imagePath = state.imagePath),
                 )
-                cardRepository.upsert(original)
                 if (state.createReverse) {
                     cardRepository.upsert(
-                        newCard(
-                            id = idGenerator(),
-                            front = state.back,
-                            back = state.front,
-                            isReverse = true,
-                            pairId = baseId,
-                        ),
+                        newCard(idGenerator(), state.back, state.front, isReverse = true, pairId = baseId,
+                            image = null, imagePath = null),
                     )
                 }
             }
@@ -87,19 +106,15 @@ class CardFormViewModel(
         }
     }
 
-    private fun newCard(id: String, front: String, back: String, isReverse: Boolean, pairId: String?): Card {
+    private fun newCard(
+        id: String, front: String, back: String, isReverse: Boolean, pairId: String?,
+        image: String?, imagePath: String?,
+    ): Card {
         val t = now()
         return Card(
-            id = id,
-            front = front,
-            back = back,
-            deckId = deckId,
-            dateCreated = t,
-            lastModified = t,
-            fsrsDue = t,
-            fsrsState = CardState.New.value,
-            pairId = pairId,
-            isReverse = isReverse,
+            id = id, front = front, back = back, deckId = deckId,
+            dateCreated = t, lastModified = t, fsrsDue = t, fsrsState = CardState.New.value,
+            image = image, imagePath = imagePath, pairId = pairId, isReverse = isReverse,
         )
     }
 }

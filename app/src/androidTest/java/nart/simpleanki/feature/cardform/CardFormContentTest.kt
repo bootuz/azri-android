@@ -23,6 +23,8 @@ class CardFormContentTest {
                 onFrontChange = { front = it },
                 onBackChange = {},
                 onToggleReverse = {},
+                onAddImage = {},
+                onRemoveImage = {},
                 onSave = {},
                 onBack = {},
             )
@@ -41,6 +43,8 @@ class CardFormContentTest {
                 onFrontChange = {},
                 onBackChange = {},
                 onToggleReverse = {},
+                onAddImage = {},
+                onRemoveImage = {},
                 onSave = {},
                 onBack = {},
             )
