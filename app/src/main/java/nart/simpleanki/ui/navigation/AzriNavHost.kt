@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import nart.simpleanki.feature.cardform.CardFormScreen
 import nart.simpleanki.feature.deckdetail.DeckDetailScreen
 import nart.simpleanki.feature.decksettings.DeckEditScreen
+import nart.simpleanki.feature.folderdetail.FolderDetailScreen
 import nart.simpleanki.feature.library.FolderEditScreen
 import nart.simpleanki.feature.library.LibraryScreen
 import nart.simpleanki.feature.settings.SettingsScreen
@@ -20,9 +21,20 @@ fun AzriNavHost() {
         composable("library") {
             LibraryScreen(
                 onOpenDeck = { nav.navigate("deck/$it") },
+                onOpenFolder = { nav.navigate("folder/$it") },
                 onNewDeck = { nav.navigate("deckEdit") },
                 onNewFolder = { nav.navigate("folderEdit") },
                 onSettings = { nav.navigate("settings") },
+            )
+        }
+        composable("folder/{folderId}") { entry ->
+            val folderId = entry.arguments?.getString("folderId").orEmpty()
+            FolderDetailScreen(
+                folderId = folderId,
+                onBack = { nav.popBackStack() },
+                onOpenDeck = { nav.navigate("deck/$it") },
+                onNewDeck = { nav.navigate("deckEditInFolder/$folderId") },
+                onEditFolder = { nav.navigate("folderEdit/$folderId") },
             )
         }
         composable("settings") {
@@ -63,6 +75,9 @@ fun AzriNavHost() {
         }
         composable("deckEdit/{deckId}") { entry ->
             DeckEditScreen(deckId = entry.arguments?.getString("deckId"), folderId = null, onDone = { nav.popBackStack() })
+        }
+        composable("deckEditInFolder/{folderId}") { entry ->
+            DeckEditScreen(deckId = null, folderId = entry.arguments?.getString("folderId"), onDone = { nav.popBackStack() })
         }
         composable("folderEdit") {
             FolderEditScreen(folderId = null, onDone = { nav.popBackStack() })

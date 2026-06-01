@@ -14,6 +14,7 @@ import nart.simpleanki.core.data.repository.FakeFolderDao
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.domain.model.ColorOption
 import nart.simpleanki.core.domain.model.Deck
+import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.core.domain.model.ReviewCardFilter
 import nart.simpleanki.feature.decksettings.DeckEditViewModel
 import nart.simpleanki.feature.library.FolderEditViewModel
@@ -36,7 +37,8 @@ class EditViewModelsTest {
     fun deck_create_persistsWithSettings_inFolder() = runTest {
         val dao = FakeDeckDao()
         val repo = DeckRepository(dao, now = { now })
-        val vm = DeckEditViewModel(repo, initialFolderId = "f1", idGenerator = { "deck-1" }, now = { now })
+        val folderRepo = FolderRepository(FakeFolderDao(), now = { now })
+        val vm = DeckEditViewModel(repo, folderRepo, initialFolderId = "f1", idGenerator = { "deck-1" }, now = { now })
         assertFalse(vm.uiState.value.canSave)
         vm.onNameChange("French")
         vm.onColorChange(ColorOption.Purple)
@@ -61,7 +63,7 @@ class EditViewModelsTest {
         val dao = FakeDeckDao()
         val repo = DeckRepository(dao, now = { now })
         repo.upsert(Deck(id = "d1", name = "Old", color = ColorOption.Red, dateCreated = now, lastModified = now))
-        val vm = DeckEditViewModel(repo, editingDeckId = "d1", now = { now })
+        val vm = DeckEditViewModel(repo, FolderRepository(FakeFolderDao(), now = { now }), editingDeckId = "d1", now = { now })
         runCurrent()
         assertEquals("Old", vm.uiState.value.name)
         assertEquals(ColorOption.Red, vm.uiState.value.color)
@@ -69,6 +71,25 @@ class EditViewModelsTest {
         vm.onNameChange("New")
         vm.save(); runCurrent()
         assertEquals("New", dao.getById("d1")!!.name)
+    }
+
+    @Test
+    fun deck_edit_moveIntoFolder_loadsFolderOptions_andPersists() = runTest {
+        val deckDao = FakeDeckDao()
+        val deckRepo = DeckRepository(deckDao, now = { now })
+        val folderRepo = FolderRepository(FakeFolderDao(), now = { now })
+        folderRepo.upsert(Folder(id = "f1", name = "Languages", lastModified = now))
+        deckRepo.upsert(Deck(id = "d1", name = "French", dateCreated = now, lastModified = now)) // no folder
+
+        val vm = DeckEditViewModel(deckRepo, folderRepo, editingDeckId = "d1", now = { now })
+        runCurrent()
+        // Folder options are loaded for the picker, deck starts folderless.
+        assertEquals(listOf("f1"), vm.uiState.value.folders.map { it.id })
+        assertEquals(null, vm.uiState.value.folderId)
+
+        vm.onFolderChange("f1")
+        vm.save(); runCurrent()
+        assertEquals("f1", deckDao.getById("d1")!!.folderId)
     }
 
     @Test

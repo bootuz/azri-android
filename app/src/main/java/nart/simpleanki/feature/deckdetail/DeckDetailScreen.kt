@@ -1,5 +1,6 @@
 package nart.simpleanki.feature.deckdetail
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -24,17 +26,27 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.ui.components.AzriCard
@@ -53,14 +65,28 @@ fun DeckDetailScreen(
     viewModel: DeckDetailViewModel = koinViewModel { parametersOf(deckId) },
 ) {
     val state by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     DeckDetailContent(
         state = state,
+        snackbarHostState = snackbarHostState,
         onQueryChange = viewModel::onQueryChange,
         onBack = onBack,
         onStudy = onStudy,
         onAddCard = onAddCard,
         onEditCard = onEditCard,
         onSettings = onSettings,
+        onDeleteCard = { card ->
+            viewModel.deleteCard(card)
+            scope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = "Card deleted",
+                    actionLabel = "Undo",
+                    withDismissAction = true,
+                )
+                if (result == SnackbarResult.ActionPerformed) viewModel.restoreCard(card)
+            }
+        },
     )
 }
 
@@ -75,8 +101,11 @@ fun DeckDetailContent(
     onAddCard: () -> Unit,
     onEditCard: (String) -> Unit,
     onSettings: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    onDeleteCard: (Card) -> Unit = {},
 ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(state.deckName.ifBlank { "Deck" }) },
@@ -149,7 +178,10 @@ fun DeckDetailContent(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(state.visibleCards, key = { it.id }) { card ->
-                        AzriCard(onClick = { onEditCard(card.id) }, modifier = Modifier.fillMaxWidth()) {
+                        SwipeToDeleteCard(
+                            onClick = { onEditCard(card.id) },
+                            onDelete = { onDeleteCard(card) },
+                        ) {
                             Column(Modifier.padding(14.dp)) {
                                 Text(
                                     card.front,
@@ -171,6 +203,51 @@ fun DeckDetailContent(
                 }
             }
         }
+    }
+}
+
+/**
+ * A card row that reveals a red "delete" affordance when swiped right-to-left and removes
+ * itself once swiped past threshold. Tapping still opens the editor.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDeleteCard(
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete card",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        },
+    ) {
+        AzriCard(onClick = onClick, modifier = Modifier.fillMaxWidth(), content = content)
     }
 }
 

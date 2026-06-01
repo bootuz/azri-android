@@ -19,6 +19,7 @@ import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
+import nart.simpleanki.feature.folderdetail.FolderDetailViewModel
 import nart.simpleanki.feature.library.LibraryViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -65,6 +66,44 @@ class LibraryAndDeckDetailViewModelTest {
         vm.onQueryChange("dog")
         runCurrent()
         assertEquals(listOf("c2"), vm.uiState.value.visibleCards.map { it.id })
+    }
+
+    @Test
+    fun deckDetail_deleteThenRestore_removesAndReAddsCard() = runTest {
+        val cardDao = FakeCardDao()
+        val cardRepo = CardRepository(cardDao, now = { 1L })
+        cardRepo.upsert(card("c1", "apple", "fruit"))
+        cardRepo.upsert(card("c2", "dog", "animal"))
+
+        val vm = DeckDetailViewModel("d1", cardRepo)
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        val toDelete = vm.uiState.value.cards.first { it.id == "c1" }
+
+        vm.deleteCard(toDelete)
+        runCurrent()
+        assertEquals(listOf("c2"), vm.uiState.value.cards.map { it.id }) // soft-deleted, gone from list
+
+        vm.restoreCard(toDelete)
+        runCurrent()
+        assertEquals(setOf("c1", "c2"), vm.uiState.value.cards.map { it.id }.toSet()) // undo brings it back
+    }
+
+    @Test
+    fun folderDetail_listsOnlyDecksInThatFolder() = runTest {
+        val folderRepo = FolderRepository(FakeFolderDao(), now = { 1L })
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { 1L })
+        val cardRepo = CardRepository(FakeCardDao(), now = { 1L })
+        folderRepo.upsert(Folder(id = "f1", name = "Languages", lastModified = 0))
+        deckRepo.upsert(Deck(id = "d1", name = "In folder", folderId = "f1", dateCreated = 0, lastModified = 0))
+        deckRepo.upsert(Deck(id = "d2", name = "Elsewhere", folderId = null, dateCreated = 0, lastModified = 0))
+
+        val vm = FolderDetailViewModel("f1", deckRepo, cardRepo, folderRepo)
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        assertEquals("Languages", vm.uiState.value.folderName)
+        assertEquals(listOf("d1"), vm.uiState.value.decks.map { it.id })
     }
 
     private fun card(id: String, front: String, back: String) = Card(

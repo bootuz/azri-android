@@ -27,6 +27,7 @@ import nart.simpleanki.feature.cardform.CardFormViewModel
 import nart.simpleanki.feature.settings.SettingsViewModel
 import nart.simpleanki.feature.decksettings.DeckEditViewModel
 import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
+import nart.simpleanki.feature.folderdetail.FolderDetailViewModel
 import nart.simpleanki.feature.library.FolderEditViewModel
 import nart.simpleanki.feature.library.LibraryViewModel
 import nart.simpleanki.feature.study.StudyViewModel
@@ -85,6 +86,14 @@ val appModule = module {
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { LibraryViewModel(get(), get(), get()) }
     viewModel { params -> DeckDetailViewModel(deckId = params.get(), cardRepository = get(), deckRepository = get()) }
+    viewModel { params ->
+        FolderDetailViewModel(
+            folderId = params.get(),
+            deckRepository = get(),
+            cardRepository = get(),
+            folderRepository = get(),
+        )
+    }
     viewModel { params -> StudyViewModel(deckId = params.get(), cardRepository = get(), settingsRepository = get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
@@ -92,7 +101,7 @@ val appModule = module {
     }
     viewModel { params ->
         val a = params.get<DeckEditArgs>()
-        DeckEditViewModel(deckRepository = get(), editingDeckId = a.deckId, initialFolderId = a.folderId)
+        DeckEditViewModel(deckRepository = get(), folderRepository = get(), editingDeckId = a.deckId, initialFolderId = a.folderId)
     }
     viewModel { params ->
         val a = params.get<FolderEditArgs>()

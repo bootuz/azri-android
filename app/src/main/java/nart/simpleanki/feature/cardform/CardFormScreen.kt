@@ -83,7 +83,7 @@ fun CardFormScreen(
     // A new-card save keeps the editor open (the inputs reset); show a toast so the
     // user knows it landed and can add another. Keyed on the tick so it re-fires each save.
     LaunchedEffect(state.savedTick) {
-        if (state.savedTick > 0) snackbarHostState.showSnackbar("Card saved")
+        if (state.savedTick > 0) snackbarHostState.showSnackbar("Card saved", withDismissAction = true)
     }
     // Editing an existing card closes the editor when the save completes.
     LaunchedEffect(state.finished) { if (state.finished) onClose() }
@@ -161,7 +161,7 @@ fun CardFormContent(
     Scaffold(
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
-                Snackbar(shape = MaterialTheme.shapes.large) {
+                Snackbar(shape = MaterialTheme.shapes.large, modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null)
                         Text(data.visuals.message, modifier = Modifier.padding(start = 12.dp))

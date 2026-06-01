@@ -42,20 +42,21 @@ import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.ui.components.AzriCard
 import nart.simpleanki.ui.components.ColorAccentIcon
+import nart.simpleanki.ui.components.DeckRow
 import nart.simpleanki.ui.theme.AzriTheme
-import nart.simpleanki.ui.theme.toColor
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun LibraryScreen(
     onOpenDeck: (String) -> Unit,
+    onOpenFolder: (String) -> Unit,
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
     onSettings: () -> Unit,
     viewModel: LibraryViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    LibraryContent(state, onOpenDeck, onNewDeck, onNewFolder, onSettings)
+    LibraryContent(state, onOpenDeck, onOpenFolder, onNewDeck, onNewFolder, onSettings)
 }
 
 /** Stateless library UI, decoupled from the ViewModel for testing. */
@@ -64,6 +65,7 @@ fun LibraryScreen(
 fun LibraryContent(
     state: LibraryUiState,
     onOpenDeck: (String) -> Unit,
+    onOpenFolder: (String) -> Unit = {},
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
     onSettings: () -> Unit,
@@ -100,7 +102,9 @@ fun LibraryContent(
         ) {
             if (state.folders.isNotEmpty()) {
                 item { SectionHeader("Folders") }
-                items(state.folders, key = { "folder-${it.id}" }) { folder -> FolderRow(folder) }
+                items(state.folders, key = { "folder-${it.id}" }) { folder ->
+                    FolderRow(folder, onClick = { onOpenFolder(folder.id) })
+                }
             }
             item { SectionHeader("Decks") }
             items(state.decksWithoutFolder, key = { "deck-${it.id}" }) { deck ->
@@ -121,8 +125,8 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun FolderRow(folder: Folder) {
-    AzriCard(modifier = Modifier.fillMaxWidth()) {
+private fun FolderRow(folder: Folder, onClick: () -> Unit) {
+    AzriCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ColorAccentIcon(tint = MaterialTheme.colorScheme.onSurfaceVariant) {
                 if (folder.emoji != null) Text(folder.emoji) else Icon(Icons.Outlined.Folder, null, Modifier.size(18.dp))
@@ -130,27 +134,8 @@ private fun FolderRow(folder: Folder) {
             Text(
                 folder.name,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = 12.dp).weight(1f),
             )
-        }
-    }
-}
-
-@Composable
-private fun DeckRow(deck: Deck, cardCount: Int, onClick: () -> Unit) {
-    AzriCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            ColorAccentIcon(tint = deck.color.toColor()) {
-                Icon(Icons.Outlined.StickyNote2, null, Modifier.size(18.dp))
-            }
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(deck.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    if (cardCount == 0) "No cards" else "$cardCount ${if (cardCount == 1) "card" else "cards"}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,

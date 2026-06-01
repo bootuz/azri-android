@@ -32,7 +32,7 @@ data class DeckDetailUiState(
 /** Cards within a deck, with client-side search and study stats. */
 class DeckDetailViewModel(
     private val deckId: String,
-    cardRepository: CardRepository,
+    private val cardRepository: CardRepository,
     deckRepository: DeckRepository? = null,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
@@ -71,5 +71,15 @@ class DeckDetailViewModel(
 
     fun onQueryChange(query: String) {
         queryFlow.value = query
+    }
+
+    /** Soft-deletes a card (removes it from the list; sync propagates the removal). */
+    fun deleteCard(card: Card) {
+        viewModelScope.launch { cardRepository.delete(card.id) }
+    }
+
+    /** Restores a previously deleted card (for an "Undo" action) by re-persisting it un-deleted. */
+    fun restoreCard(card: Card) {
+        viewModelScope.launch { cardRepository.upsert(card.copy(isDeleted = false)) }
     }
 }

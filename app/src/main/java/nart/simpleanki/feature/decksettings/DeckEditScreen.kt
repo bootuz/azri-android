@@ -87,6 +87,26 @@ fun DeckEditScreen(
                     )
                 }
             }
+            if (state.folders.isNotEmpty()) {
+                Text("Folder")
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = state.folderId == null,
+                        onClick = { viewModel.onFolderChange(null) },
+                        label = { Text("None") },
+                    )
+                    state.folders.forEach { folder ->
+                        FilterChip(
+                            selected = state.folderId == folder.id,
+                            onClick = { viewModel.onFolderChange(folder.id) },
+                            label = { Text(folder.name) },
+                        )
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = state.shuffled, onCheckedChange = viewModel::onShuffledChange)
                 Text("Shuffle cards", Modifier.padding(start = 8.dp))
