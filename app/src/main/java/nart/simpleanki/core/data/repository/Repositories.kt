@@ -64,6 +64,10 @@ class CardRepository(
     fun observeCards(deckId: String): Flow<List<Card>> =
         dao.observeByDeck(deckId).map { rows -> rows.map { it.toDomain() } }
 
+    /** Map of deckId → number of (non-deleted) cards, for library badges. */
+    fun observeCardCounts(): Flow<Map<String, Int>> =
+        dao.observeCardCountsByDeck().map { rows -> rows.associate { it.deckId to it.count } }
+
     suspend fun getDue(deckId: String, at: Long = now()): List<Card> =
         dao.getDue(deckId, at).map { it.toDomain() }
 

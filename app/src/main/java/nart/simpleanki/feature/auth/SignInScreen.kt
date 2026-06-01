@@ -1,19 +1,29 @@
 package nart.simpleanki.feature.auth
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.R
@@ -29,13 +39,30 @@ fun SignInScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(horizontal = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        // App mark
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(84.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Outlined.Bolt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(44.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -44,12 +71,17 @@ fun SignInScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(48.dp))
-        Button(onClick = onGoogleClick) {
-            Text(stringResource(R.string.sign_in_with_google))
+        Spacer(Modifier.height(40.dp))
+        Button(
+            onClick = onGoogleClick,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = MaterialTheme.shapes.large,
+            colors = ButtonDefaults.buttonColors(),
+        ) {
+            Text(stringResource(R.string.sign_in_with_google), style = MaterialTheme.typography.labelLarge)
         }
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onGuestClick) {
+        Spacer(Modifier.height(10.dp))
+        TextButton(onClick = onGuestClick, modifier = Modifier.fillMaxWidth().height(48.dp)) {
             Text(stringResource(R.string.continue_as_guest))
         }
         if (errorMessage != null) {

@@ -48,10 +48,16 @@ interface DeckDao {
     suspend fun clearDirty(id: String, lastModified: Long)
 }
 
+/** Row for per-deck card counts. */
+data class DeckCardCount(val deckId: String, val count: Int)
+
 @Dao
 interface CardDao {
     @Query("SELECT * FROM cards WHERE isDeleted = 0 AND deckId = :deckId ORDER BY dateCreated")
     fun observeByDeck(deckId: String): Flow<List<CardEntity>>
+
+    @Query("SELECT deckId AS deckId, COUNT(*) AS count FROM cards WHERE isDeleted = 0 GROUP BY deckId")
+    fun observeCardCountsByDeck(): Flow<List<DeckCardCount>>
 
     @Query("SELECT * FROM cards WHERE isDeleted = 0 AND deckId = :deckId AND fsrsDue <= :now ORDER BY fsrsDue")
     suspend fun getDue(deckId: String, now: Long): List<CardEntity>

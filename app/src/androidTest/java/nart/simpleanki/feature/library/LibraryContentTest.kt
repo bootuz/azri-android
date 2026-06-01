@@ -20,7 +20,7 @@ class LibraryContentTest {
         composeRule.setContent {
             LibraryContent(LibraryUiState(), onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {})
         }
-        composeRule.onNodeWithText("No decks yet. Tap + to create one.").assertIsDisplayed()
+        composeRule.onNodeWithText("No decks yet").assertIsDisplayed()
     }
 
     @Test
@@ -40,7 +40,7 @@ class LibraryContentTest {
                 onSettings = {},
             )
         }
-        composeRule.onNodeWithText("🌍 Languages").assertIsDisplayed()
+        composeRule.onNodeWithText("Languages").assertIsDisplayed()
         composeRule.onNodeWithText("Spanish").assertIsDisplayed().performClick()
         assertEquals("d1", opened)
     }

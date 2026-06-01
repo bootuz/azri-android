@@ -35,11 +35,12 @@ class LibraryAndDeckDetailViewModelTest {
     fun library_splitsDecksByFolder() = runTest {
         val folderRepo = FolderRepository(FakeFolderDao(), now = { 1L })
         val deckRepo = DeckRepository(FakeDeckDao(), now = { 1L })
+        val cardRepo = CardRepository(FakeCardDao(), now = { 1L })
         folderRepo.upsert(Folder(id = "f1", name = "Langs", lastModified = 0))
         deckRepo.upsert(Deck(id = "d1", name = "In", folderId = "f1", dateCreated = 0, lastModified = 0))
         deckRepo.upsert(Deck(id = "d2", name = "Loose", folderId = null, dateCreated = 0, lastModified = 0))
 
-        val vm = LibraryViewModel(folderRepo, deckRepo)
+        val vm = LibraryViewModel(folderRepo, deckRepo, cardRepo)
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 

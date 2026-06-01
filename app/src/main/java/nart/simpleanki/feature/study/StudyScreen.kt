@@ -27,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.core.domain.model.Rating
@@ -81,41 +82,68 @@ fun StudyContent(
 private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating) -> Unit) {
     val card = state.current ?: return
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        card.imagePath?.let { path ->
-            nart.simpleanki.ui.components.MediaImage(path, Modifier.fillMaxWidth().height(160.dp))
-            Spacer(Modifier.height(16.dp))
+        nart.simpleanki.ui.components.AzriCard(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+        ) {
+            Column(
+                Modifier.fillMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                card.imagePath?.let { path ->
+                    nart.simpleanki.ui.components.MediaImage(path, Modifier.fillMaxWidth().height(160.dp))
+                    Spacer(Modifier.height(16.dp))
+                }
+                Text(card.front, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                card.audioPath?.let { path ->
+                    nart.simpleanki.ui.components.AudioPlayButton(path)
+                }
+                if (state.isRevealed) {
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(Modifier.fillMaxWidth(0.5f), color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        card.back,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
-        Text(card.front, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-        card.audioPath?.let { path ->
-            nart.simpleanki.ui.components.AudioPlayButton(path)
-        }
-        if (state.isRevealed) {
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider(Modifier.fillMaxWidth(0.6f))
-            Spacer(Modifier.height(16.dp))
-            Text(card.back, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-        }
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(16.dp))
         if (!state.isRevealed) {
-            Button(onClick = onReveal, modifier = Modifier.fillMaxWidth()) { Text("Show answer") }
+            Button(
+                onClick = onReveal,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = MaterialTheme.shapes.large,
+            ) { Text("Show answer", style = MaterialTheme.typography.labelLarge) }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RatingButton("Again", Modifier.weight(1f)) { onRate(Rating.Again) }
-                RatingButton("Hard", Modifier.weight(1f)) { onRate(Rating.Hard) }
-                RatingButton("Good", Modifier.weight(1f)) { onRate(Rating.Good) }
-                RatingButton("Easy", Modifier.weight(1f)) { onRate(Rating.Easy) }
+                RatingButton("Again", Color(0xFFA02A2A), Modifier.weight(1f)) { onRate(Rating.Again) }
+                RatingButton("Hard", Color(0xFFC25E1D), Modifier.weight(1f)) { onRate(Rating.Hard) }
+                RatingButton("Good", Color(0xFF1F8A47), Modifier.weight(1f)) { onRate(Rating.Good) }
+                RatingButton("Easy", Color(0xFF1F60B8), Modifier.weight(1f)) { onRate(Rating.Easy) }
             }
         }
     }
 }
 
 @Composable
-private fun RatingButton(label: String, modifier: Modifier, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = modifier) { Text(label) }
+private fun RatingButton(label: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(48.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+            containerColor = color,
+            contentColor = Color.White,
+        ),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp),
+    ) { Text(label, style = MaterialTheme.typography.labelMedium) }
 }
 
 @Composable

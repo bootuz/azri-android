@@ -83,7 +83,7 @@ val appModule = module {
     // Feature ViewModels
     viewModel { SyncViewModel(get()) }
     viewModel { SettingsViewModel(get(), get()) }
-    viewModel { LibraryViewModel(get(), get()) }
+    viewModel { LibraryViewModel(get(), get(), get()) }
     viewModel { params -> DeckDetailViewModel(deckId = params.get(), cardRepository = get(), deckRepository = get()) }
     viewModel { params -> StudyViewModel(deckId = params.get(), cardRepository = get(), settingsRepository = get()) }
     viewModel { params ->
