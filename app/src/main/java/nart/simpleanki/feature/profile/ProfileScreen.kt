@@ -240,10 +240,13 @@ private fun ThemePickerDialog(current: ThemeMode, onSelect: (ThemeMode) -> Unit,
             Column {
                 ThemeMode.entries.forEach { mode ->
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(mode) }
+                            .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = mode == current, onClick = { onSelect(mode) })
+                        RadioButton(selected = mode == current, onClick = null)
                         Text(mode.label(), Modifier.padding(start = 8.dp))
                     }
                 }
