@@ -1,5 +1,6 @@
 package nart.simpleanki.feature.queue
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -313,6 +313,7 @@ private fun DeckChip(deck: DeckQueueItem, onClick: () -> Unit) {
             containerColor = deck.color.toColor(),
             contentColor = Color.White,
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(Modifier.padding(12.dp)) {
             Icon(Icons.Outlined.CollectionsBookmark, null, Modifier.size(18.dp))
@@ -335,10 +336,12 @@ private fun DeckChip(deck: DeckQueueItem, onClick: () -> Unit) {
 
 @Composable
 private fun FolderChip(folder: FolderQueueItem, onClick: () -> Unit) {
-    OutlinedCard(
+    Card(
         onClick = onClick,
         modifier = Modifier.width(168.dp),
-        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(Modifier.padding(12.dp)) {
             ColorAccentIcon(tint = MaterialTheme.colorScheme.primary) {
