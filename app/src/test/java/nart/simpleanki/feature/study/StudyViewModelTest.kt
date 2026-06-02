@@ -8,10 +8,13 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import nart.simpleanki.core.data.repository.CardRepository
+import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
+import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
+import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Rating
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -40,9 +43,25 @@ class StudyViewModelTest {
         repo.upsert(newCard("c1", deckId = "d1"))
         repo.upsert(newCard("c2", deckId = "d2"))
         // null deckId = global queue: cards from every deck are included.
-        val vm = StudyViewModel(null, repo, FakeSettingsRepository(), now = { now })
+        val vm = StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
         runCurrent()
         assertEquals(2, vm.uiState.value.remaining)
+    }
+
+    @Test
+    fun folderId_studiesOnlyCardsInThatFoldersDecks() = runTest {
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        deckRepo.upsert(Deck(id = "d1", name = "A", folderId = "f1", dateCreated = now, lastModified = now))
+        deckRepo.upsert(Deck(id = "d2", name = "B", folderId = null, dateCreated = now, lastModified = now))
+        cardRepo.upsert(newCard("c1", deckId = "d1")) // inside folder f1
+        cardRepo.upsert(newCard("c2", deckId = "d2")) // outside f1
+
+        val vm = StudyViewModel(null, "f1", cardRepo, deckRepo, FakeSettingsRepository(), now = { now })
+        runCurrent()
+
+        assertEquals(1, vm.uiState.value.remaining)
+        assertEquals("c1", vm.uiState.value.current?.id)
     }
 
     @Test
@@ -50,7 +69,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
         runCurrent()
 
         val s = vm.uiState.value
@@ -68,7 +87,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
         runCurrent()
 
         vm.onRate(Rating.Good)
@@ -83,7 +102,7 @@ class StudyViewModelTest {
         val repo = CardRepository(dao, now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
         runCurrent()
 
         vm.onReveal()
@@ -108,7 +127,7 @@ class StudyViewModelTest {
     fun ratingAllCards_finishesSession() = runTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
-        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
         runCurrent()
 
         vm.onRate(Rating.Easy)
@@ -123,7 +142,7 @@ class StudyViewModelTest {
     @Test
     fun emptyDeck_finishesImmediately() = runTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
-        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
         runCurrent()
         assertTrue(vm.uiState.value.finished)
         assertNull(vm.uiState.value.current)

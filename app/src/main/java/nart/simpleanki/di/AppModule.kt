@@ -48,7 +48,7 @@ private const val WEB_CLIENT_ID =
 data class CardFormArgs(val deckId: String, val cardId: String? = null)
 data class DeckEditArgs(val deckId: String? = null, val folderId: String? = null)
 data class FolderEditArgs(val folderId: String? = null)
-data class StudyArgs(val deckId: String? = null)
+data class StudyArgs(val deckId: String? = null, val folderId: String? = null)
 
 /** Root Koin module. */
 val appModule = module {
@@ -99,8 +99,17 @@ val appModule = module {
             folderRepository = get(),
         )
     }
-    viewModel { params -> StudyViewModel(deckId = params.get<StudyArgs>().deckId, cardRepository = get(), settingsRepository = get()) }
-    viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), settingsRepository = get()) }
+    viewModel { params ->
+        val args = params.get<StudyArgs>()
+        StudyViewModel(
+            deckId = args.deckId,
+            folderId = args.folderId,
+            cardRepository = get(),
+            deckRepository = get(),
+            settingsRepository = get(),
+        )
+    }
+    viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get()) }
     viewModel { DailyGoalViewModel(settingsRepository = get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()

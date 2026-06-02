@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.repository.CardRepository
+import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.fsrsParameters
 import nart.simpleanki.core.domain.fsrs.IntervalFormatter
@@ -34,9 +35,12 @@ data class StudyUiState(
  * persists the updated card, and advances.
  */
 class StudyViewModel(
-    /** Deck to study, or null to study the global queue across every deck. */
+    /** Deck to study; null unless studying a single deck. */
     private val deckId: String?,
+    /** Folder to study (all due cards across its decks); null unless studying a folder. */
+    private val folderId: String?,
     private val cardRepository: CardRepository,
+    private val deckRepository: DeckRepository,
     private val settingsRepository: SettingsRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
@@ -53,10 +57,13 @@ class StudyViewModel(
     private suspend fun load() {
         val settings = settingsRepository.settings.first()
         scheduling = SchedulingService(settings.fsrsParameters())
-        val all = if (deckId != null) {
-            cardRepository.observeCards(deckId).first()
-        } else {
-            cardRepository.observeAllCards().first()
+        val all = when {
+            folderId != null -> {
+                val deckIds = deckRepository.observeDecksInFolder(folderId).first().map { it.id }.toSet()
+                cardRepository.observeAllCards().first().filter { it.deckId in deckIds }
+            }
+            deckId != null -> cardRepository.observeCards(deckId).first()
+            else -> cardRepository.observeAllCards().first()
         }
         queue.clear()
         queue.addAll(

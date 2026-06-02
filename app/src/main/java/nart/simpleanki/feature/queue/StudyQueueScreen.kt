@@ -1,5 +1,6 @@
 package nart.simpleanki.feature.queue
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,20 +12,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.outlined.CollectionsBookmark
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -33,12 +42,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.core.domain.model.ColorOption
@@ -48,10 +59,13 @@ import nart.simpleanki.ui.theme.AzriTheme
 import nart.simpleanki.ui.theme.toColor
 import org.koin.androidx.compose.koinViewModel
 
+private enum class StudyByMode { Decks, Folders }
+
 @Composable
 fun StudyQueueScreen(
     onStudyAll: () -> Unit,
-    onOpenDeck: (String) -> Unit,
+    onStudyDeck: (String) -> Unit,
+    onStudyFolder: (String) -> Unit,
     viewModel: StudyQueueViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -59,7 +73,8 @@ fun StudyQueueScreen(
     StudyQueueContent(
         state = state,
         onStudyAll = onStudyAll,
-        onOpenDeck = onOpenDeck,
+        onStudyDeck = onStudyDeck,
+        onStudyFolder = onStudyFolder,
         onEditGoal = { showGoalSheet = true },
     )
     if (showGoalSheet) {
@@ -73,7 +88,8 @@ fun StudyQueueScreen(
 fun StudyQueueContent(
     state: StudyQueueUiState,
     onStudyAll: () -> Unit,
-    onOpenDeck: (String) -> Unit,
+    onStudyDeck: (String) -> Unit = {},
+    onStudyFolder: (String) -> Unit = {},
     onEditGoal: () -> Unit = {},
 ) {
     Scaffold(
@@ -92,29 +108,50 @@ fun StudyQueueContent(
             }
             return@Scaffold
         }
-        Column(Modifier.fillMaxSize().padding(padding)) {
+
+        // Mode is pure view state; fall back to Decks if folders disappear.
+        var mode by rememberSaveable { mutableStateOf(StudyByMode.Decks) }
+        val effectiveMode = if (mode == StudyByMode.Folders && state.hasFolders) StudyByMode.Folders else StudyByMode.Decks
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
             if (state.dailyGoalEnabled && state.goalTotal > 0) {
-                DailyGoalCard(state, onClick = onEditGoal)
+                item { DailyGoalCard(state, onClick = onEditGoal) }
             }
-            HeroCard(state, onStudyAll)
+            item { HeroCard(state, onStudyAll) }
+
             if (state.decks.isNotEmpty()) {
-                Text(
-                    "Up next",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
-                )
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(state.decks, key = { it.deckId }) { deck ->
-                        DeckQueueRow(deck, onClick = { onOpenDeck(deck.deckId) })
-                    }
+                item {
+                    StudyByStrip(
+                        state = state,
+                        mode = effectiveMode,
+                        onModeChange = { mode = it },
+                        onStudyDeck = onStudyDeck,
+                        onStudyFolder = onStudyFolder,
+                    )
+                }
+            }
+
+            if (state.queueCards.isNotEmpty()) {
+                item { SectionHeader("Queue") }
+                itemsIndexed(state.queueCards, key = { _, c -> c.cardId }) { index, card ->
+                    QueueCardRow(index + 1, card)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
+    )
 }
 
 @Composable
@@ -209,36 +246,152 @@ private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit) {
     }
 }
 
+/** "Study by" header (+ Decks/Folders toggle when folders exist) and a horizontal chip strip. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeckQueueRow(deck: DeckQueueItem, onClick: () -> Unit) {
-    AzriCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun StudyByStrip(
+    state: StudyQueueUiState,
+    mode: StudyByMode,
+    onModeChange: (StudyByMode) -> Unit,
+    onStudyDeck: (String) -> Unit,
+    onStudyFolder: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (state.hasFolders) "Study by" else "Study by deck",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            if (state.hasFolders) {
+                SingleChoiceSegmentedButtonRow {
+                    StudyByMode.entries.forEachIndexed { index, m ->
+                        SegmentedButton(
+                            selected = m == mode,
+                            onClick = { onModeChange(m) },
+                            shape = SegmentedButtonDefaults.itemShape(index, StudyByMode.entries.size),
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = MaterialTheme.colorScheme.primary,
+                                activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        ) { Text(if (m == StudyByMode.Decks) "Decks" else "Folders") }
+                    }
+                }
+            }
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (mode == StudyByMode.Decks) {
+                items(state.decks, key = { it.deckId }) { deck ->
+                    DeckChip(deck, onClick = { onStudyDeck(deck.deckId) })
+                }
+            } else {
+                items(state.folders, key = { it.folderId }) { folder ->
+                    FolderChip(folder, onClick = { onStudyFolder(folder.folderId) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeckChip(deck: DeckQueueItem, onClick: () -> Unit) {
+    OutlinedCard(onClick = onClick, modifier = Modifier.width(168.dp)) {
+        Column(Modifier.padding(12.dp)) {
             ColorAccentIcon(tint = deck.color.toColor()) {
-                Icon(Icons.Filled.School, null, Modifier.size(18.dp))
+                Icon(Icons.Outlined.CollectionsBookmark, null, Modifier.size(18.dp))
             }
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(deck.deckName, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    queueSubtitle(deck),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            Spacer(Modifier.height(10.dp))
+            Text(
+                deck.deckName,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                chipCounts(deck.dueCount, deck.newCount),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
 }
 
-private fun queueSubtitle(deck: DeckQueueItem): String {
-    val parts = buildList {
-        if (deck.dueCount > 0) add("${deck.dueCount} due")
-        if (deck.newCount > 0) add("${deck.newCount} new")
+@Composable
+private fun FolderChip(folder: FolderQueueItem, onClick: () -> Unit) {
+    OutlinedCard(onClick = onClick, modifier = Modifier.width(168.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            ColorAccentIcon(tint = MaterialTheme.colorScheme.primary) {
+                Icon(Icons.Outlined.Folder, null, Modifier.size(18.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                folder.name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "${folder.deckCount} ${if (folder.deckCount == 1) "deck" else "decks"} · ${chipCounts(folder.dueCount, folder.newCount)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
-    return parts.joinToString(" · ")
+}
+
+private fun chipCounts(due: Int, new: Int): String =
+    buildList {
+        if (due > 0) add("$due due")
+        if (new > 0) add("$new new")
+    }.joinToString(" · ").ifEmpty { "0 due" }
+
+/** Read-only preview row in the "Queue" list: number badge + front + deck/folder name. */
+@Composable
+private fun QueueCardRow(index: Int, card: QueueCardItem) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                index.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(
+                card.front,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val subtitle = listOfNotNull(card.deckName, card.folderName).joinToString(" · ")
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }
 
 @Preview(name = "Queue · has work", showBackground = true)
@@ -252,8 +405,14 @@ private fun StudyQueuePreview() {
                     DeckQueueItem("d1", "Spanish 101", ColorOption.Indigo, dueCount = 12, newCount = 3),
                     DeckQueueItem("d2", "Biology", ColorOption.Green, dueCount = 3, newCount = 5),
                 ),
+                folders = listOf(FolderQueueItem("f1", "Languages", deckCount = 2, dueCount = 12, newCount = 3)),
+                queueCards = listOf(
+                    QueueCardItem("c1", "hola", "Spanish 101", "Languages"),
+                    QueueCardItem("c2", "mitochondria", "Biology", null),
+                ),
+                goalTotal = 30, studiedToday = 7,
             ),
-            onStudyAll = {}, onOpenDeck = {},
+            onStudyAll = {},
         )
     }
 }
@@ -262,9 +421,6 @@ private fun StudyQueuePreview() {
 @Composable
 private fun StudyQueueEmptyPreview() {
     AzriTheme {
-        StudyQueueContent(
-            state = StudyQueueUiState(loading = false),
-            onStudyAll = {}, onOpenDeck = {},
-        )
+        StudyQueueContent(state = StudyQueueUiState(loading = false), onStudyAll = {})
     }
 }

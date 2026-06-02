@@ -12,11 +12,14 @@ import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
+import nart.simpleanki.core.data.repository.FakeFolderDao
+import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Deck
+import nart.simpleanki.core.domain.model.Folder
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,7 +55,7 @@ class StudyQueueViewModelTest {
         cardRepo.upsert(review("a1", "A")); cardRepo.upsert(review("a2", "A")); cardRepo.upsert(newCard("a3", "A"))
         cardRepo.upsert(review("b1", "B"))
 
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FakeSettingsRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -78,7 +81,7 @@ class StudyQueueViewModelTest {
         // A review card whose due date is in the future — not ready today.
         cardRepo.upsert(review("a1", "A").copy(fsrsDue = now + 86_400_000L))
 
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FakeSettingsRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -100,7 +103,7 @@ class StudyQueueViewModelTest {
         cardRepo.upsert(review("a3", "A").copy(fsrsDue = now + 86_400_000L, fsrsLastReview = now - 2 * 86_400_000L))
 
         val settings = FakeSettingsRepository(AppSettings(newCardsTarget = 1, reviewCardsTarget = 1)) // goal total = 2
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, settings, now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -121,10 +124,36 @@ class StudyQueueViewModelTest {
         val settings = FakeSettingsRepository(
             AppSettings(dailyGoalEnabled = false, newCardsTarget = 1, reviewCardsTarget = 0),
         )
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, settings, now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
         assertFalse(vm.uiState.value.goalMet)
+    }
+
+    @Test
+    fun buildsFolderChips_andQueueCardsCarryDeckAndFolderNames() = runTest {
+        val folderRepo = FolderRepository(FakeFolderDao(), now = { now })
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        folderRepo.upsert(Folder(id = "f1", name = "Languages", lastModified = now))
+        deckRepo.upsert(Deck(id = "A", name = "Spanish", folderId = "f1", dateCreated = now, lastModified = now))
+        cardRepo.upsert(review("a1", "A").copy(front = "hola"))
+
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, folderRepo, FakeSettingsRepository(), now = { now })
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        val s = vm.uiState.value
+        // Folder chip built from the folder's decks.
+        assertEquals(listOf("f1"), s.folders.map { it.folderId })
+        assertEquals(1, s.folders.first().deckCount)
+        assertEquals(1, s.folders.first().dueCount)
+        // Queue preview card carries front + deck + folder names.
+        assertEquals(1, s.queueCards.size)
+        val card = s.queueCards.first()
+        assertEquals("hola", card.front)
+        assertEquals("Spanish", card.deckName)
+        assertEquals("Languages", card.folderName)
     }
 }

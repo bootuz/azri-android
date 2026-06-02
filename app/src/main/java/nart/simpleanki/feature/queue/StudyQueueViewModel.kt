@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
+import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.dailyGoalTotal
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
@@ -15,7 +16,7 @@ import java.util.Calendar
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.ColorOption
 
-/** A deck that has cards waiting in the queue today (for the "Up next" list). */
+/** A deck with cards waiting today — a chip in the "Study by" strip (Decks mode). */
 data class DeckQueueItem(
     val deckId: String,
     val deckName: String,
@@ -26,6 +27,25 @@ data class DeckQueueItem(
     val total: Int get() = dueCount + newCount
 }
 
+/** A folder with cards waiting today — a chip in the "Study by" strip (Folders mode). */
+data class FolderQueueItem(
+    val folderId: String,
+    val name: String,
+    val deckCount: Int,
+    val dueCount: Int,
+    val newCount: Int,
+) {
+    val total: Int get() = dueCount + newCount
+}
+
+/** One ready card, for the read-only "Queue" preview list. */
+data class QueueCardItem(
+    val cardId: String,
+    val front: String,
+    val deckName: String?,
+    val folderName: String?,
+)
+
 data class StudyQueueUiState(
     val loading: Boolean = true,
     /** Cards ready to study today across all decks (uncapped — the daily goal does not limit this). */
@@ -34,6 +54,9 @@ data class StudyQueueUiState(
     val dueCount: Int = 0,
     val estimatedMinutes: Int = 0,
     val decks: List<DeckQueueItem> = emptyList(),
+    val folders: List<FolderQueueItem> = emptyList(),
+    /** The ready cards in queue order — a display-only preview ("Queue" list). */
+    val queueCards: List<QueueCardItem> = emptyList(),
     // Daily goal (soft target). [goalMet] is independent of [hasWork]: you can hit your goal
     // with cards still queued, or clear the queue without reaching it.
     val dailyGoalEnabled: Boolean = true,
@@ -41,6 +64,7 @@ data class StudyQueueUiState(
     val studiedToday: Int = 0,
 ) {
     val hasWork: Boolean get() = readyCount > 0
+    val hasFolders: Boolean get() = folders.isNotEmpty()
     val goalMet: Boolean get() = dailyGoalEnabled && goalTotal > 0 && studiedToday >= goalTotal
     val goalRemaining: Int get() = (goalTotal - studiedToday).coerceAtLeast(0)
 }
@@ -52,6 +76,7 @@ data class StudyQueueUiState(
 class StudyQueueViewModel(
     cardRepository: CardRepository,
     deckRepository: DeckRepository,
+    folderRepository: FolderRepository,
     settingsRepository: SettingsRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
@@ -60,8 +85,9 @@ class StudyQueueViewModel(
         combine(
             cardRepository.observeAllCards(),
             deckRepository.observeDecks(),
+            folderRepository.observeFolders(),
             settingsRepository.settings,
-        ) { cards, decks, settings ->
+        ) { cards, decks, folders, settings ->
             val nowMillis = now()
             val queue = StudyQueueBuilder.buildStudyQueue(
                 cards = cards,
@@ -78,6 +104,10 @@ class StudyQueueViewModel(
                 !it.isDeleted && (it.fsrsLastReview ?: 0L) >= startOfToday
             }
 
+            val deckById = decks.associateBy { it.id }
+            val folderNameById = folders.associate { it.id to it.name }
+
+            // Decks-mode chips: decks that have something waiting.
             val perDeck = decks.mapNotNull { deck ->
                 val deckCards = cards.filter { it.deckId == deck.id && !it.isDeleted }
                 val due = deckCards.count { it.fsrsState != CardState.New.value && it.fsrsDue <= nowMillis }
@@ -86,6 +116,28 @@ class StudyQueueViewModel(
                 else DeckQueueItem(deck.id, deck.name, deck.color, dueCount = due, newCount = new)
             }.sortedWith(compareByDescending<DeckQueueItem> { it.dueCount }.thenByDescending { it.total })
 
+            // Folders-mode chips: folders whose decks have something waiting.
+            val perFolder = folders.mapNotNull { folder ->
+                val folderDecks = decks.filter { it.folderId == folder.id }
+                val deckIds = folderDecks.map { it.id }.toSet()
+                val folderCards = cards.filter { it.deckId in deckIds && !it.isDeleted }
+                val due = folderCards.count { it.fsrsState != CardState.New.value && it.fsrsDue <= nowMillis }
+                val new = folderCards.count { it.fsrsState == CardState.New.value }
+                if (due + new == 0) null
+                else FolderQueueItem(folder.id, folder.name, deckCount = folderDecks.size, dueCount = due, newCount = new)
+            }.sortedWith(compareByDescending<FolderQueueItem> { it.dueCount }.thenByDescending { it.total })
+
+            // The ready cards, in queue order, with deck + folder names for the preview list.
+            val queueCards = queue.map { card ->
+                val deck = deckById[card.deckId]
+                QueueCardItem(
+                    cardId = card.id,
+                    front = card.front,
+                    deckName = deck?.name,
+                    folderName = deck?.folderId?.let { folderNameById[it] },
+                )
+            }
+
             StudyQueueUiState(
                 loading = false,
                 readyCount = queue.size,
@@ -93,6 +145,8 @@ class StudyQueueViewModel(
                 dueCount = dueCount,
                 estimatedMinutes = estimateMinutes(queue.size),
                 decks = perDeck,
+                folders = perFolder,
+                queueCards = queueCards,
                 dailyGoalEnabled = settings.dailyGoalEnabled,
                 goalTotal = settings.dailyGoalTotal,
                 studiedToday = studiedToday,

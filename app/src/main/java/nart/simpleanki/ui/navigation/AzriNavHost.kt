@@ -89,7 +89,8 @@ fun AzriNavHost() {
             composable(QUEUE) {
                 StudyQueueScreen(
                     onStudyAll = { nav.navigate("studyAll") },
-                    onOpenDeck = { nav.navigate("deck/$it") },
+                    onStudyDeck = { nav.navigate("study/$it") },
+                    onStudyFolder = { nav.navigate("studyFolder/$it") },
                 )
             }
             composable(LIBRARY) {
@@ -132,6 +133,13 @@ fun AzriNavHost() {
             }
             composable("studyAll") {
                 StudyScreen(deckId = null, onDone = { nav.popBackStack() })
+            }
+            composable("studyFolder/{folderId}") { entry ->
+                StudyScreen(
+                    deckId = null,
+                    folderId = entry.arguments?.getString("folderId").orEmpty(),
+                    onDone = { nav.popBackStack() },
+                )
             }
             // The card editor stays open after a save (it shows its own "Card saved" toast and resets
             // its inputs for rapid entry); only the back arrow pops it. Editing a card closes itself.

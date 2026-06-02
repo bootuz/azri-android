@@ -44,7 +44,8 @@ import nart.simpleanki.di.StudyArgs
 fun StudyScreen(
     deckId: String?,
     onDone: () -> Unit,
-    viewModel: StudyViewModel = koinViewModel { parametersOf(StudyArgs(deckId)) },
+    folderId: String? = null,
+    viewModel: StudyViewModel = koinViewModel { parametersOf(StudyArgs(deckId = deckId, folderId = folderId)) },
 ) {
     val state by viewModel.uiState.collectAsState()
     StudyContent(
