@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
+import nart.simpleanki.core.domain.fsrs.IntervalFormatter
 import nart.simpleanki.core.domain.fsrs.SchedulingService
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
 import nart.simpleanki.core.domain.model.Card
@@ -21,6 +22,8 @@ data class StudyUiState(
     val completed: Int = 0,
     val remaining: Int = 0,
     val ratingCounts: Map<Rating, Int> = emptyMap(),
+    /** Next-due interval label per rating for the current card (e.g. Good -> "4d"), shown on the answer buttons. */
+    val ratingIntervals: Map<Rating, String> = emptyMap(),
     val finished: Boolean = false,
 )
 
@@ -58,12 +61,22 @@ class StudyViewModel(
                 reviewLimit = settings.maxReviewsPerDay,
             ),
         )
+        val first = queue.firstOrNull()
         _uiState.value = StudyUiState(
             loading = false,
-            current = queue.firstOrNull(),
+            current = first,
             remaining = queue.size,
+            ratingIntervals = intervalsFor(first),
             finished = queue.isEmpty(),
         )
+    }
+
+    /** Formats the next-due interval per rating for [card] (empty when there's no card). */
+    private fun intervalsFor(card: Card?): Map<Rating, String> {
+        if (card == null) return emptyMap()
+        val nowMillis = now()
+        return scheduling.preview(card, nowMillis)
+            .mapValues { (_, dueMillis) -> IntervalFormatter.format(dueMillis - nowMillis) }
     }
 
     fun onReveal() {
@@ -87,6 +100,7 @@ class StudyViewModel(
             completed = prev.completed + 1,
             remaining = queue.size,
             ratingCounts = counts,
+            ratingIntervals = intervalsFor(next),
             finished = next == null,
         )
     }

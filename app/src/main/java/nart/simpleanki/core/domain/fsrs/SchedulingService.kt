@@ -35,6 +35,13 @@ class SchedulingService(
         return fsrs.retrievability(elapsedDays, card.fsrsStability)
     }
 
+    /**
+     * Previews the next due date (epoch millis) for every rating WITHOUT committing the review.
+     * Mirrors iOS `previewScheduling`; relies on [schedule] being pure (no mutation/persistence).
+     */
+    fun preview(card: Card, nowMillis: Long): Map<Rating, Long> =
+        Rating.entries.associateWith { schedule(card, it, nowMillis).card.fsrsDue }
+
     fun schedule(card: Card, rating: Rating, nowMillis: Long): ScheduleResult {
         val current = FsrsCard(
             stability = card.fsrsStability,

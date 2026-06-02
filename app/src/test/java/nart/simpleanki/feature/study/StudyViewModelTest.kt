@@ -47,6 +47,23 @@ class StudyViewModelTest {
         assertEquals("c1", s.current?.id)
         assertEquals(2, s.remaining)
         assertFalse(s.isRevealed)
+        // Answer buttons get a next-due interval preview for all four ratings.
+        assertEquals(setOf(Rating.Again, Rating.Hard, Rating.Good, Rating.Easy), s.ratingIntervals.keys)
+        assertTrue(s.ratingIntervals.values.all { it.isNotBlank() })
+    }
+
+    @Test
+    fun rating_refreshesIntervalsForNextCard() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        repo.upsert(newCard("c1"))
+        repo.upsert(newCard("c2"))
+        val vm = StudyViewModel("d1", repo, FakeSettingsRepository(), now = { now })
+        runCurrent()
+
+        vm.onRate(Rating.Good)
+        runCurrent()
+        assertEquals("c2", vm.uiState.value.current?.id)
+        assertEquals(4, vm.uiState.value.ratingIntervals.size)
     }
 
     @Test

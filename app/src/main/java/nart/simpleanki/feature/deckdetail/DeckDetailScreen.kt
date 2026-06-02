@@ -26,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -43,10 +44,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import nart.simpleanki.core.domain.fsrs.IntervalFormatter
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.ui.components.AzriCard
@@ -103,6 +106,7 @@ fun DeckDetailContent(
     onSettings: () -> Unit,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onDeleteCard: (Card) -> Unit = {},
+    now: Long = System.currentTimeMillis(),
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -182,7 +186,10 @@ fun DeckDetailContent(
                             onClick = { onEditCard(card.id) },
                             onDelete = { onDeleteCard(card) },
                         ) {
-                            Column(Modifier.padding(14.dp)) {
+                            Column(
+                                Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
                                 Text(
                                     card.front,
                                     style = MaterialTheme.typography.bodyLarge,
@@ -197,6 +204,17 @@ fun DeckDetailContent(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    StateBadge(CardState.fromValue(card.fsrsState) ?: CardState.New)
+                                    dueLabel(card, now)?.let { due ->
+                                        Text(
+                                            due,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(start = 8.dp),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -251,6 +269,35 @@ private fun SwipeToDeleteCard(
     }
 }
 
+/** Compact colored pill showing a card's FSRS state (New/Learning/Review/Relearning). */
+@Composable
+private fun StateBadge(state: CardState) {
+    val (label, color) = when (state) {
+        CardState.New -> "New" to MaterialTheme.colorScheme.primary
+        CardState.Learning -> "Learning" to Color(0xFFC25E1D)
+        CardState.Review -> "Review" to Color(0xFF1F8A47)
+        CardState.Relearning -> "Relearning" to Color(0xFFA02A2A)
+    }
+    Surface(
+        color = color.copy(alpha = 0.14f),
+        contentColor = color,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/** Relative due text for a card: null for New cards, else "Due now" / "Due in 3d". */
+private fun dueLabel(card: Card, now: Long): String? {
+    val state = CardState.fromValue(card.fsrsState) ?: CardState.New
+    if (state == CardState.New) return null
+    return if (card.fsrsDue <= now) "Due now" else "Due in ${IntervalFormatter.format(card.fsrsDue - now)}"
+}
+
 @Composable
 private fun Stat(value: String, label: String, highlight: Boolean = false) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -263,25 +310,30 @@ private fun Stat(value: String, label: String, highlight: Boolean = false) {
     }
 }
 
-private fun previewCard(id: String, front: String, back: String) = Card(
+private fun previewCard(
+    id: String, front: String, back: String,
+    state: CardState = CardState.New, fsrsDue: Long = 0,
+) = Card(
     id = id, front = front, back = back, deckId = "d1",
-    dateCreated = 0, lastModified = 0, fsrsDue = 0, fsrsState = CardState.New.value,
+    dateCreated = 0, lastModified = 0, fsrsDue = fsrsDue, fsrsState = state.value,
 )
 
 @Preview(name = "Deck detail", showBackground = true)
 @Composable
 private fun DeckDetailPreview() {
+    val now = 1_000_000_000_000L
     AzriTheme {
         DeckDetailContent(
             state = DeckDetailUiState(
                 deckId = "d1", deckName = "Spanish 101",
                 cards = listOf(
-                    previewCard("1", "hola", "hello"),
-                    previewCard("2", "gracias", "thank you"),
-                    previewCard("3", "por favor", "please"),
+                    previewCard("1", "hola", "hello", CardState.New),
+                    previewCard("2", "gracias", "thank you", CardState.Review, fsrsDue = now + 4 * 86_400_000L),
+                    previewCard("3", "por favor", "please", CardState.Learning, fsrsDue = now - 60_000L),
                 ),
             ),
             onQueryChange = {}, onBack = {}, onStudy = {}, onAddCard = {}, onEditCard = {}, onSettings = {},
+            now = now,
         )
     }
 }

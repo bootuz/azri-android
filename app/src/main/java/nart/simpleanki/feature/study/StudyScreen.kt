@@ -131,27 +131,38 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
             ) { Text("Show answer", style = MaterialTheme.typography.labelLarge) }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RatingButton("Again", Color(0xFFA02A2A), Modifier.weight(1f)) { onRate(Rating.Again) }
-                RatingButton("Hard", Color(0xFFC25E1D), Modifier.weight(1f)) { onRate(Rating.Hard) }
-                RatingButton("Good", Color(0xFF1F8A47), Modifier.weight(1f)) { onRate(Rating.Good) }
-                RatingButton("Easy", Color(0xFF1F60B8), Modifier.weight(1f)) { onRate(Rating.Easy) }
+                RatingButton("Again", state.ratingIntervals[Rating.Again], Color(0xFFA02A2A), Modifier.weight(1f)) { onRate(Rating.Again) }
+                RatingButton("Hard", state.ratingIntervals[Rating.Hard], Color(0xFFC25E1D), Modifier.weight(1f)) { onRate(Rating.Hard) }
+                RatingButton("Good", state.ratingIntervals[Rating.Good], Color(0xFF1F8A47), Modifier.weight(1f)) { onRate(Rating.Good) }
+                RatingButton("Easy", state.ratingIntervals[Rating.Easy], Color(0xFF1F60B8), Modifier.weight(1f)) { onRate(Rating.Easy) }
             }
         }
     }
 }
 
 @Composable
-private fun RatingButton(label: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+private fun RatingButton(label: String, interval: String?, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = modifier.height(48.dp),
+        modifier = modifier.height(if (interval != null) 60.dp else 48.dp),
         shape = MaterialTheme.shapes.large,
         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
             containerColor = color,
             contentColor = Color.White,
         ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp),
-    ) { Text(label, style = MaterialTheme.typography.labelMedium) }
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            if (interval != null) {
+                Text(
+                    interval,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -195,7 +206,13 @@ private fun StudyQuestionPreview() {
 private fun StudyAnswerPreview() {
     AzriTheme {
         StudyContent(
-            state = StudyUiState(loading = false, current = previewStudyCard, isRevealed = true, remaining = 5),
+            state = StudyUiState(
+                loading = false, current = previewStudyCard, isRevealed = true, remaining = 5,
+                ratingIntervals = mapOf(
+                    Rating.Again to "< 1m", Rating.Hard to "8m",
+                    Rating.Good to "4d", Rating.Easy to "9d",
+                ),
+            ),
             onReveal = {}, onRate = {}, onDone = {},
         )
     }

@@ -40,6 +40,20 @@ class SchedulingServiceTest {
     }
 
     @Test
+    fun preview_returnsAllRatings_withIncreasingDueDates_andDoesNotMutate() {
+        val card = newCard()
+        val preview = service.preview(card, now)
+
+        assertEquals(setOf(Rating.Again, Rating.Hard, Rating.Good, Rating.Easy), preview.keys)
+        // Better grades push the next review further out.
+        assertTrue(preview[Rating.Again]!! <= preview[Rating.Good]!!)
+        assertTrue(preview[Rating.Good]!! <= preview[Rating.Easy]!!)
+        // Preview must not commit anything to the card it inspected.
+        assertEquals(CardState.New.value, card.fsrsState)
+        assertEquals(0, card.fsrsReps)
+    }
+
+    @Test
     fun presets_changeRetention() {
         val aggressive = SchedulingService(FsrsPreset.Aggressive)
         val relaxed = SchedulingService(FsrsPreset.Relaxed)
