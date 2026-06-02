@@ -2,10 +2,11 @@ package nart.simpleanki.feature.profile
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,14 +14,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
@@ -29,15 +31,20 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -59,7 +67,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.core.data.settings.ThemeMode
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
-import nart.simpleanki.ui.components.AzriCard
 import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -116,14 +123,13 @@ fun ProfileContent(
     onTerms: () -> Unit = {},
     onPrivacy: () -> Unit = {},
 ) {
-    var showThemeDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (state.isAnonymous) "Account" else "Profile", fontWeight = FontWeight.Bold) },
+                title = { Text("Profile", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 actions = {
                     IconButton(onClick = { showMenu = true }) {
@@ -143,52 +149,47 @@ fun ProfileContent(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .verticalScroll(rememberScrollState()),
         ) {
-            SectionHeader("Account")
-            SectionCard {
-                ProfileRow(Icons.Default.Email, "Email", value = state.email ?: "Not provided")
-                Divider()
-                ProfileRow(Icons.Default.Person, "Account", value = if (state.isAnonymous) "Guest" else "Synced")
-            }
+            AccountHeader(email = state.email, isAnonymous = state.isAnonymous)
 
-            SectionHeader("Settings")
-            SectionCard {
-                ProfileRow(
-                    Icons.Default.Tune, "Spaced repetition",
-                    value = state.preset.name, onClick = onOpenFsrsSettings,
-                )
-                Divider()
-                ProfileRow(
-                    Icons.Default.DarkMode, "Theme",
-                    value = state.themeMode.label(), onClick = { showThemeDialog = true },
-                )
-            }
+            CategoryHeader("Settings")
+            ListItem(
+                headlineContent = { Text("Spaced repetition") },
+                supportingContent = { Text("${state.preset.name} preset") },
+                leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) },
+                modifier = Modifier.clickable(onClick = onOpenFsrsSettings),
+            )
 
-            SectionHeader("Feedback")
-            SectionCard {
-                ProfileRow(Icons.Default.Star, "Rate Azri", onClick = onRate)
-                Divider()
-                ProfileRow(Icons.Default.SupportAgent, "Contact support", onClick = onSupport)
-                Divider()
-                ProfileRow(Icons.Default.Share, "Share Azri", onClick = onShare)
-                Divider()
-                ProfileRow(Icons.Default.Forum, "Community (Reddit)", onClick = onReddit)
-            }
+            CategoryHeader("Appearance")
+            ListItem(
+                headlineContent = { Text("Theme") },
+                leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
+            )
+            ThemeSelector(
+                current = state.themeMode,
+                onSelect = onThemeChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            )
 
-            SectionHeader("Legal")
-            SectionCard {
-                ProfileRow(Icons.Default.Description, "Terms of Service", onClick = onTerms)
-                Divider()
-                ProfileRow(Icons.Default.Shield, "Privacy Policy", onClick = onPrivacy)
-            }
+            CategoryHeader("Feedback")
+            LinkItem(Icons.Default.Star, "Rate Azri", onRate)
+            LinkItem(Icons.Default.SupportAgent, "Contact support", onSupport)
+            LinkItem(Icons.Default.Share, "Share Azri", onShare)
+            LinkItem(Icons.Default.Forum, "Community on Reddit", onReddit)
 
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
+            CategoryHeader("Legal")
+            LinkItem(Icons.Default.Description, "Terms of Service", onTerms)
+            LinkItem(Icons.Default.Shield, "Privacy Policy", onPrivacy)
+
+            Spacer(Modifier.height(24.dp))
+            FilledTonalButton(
                 onClick = onSignOut,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                 Text("Sign out", Modifier.padding(start = 8.dp))
@@ -198,18 +199,11 @@ fun ProfileContent(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
             )
         }
     }
 
-    if (showThemeDialog) {
-        ThemePickerDialog(
-            current = state.themeMode,
-            onSelect = { onThemeChange(it); showThemeDialog = false },
-            onDismiss = { showThemeDialog = false },
-        )
-    }
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -225,80 +219,95 @@ fun ProfileContent(
     }
 }
 
-private fun ThemeMode.label(): String = when (this) {
-    ThemeMode.System -> "System"
-    ThemeMode.Light -> "Light"
-    ThemeMode.Dark -> "Dark"
-}
-
+/** Avatar + identity block. Material apps lead the profile with a prominent account header. */
 @Composable
-private fun ThemePickerDialog(current: ThemeMode, onSelect: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Theme") },
-        text = {
-            Column {
-                ThemeMode.entries.forEach { mode ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(mode) }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = mode == current, onClick = null)
-                        Text(mode.label(), Modifier.padding(start = 8.dp))
-                    }
-                }
+private fun AccountHeader(email: String?, isAnonymous: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            val initial = email?.firstOrNull()?.uppercaseChar()?.toString()
+            if (!isAnonymous && initial != null) {
+                Text(
+                    initial,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            } else {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(36.dp),
+                )
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        }
+        Text(
+            if (isAnonymous) "Guest" else (email ?: "Azri account"),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        AssistChip(
+            onClick = {},
+            enabled = false,
+            label = { Text(if (isAnonymous) "Not synced" else "Synced") },
+            colors = AssistChipDefaults.assistChipColors(
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+        )
+    }
+}
+
+/** Inline tri-state theme switch — the M3 segmented control replaces an iOS-style picker dialog. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ThemeSelector(current: ThemeMode, onSelect: (ThemeMode) -> Unit, modifier: Modifier = Modifier) {
+    val options = listOf(
+        Triple(ThemeMode.System, "System", Icons.Default.Brightness6),
+        Triple(ThemeMode.Light, "Light", Icons.Default.LightMode),
+        Triple(ThemeMode.Dark, "Dark", Icons.Default.DarkMode),
     )
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
+        options.forEachIndexed { index, (mode, label, icon) ->
+            SegmentedButton(
+                selected = mode == current,
+                onClick = { onSelect(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            ) {
+                Text(label)
+            }
+        }
+    }
 }
 
 @Composable
-private fun SectionHeader(text: String) {
+private fun CategoryHeader(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
     )
 }
 
 @Composable
-private fun SectionCard(content: @Composable () -> Unit) {
-    AzriCard(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth()) { content() }
-    }
-}
-
-@Composable
-private fun Divider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-}
-
-@Composable
-private fun ProfileRow(icon: ImageVector, title: String, value: String? = null, onClick: (() -> Unit)? = null) {
-    val rowModifier = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth()
-    Row(
-        rowModifier.padding(horizontal = 14.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 14.dp).weight(1f))
-        if (value != null) {
-            Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (onClick != null) {
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
-    }
+private fun LinkItem(icon: ImageVector, title: String, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(title) },
+        leadingContent = { Icon(icon, contentDescription = null) },
+        modifier = Modifier.clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+    )
 }
 
 @Preview(name = "Profile", showBackground = true)

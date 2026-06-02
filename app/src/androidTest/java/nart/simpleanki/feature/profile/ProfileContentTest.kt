@@ -39,7 +39,7 @@ class ProfileContentTest {
     }
 
     @Test
-    fun themeRow_opensPicker_andSelectsMode() {
+    fun themeSegmentedControl_selectsMode() {
         var picked: ThemeMode? = null
         composeRule.setContent {
             ProfileContent(
@@ -47,7 +47,7 @@ class ProfileContentTest {
                 onOpenFsrsSettings = {}, onThemeChange = { picked = it }, onSignOut = {}, onDeleteAccount = {},
             )
         }
-        composeRule.onNodeWithText("Theme").performClick()
+        // The tri-state segmented control shows all options at once — tap "Dark" directly.
         composeRule.onNodeWithText("Dark").performClick()
         assertEquals(ThemeMode.Dark, picked)
     }
