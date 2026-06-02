@@ -156,7 +156,7 @@ fun ProfileContent(
             CategoryHeader("Settings")
             ListItem(
                 headlineContent = { Text("Spaced repetition") },
-                supportingContent = { Text("${state.preset.name} preset") },
+                supportingContent = { Text("${state.preset.displayName} preset") },
                 leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                 modifier = Modifier.clickable(onClick = onOpenFsrsSettings),

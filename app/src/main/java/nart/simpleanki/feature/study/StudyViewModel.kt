@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
+import nart.simpleanki.core.data.settings.fsrsParameters
 import nart.simpleanki.core.domain.fsrs.IntervalFormatter
 import nart.simpleanki.core.domain.fsrs.SchedulingService
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
@@ -51,7 +52,7 @@ class StudyViewModel(
 
     private suspend fun load() {
         val settings = settingsRepository.settings.first()
-        scheduling = SchedulingService(settings.preset)
+        scheduling = SchedulingService(settings.fsrsParameters())
         val all = if (deckId != null) {
             cardRepository.observeCards(deckId).first()
         } else {

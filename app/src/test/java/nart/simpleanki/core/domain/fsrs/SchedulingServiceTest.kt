@@ -55,8 +55,8 @@ class SchedulingServiceTest {
 
     @Test
     fun presets_changeRetention() {
-        val aggressive = SchedulingService(FsrsPreset.Aggressive)
-        val relaxed = SchedulingService(FsrsPreset.Relaxed)
+        val aggressive = SchedulingService(FsrsPreset.Aggressive.fixedParameters!!)
+        val relaxed = SchedulingService(FsrsPreset.Relaxed.fixedParameters!!)
         // A review card scheduled under higher retention should get a shorter interval.
         val reviewCard = newCard().copy(
             fsrsState = CardState.Review.value, fsrsStability = 10.0, fsrsDifficulty = 5.0,
@@ -65,5 +65,15 @@ class SchedulingServiceTest {
         val aggInterval = aggressive.schedule(reviewCard, Rating.Good, now).card.fsrsScheduledDays
         val relInterval = relaxed.schedule(reviewCard, Rating.Good, now).card.fsrsScheduledDays
         assertTrue("aggressive retention => shorter interval ($aggInterval vs $relInterval)", aggInterval < relInterval)
+    }
+
+    @Test
+    fun customParameters_shortTermOff_graduatesNewCardToReviewInDays() {
+        val longTerm = SchedulingService(
+            FsrsParameters(requestRetention = 0.90, maximumInterval = 365, enableFuzz = false, enableShortTerm = false),
+        )
+        val card = longTerm.schedule(newCard(), Rating.Good, now).card
+        assertEquals(CardState.Review.value, card.fsrsState)
+        assertTrue("graduates in days, not minute steps", card.fsrsDue - now >= 86_400_000L)
     }
 }

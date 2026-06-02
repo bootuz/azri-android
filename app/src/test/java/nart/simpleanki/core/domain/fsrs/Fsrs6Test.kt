@@ -128,6 +128,72 @@ class Fsrs6Test {
         assertEquals(CardState.Relearning, r.state)
     }
 
+    // --- Fuzz (interval jitter) ---
+
+    private val fuzzed = Fsrs6(enableFuzz = true)
+
+    private fun matureReviewCard() = FsrsCard(
+        stability = 15.0, difficulty = 5.0, state = CardState.Review,
+        reps = 4, lapses = 0, lastReviewMillis = now - 12 * day,
+    )
+
+    @Test
+    fun fuzz_isDeterministic_sameCardSameInterval() {
+        val a = fuzzed.review(matureReviewCard(), Rating.Good, now).dueMillis
+        val b = fuzzed.review(matureReviewCard(), Rating.Good, now).dueMillis
+        assertEquals("fuzz must be reproducible for a given card", a, b)
+    }
+
+    @Test
+    fun fuzz_disabledByDefault_matchesUnfuzzed() {
+        val default = fsrs.review(matureReviewCard(), Rating.Good, now).scheduledDays
+        val explicitOff = Fsrs6(enableFuzz = false).review(matureReviewCard(), Rating.Good, now).scheduledDays
+        assertEquals(default, explicitOff, 0.0)
+    }
+
+    @Test
+    fun fuzz_staysCloseToUnfuzzedInterval() {
+        val raw = fsrs.review(matureReviewCard(), Rating.Good, now).scheduledDays
+        val fz = fuzzed.review(matureReviewCard(), Rating.Good, now).scheduledDays
+        assertTrue("fuzzed >= 1 day", fz >= 1.0)
+        assertTrue("fuzz stays in a small band raw=$raw fz=$fz", kotlin.math.abs(fz - raw) <= raw * 0.3 + 3)
+    }
+
+    @Test
+    fun fuzz_respectsMaximumInterval() {
+        val capped = Fsrs6(enableFuzz = true, maximumInterval = 30)
+        val strong = FsrsCard(
+            stability = 1000.0, difficulty = 5.0, state = CardState.Review,
+            reps = 10, lapses = 0, lastReviewMillis = now - 5 * day,
+        )
+        val iv = capped.review(strong, Rating.Easy, now).scheduledDays
+        assertTrue("capped at maximumInterval was $iv", iv <= 30.0)
+    }
+
+    // --- Short-term optimization off (long-term scheduler) ---
+
+    private val longTerm = Fsrs6(enableShortTerm = false)
+
+    @Test
+    fun shortTermOff_newGood_schedulesInDaysNotMinutes() {
+        val r = longTerm.review(newCard(), Rating.Good, now)
+        assertEquals(CardState.Review, r.state)
+        assertTrue("graduates straight to a day-scale interval", r.dueMillis - now >= day)
+    }
+
+    @Test
+    fun shortTermOff_newAgain_graduatesToReviewState() {
+        val r = longTerm.review(newCard(), Rating.Again, now)
+        assertEquals("no Learning step when short-term is off", CardState.Review, r.state)
+        assertTrue(r.dueMillis - now >= day)
+    }
+
+    @Test
+    fun shortTermOn_byDefault_newGoodIsMinuteStep() {
+        // Guard: default behaviour (short-term on) keeps the fixed 10-minute step.
+        assertEquals(10 * 60_000L, fsrs.review(newCard(), Rating.Good, now).dueMillis - now)
+    }
+
     @Test
     fun retrievability_decaysFromOneOverTime() {
         val rAtZero = fsrs.retrievability(0.0, 10.0)

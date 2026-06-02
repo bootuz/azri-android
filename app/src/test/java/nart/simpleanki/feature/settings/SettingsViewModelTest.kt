@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
 import org.junit.After
@@ -36,11 +37,49 @@ class SettingsViewModelTest {
         runCurrent()
 
         vm.setPreset(FsrsPreset.Aggressive); runCurrent()
-        vm.setNewCardsPerDay(5); runCurrent()
-        vm.setMaxReviewsPerDay(50); runCurrent()
-
         assertEquals(FsrsPreset.Aggressive, vm.uiState.value.settings.preset)
-        assertEquals(5, vm.uiState.value.settings.newCardsPerDay)
-        assertEquals(50, vm.uiState.value.settings.maxReviewsPerDay)
+    }
+
+    @Test
+    fun customParameters_persistThroughRepository() = runTest {
+        val vm = SettingsViewModel(FakeSettingsRepository())
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        vm.setPreset(FsrsPreset.Custom); runCurrent()
+        vm.setCustomRetention(0.95); runCurrent()
+        vm.setCustomMaxInterval(90); runCurrent()
+        vm.setEnableFuzz(false); runCurrent()
+        vm.setEnableShortTerm(false); runCurrent()
+
+        val s = vm.uiState.value.settings
+        assertEquals(FsrsPreset.Custom, s.preset)
+        assertEquals(0.95, s.customRetention, 1e-9)
+        assertEquals(90, s.customMaxInterval)
+        assertEquals(false, s.enableFuzz)
+        assertEquals(false, s.enableShortTerm)
+    }
+
+    @Test
+    fun resetToDefaults_restoresOptimalAndDefaultCustomValues() = runTest {
+        val vm = SettingsViewModel(
+            FakeSettingsRepository(
+                AppSettings(
+                    preset = FsrsPreset.Custom, customRetention = 0.82,
+                    customMaxInterval = 30, enableFuzz = false, enableShortTerm = false,
+                ),
+            ),
+        )
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        vm.resetToDefaults(); runCurrent()
+
+        val s = vm.uiState.value.settings
+        assertEquals(FsrsPreset.Optimal, s.preset)
+        assertEquals(0.90, s.customRetention, 1e-9)
+        assertEquals(365, s.customMaxInterval)
+        assertEquals(true, s.enableFuzz)
+        assertEquals(true, s.enableShortTerm)
     }
 }

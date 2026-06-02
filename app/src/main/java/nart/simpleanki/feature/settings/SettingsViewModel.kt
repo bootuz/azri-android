@@ -15,7 +15,7 @@ data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
 )
 
-/** Spaced-repetition (FSRS) settings: preset + daily limits. Account lives on the Profile tab. */
+/** Spaced-repetition (FSRS) settings: preset choice + custom parameters. Account lives on Profile. */
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -26,6 +26,17 @@ class SettingsViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun setPreset(preset: FsrsPreset) = viewModelScope.launch { settingsRepository.setPreset(preset) }
-    fun setNewCardsPerDay(value: Int) = viewModelScope.launch { settingsRepository.setNewCardsPerDay(value) }
-    fun setMaxReviewsPerDay(value: Int) = viewModelScope.launch { settingsRepository.setMaxReviewsPerDay(value) }
+    fun setCustomRetention(value: Double) = viewModelScope.launch { settingsRepository.setCustomRetention(value) }
+    fun setCustomMaxInterval(days: Int) = viewModelScope.launch { settingsRepository.setCustomMaxInterval(days) }
+    fun setEnableFuzz(enabled: Boolean) = viewModelScope.launch { settingsRepository.setEnableFuzz(enabled) }
+    fun setEnableShortTerm(enabled: Boolean) = viewModelScope.launch { settingsRepository.setEnableShortTerm(enabled) }
+
+    /** Reset to the Default (Optimal) preset and restore default custom parameters. */
+    fun resetToDefaults() = viewModelScope.launch {
+        settingsRepository.setPreset(FsrsPreset.Optimal)
+        settingsRepository.setCustomRetention(0.90)
+        settingsRepository.setCustomMaxInterval(365)
+        settingsRepository.setEnableFuzz(true)
+        settingsRepository.setEnableShortTerm(true)
+    }
 }

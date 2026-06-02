@@ -12,4 +12,8 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings()) : SettingsRep
     override suspend fun setNewCardsPerDay(value: Int) { state.value = state.value.copy(newCardsPerDay = value) }
     override suspend fun setMaxReviewsPerDay(value: Int) { state.value = state.value.copy(maxReviewsPerDay = value) }
     override suspend fun setThemeMode(mode: ThemeMode) { state.value = state.value.copy(themeMode = mode) }
+    override suspend fun setCustomRetention(value: Double) { state.value = state.value.copy(customRetention = value) }
+    override suspend fun setCustomMaxInterval(days: Int) { state.value = state.value.copy(customMaxInterval = days) }
+    override suspend fun setEnableFuzz(enabled: Boolean) { state.value = state.value.copy(enableFuzz = enabled) }
+    override suspend fun setEnableShortTerm(enabled: Boolean) { state.value = state.value.copy(enableShortTerm = enabled) }
 }

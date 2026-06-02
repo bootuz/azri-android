@@ -39,6 +39,10 @@ class Fsrs6(
     val w: List<Double> = DEFAULT_PARAMETERS,
     val requestRetention: Double = 0.9,
     val maximumInterval: Int = 36500,
+    /** When false, New/(re)learning grades graduate straight to day-scale intervals (no minute steps). */
+    val enableShortTerm: Boolean = true,
+    /** When true, Review-state day intervals get deterministic jitter so cards don't clump on one day. */
+    val enableFuzz: Boolean = false,
 ) {
     init {
         require(w.size == 21) { "FSRS-6 requires 21 parameters, got ${w.size}" }
@@ -94,6 +98,26 @@ class Fsrs6(
         return raw.roundToInt().coerceIn(1, maximumInterval)
     }
 
+    /**
+     * Applies deterministic fuzz to a graduated [intervalDays]. Mirrors the
+     * open-spaced-repetition fuzz ranges; the RNG is seeded from card state so the same
+     * card always fuzzes to the same value (reproducible + unit-testable). No-op when fuzz
+     * is disabled or the interval is below the 2.5-day threshold.
+     */
+    private fun fuzzedDays(intervalDays: Int, stability: Double, reps: Int): Int {
+        val capped = intervalDays.coerceIn(1, maximumInterval)
+        if (!enableFuzz || capped < FUZZ_THRESHOLD) return capped
+        var delta = 1.0
+        for ((start, end, factor) in FUZZ_RANGES) {
+            delta += factor * maxOf(minOf(capped.toDouble(), end) - start, 0.0)
+        }
+        val minI = (capped - delta).roundToInt().coerceAtLeast(2)
+        val maxI = (capped + delta).roundToInt().coerceIn(minI, maximumInterval)
+        val seed = java.lang.Double.doubleToLongBits(stability) xor (reps.toLong() * 2654435761L) xor capped.toLong()
+        val unit = kotlin.random.Random(seed).nextDouble()
+        return (minI + (unit * (maxI - minI + 1)).toInt()).coerceIn(1, maximumInterval)
+    }
+
     /** Recall stability for a non-lapse grade in the Review state (per-grade difficulty applied). */
     private fun recallStability(rating: Rating, oldDifficulty: Double, stability: Double, r: Double): Double =
         nextRecallStability(nextDifficulty(oldDifficulty, rating), stability, r, rating)
@@ -110,40 +134,45 @@ class Fsrs6(
         // Sub-day (re)learning uses FIXED minute steps — mirrors the FSRS short-term scheduler
         // iOS uses (swift-fsrs BasicScheduler): New 1/5/10m, (re)learning 5/10m, lapse 5m.
         // Only graduation to the Review state uses the stability-derived day interval.
+        // When enableShortTerm is false, those minute steps are skipped and cards graduate
+        // straight to a day-scale interval (long-term scheduler, ts-fsrs `enable_short_term=false`).
         fun step(minutes: Long) = nowMillis + minutes * MILLIS_PER_MINUTE
         fun days(d: Int) = nowMillis + d.toLong() * MILLIS_PER_DAY
+
+        // Graduate to Review with a (fuzzed) day interval derived from [stability].
+        fun graduate(stability: Double, difficulty: Double, elapsedDays: Double, lapses: Int): FsrsReview {
+            val iv = fuzzedDays(reviewIntervalDays(stability), stability, card.reps)
+            return result(stability, difficulty, CardState.Review, iv.toDouble(), days(iv), elapsedDays, lapses)
+        }
 
         return when (card.state) {
             CardState.New -> {
                 val difficulty = initDifficulty(rating)
                 val stability = initStability(rating)
-                when (rating) {
+                if (!enableShortTerm) {
+                    graduate(stability, difficulty, 0.0, card.lapses)
+                } else when (rating) {
                     Rating.Again -> result(stability, difficulty, CardState.Learning, 0.0, step(1), 0.0, card.lapses)
                     Rating.Hard -> result(stability, difficulty, CardState.Learning, 0.0, step(5), 0.0, card.lapses)
                     Rating.Good -> result(stability, difficulty, CardState.Learning, 0.0, step(10), 0.0, card.lapses)
-                    Rating.Easy -> {
-                        val iv = reviewIntervalDays(stability)
-                        result(stability, difficulty, CardState.Review, iv.toDouble(), days(iv), 0.0, card.lapses)
-                    }
+                    Rating.Easy -> graduate(stability, difficulty, 0.0, card.lapses)
                 }
             }
 
             CardState.Learning, CardState.Relearning -> {
                 val difficulty = nextDifficulty(card.difficulty, rating)
-                when (rating) {
+                if (!enableShortTerm) {
+                    graduate(nextShortTermStability(card.stability, rating), difficulty, 0.0, card.lapses)
+                } else when (rating) {
                     Rating.Again ->
                         result(nextShortTermStability(card.stability, Rating.Again), difficulty, card.state, 0.0, step(5), 0.0, card.lapses)
                     Rating.Hard ->
                         result(nextShortTermStability(card.stability, Rating.Hard), difficulty, card.state, 0.0, step(10), 0.0, card.lapses)
-                    Rating.Good -> {
-                        val s = nextShortTermStability(card.stability, Rating.Good)
-                        val iv = reviewIntervalDays(s)
-                        result(s, difficulty, CardState.Review, iv.toDouble(), days(iv), 0.0, card.lapses)
-                    }
+                    Rating.Good -> graduate(nextShortTermStability(card.stability, Rating.Good), difficulty, 0.0, card.lapses)
                     Rating.Easy -> {
                         val goodIv = reviewIntervalDays(nextShortTermStability(card.stability, Rating.Good))
                         val s = nextShortTermStability(card.stability, Rating.Easy)
-                        val iv = maxOf(reviewIntervalDays(s), goodIv + 1)
+                        val iv = fuzzedDays(maxOf(reviewIntervalDays(s), goodIv + 1), s, card.reps)
                         result(s, difficulty, CardState.Review, iv.toDouble(), days(iv), 0.0, card.lapses)
                     }
                 }
@@ -157,7 +186,12 @@ class Fsrs6(
                 if (rating == Rating.Again) {
                     val difficulty = nextDifficulty(card.difficulty, rating)
                     val stability = nextForgetStability(difficulty, card.stability, r)
-                    result(stability, difficulty, CardState.Relearning, 0.0, step(5), elapsedDays, card.lapses + 1)
+                    // Short-term off: no relearning minute step — reschedule in days, stay in Review.
+                    if (!enableShortTerm) {
+                        graduate(stability, difficulty, elapsedDays, card.lapses + 1)
+                    } else {
+                        result(stability, difficulty, CardState.Relearning, 0.0, step(5), elapsedDays, card.lapses + 1)
+                    }
                 } else {
                     val difficulty = nextDifficulty(card.difficulty, rating)
                     val stability = recallStability(rating, card.difficulty, card.stability, r)
@@ -166,11 +200,12 @@ class Fsrs6(
                     val goodRaw = reviewIntervalDays(recallStability(Rating.Good, card.difficulty, card.stability, r))
                     val hardIv = minOf(hardRaw, goodRaw)
                     val goodIv = maxOf(goodRaw, hardIv + 1)
-                    val iv = when (rating) {
+                    val rawIv = when (rating) {
                         Rating.Hard -> hardIv
                         Rating.Good -> goodIv
                         else -> maxOf(reviewIntervalDays(stability), goodIv + 1) // Easy
                     }
+                    val iv = fuzzedDays(rawIv, stability, card.reps)
                     result(stability, difficulty, CardState.Review, iv.toDouble(), days(iv), elapsedDays, card.lapses)
                 }
             }
@@ -187,5 +222,14 @@ class Fsrs6(
         const val MIN_STABILITY = 0.01
         private const val MILLIS_PER_DAY = 86_400_000L
         private const val MILLIS_PER_MINUTE = 60_000L
+
+        /** Intervals shorter than this (days) are never fuzzed. */
+        private const val FUZZ_THRESHOLD = 2.5
+        /** (start, end, factor) bands for fuzz width — open-spaced-repetition defaults. */
+        private val FUZZ_RANGES = listOf(
+            Triple(2.5, 7.0, 0.15),
+            Triple(7.0, 20.0, 0.1),
+            Triple(20.0, Double.MAX_VALUE, 0.05),
+        )
     }
 }

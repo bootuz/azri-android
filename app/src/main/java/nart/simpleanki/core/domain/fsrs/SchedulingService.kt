@@ -5,11 +5,32 @@ import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Rating
 import nart.simpleanki.core.domain.model.ReviewLog
 
-/** FSRS presets mirroring the iOS app (requestRetention / maximumInterval). */
-enum class FsrsPreset(val requestRetention: Double, val maximumInterval: Int) {
-    Optimal(0.90, 365),
-    Aggressive(0.95, 90),
-    Relaxed(0.85, 365);
+/** The resolved knobs the scheduler actually consumes (decoupled from the preset choice). */
+data class FsrsParameters(
+    val requestRetention: Double,
+    val maximumInterval: Int,
+    val enableFuzz: Boolean = true,
+    val enableShortTerm: Boolean = true,
+)
+
+/**
+ * FSRS preset *choices*, mirroring iOS `FSRSSettingsPreset`. The three built-ins carry fixed
+ * parameters; [Custom] resolves its parameters from the user's stored settings instead.
+ */
+enum class FsrsPreset(val displayName: String, val description: String) {
+    Optimal("Default", "Balanced learning with 90% retention"),
+    Aggressive("Aggressive", "High retention (95%), more frequent reviews"),
+    Relaxed("Relaxed", "Fewer reviews, 85% retention target"),
+    Custom("Custom", "Set your own parameters");
+
+    /** Fixed parameters for the built-in presets; null for [Custom] (resolved from user settings). */
+    val fixedParameters: FsrsParameters?
+        get() = when (this) {
+            Optimal -> FsrsParameters(0.90, 365)
+            Aggressive -> FsrsParameters(0.95, 90)
+            Relaxed -> FsrsParameters(0.85, 365)
+            Custom -> null
+        }
 }
 
 /** A scheduled review: the updated card plus the log entry to append to history. */
@@ -25,8 +46,13 @@ data class ScheduleResult(
 class SchedulingService(
     private val fsrs: Fsrs6 = Fsrs6(),
 ) {
-    constructor(preset: FsrsPreset) : this(
-        Fsrs6(requestRetention = preset.requestRetention, maximumInterval = preset.maximumInterval),
+    constructor(params: FsrsParameters) : this(
+        Fsrs6(
+            requestRetention = params.requestRetention,
+            maximumInterval = params.maximumInterval,
+            enableShortTerm = params.enableShortTerm,
+            enableFuzz = params.enableFuzz,
+        ),
     )
 
     fun retrievability(card: Card, nowMillis: Long): Double {
