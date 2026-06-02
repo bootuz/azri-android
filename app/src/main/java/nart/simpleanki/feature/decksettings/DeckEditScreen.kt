@@ -15,10 +15,14 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -39,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.core.domain.model.ColorOption
+import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.di.DeckEditArgs
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -101,24 +106,11 @@ fun DeckEditScreen(
                 }
             }
             if (state.folders.isNotEmpty()) {
-                Text("Folder")
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = state.folderId == null,
-                        onClick = { viewModel.onFolderChange(null) },
-                        label = { Text("None") },
-                    )
-                    state.folders.forEach { folder ->
-                        FilterChip(
-                            selected = state.folderId == folder.id,
-                            onClick = { viewModel.onFolderChange(folder.id) },
-                            label = { Text(folder.name) },
-                        )
-                    }
-                }
+                FolderPicker(
+                    folders = state.folders,
+                    selectedId = state.folderId,
+                    onSelect = viewModel::onFolderChange,
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = state.shuffled, onCheckedChange = viewModel::onShuffledChange)
@@ -157,5 +149,41 @@ fun DeckEditScreen(
                 TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
             },
         )
+    }
+}
+
+/** Single-choice folder selector backed by a scrollable dropdown (scales to many folders). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FolderPicker(
+    folders: List<Folder>,
+    selectedId: String?,
+    onSelect: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = folders.firstOrNull { it.id == selectedId }?.name ?: "None"
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Folder") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = { onSelect(null); expanded = false },
+            )
+            folders.forEach { folder ->
+                DropdownMenuItem(
+                    text = { Text(folder.name) },
+                    onClick = { onSelect(folder.id); expanded = false },
+                )
+            }
+        }
     }
 }
