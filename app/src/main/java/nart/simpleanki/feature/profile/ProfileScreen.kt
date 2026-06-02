@@ -32,12 +32,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -193,7 +193,7 @@ fun ProfileContent(
             LinkItem(Icons.Default.Shield, "Privacy Policy", onPrivacy)
 
             Spacer(Modifier.height(24.dp))
-            FilledTonalButton(
+            OutlinedButton(
                 onClick = onSignOut,
                 modifier = Modifier
                     .fillMaxWidth()
