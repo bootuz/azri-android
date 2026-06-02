@@ -1,5 +1,13 @@
 package nart.simpleanki.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
@@ -19,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -81,19 +90,39 @@ fun AzriNavHost() {
             }
         },
     ) { padding ->
+        val slide = 280
         NavHost(
             navController = nav,
             startDestination = QUEUE,
             modifier = Modifier.padding(padding),
+            // iOS-like push/pop: the entering screen slides in full-width, the leaving
+            // screen parallaxes a quarter-width in the opposite direction (both cross-fade).
+            enterTransition = { slideInHorizontally(tween(slide)) { it } + fadeIn(tween(slide)) },
+            exitTransition = { slideOutHorizontally(tween(slide)) { -it / 4 } + fadeOut(tween(slide)) },
+            popEnterTransition = { slideInHorizontally(tween(slide)) { -it / 4 } + fadeIn(tween(slide)) },
+            popExitTransition = { slideOutHorizontally(tween(slide)) { it } + fadeOut(tween(slide)) },
         ) {
-            composable(QUEUE) {
+            // Top-level tabs are siblings — cross-fade between them instead of sliding.
+            val tabFadeEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
+                { fadeIn(tween(slide)) }
+            val tabFadeExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
+                { fadeOut(tween(slide)) }
+            composable(
+                QUEUE,
+                enterTransition = tabFadeEnter, exitTransition = tabFadeExit,
+                popEnterTransition = tabFadeEnter, popExitTransition = tabFadeExit,
+            ) {
                 StudyQueueScreen(
                     onStudyAll = { nav.navigate("studyAll") },
                     onStudyDeck = { nav.navigate("study/$it") },
                     onStudyFolder = { nav.navigate("studyFolder/$it") },
                 )
             }
-            composable(LIBRARY) {
+            composable(
+                LIBRARY,
+                enterTransition = tabFadeEnter, exitTransition = tabFadeExit,
+                popEnterTransition = tabFadeEnter, popExitTransition = tabFadeExit,
+            ) {
                 LibraryScreen(
                     onOpenDeck = { nav.navigate("deck/$it") },
                     onOpenFolder = { nav.navigate("folder/$it") },
@@ -101,7 +130,11 @@ fun AzriNavHost() {
                     onNewFolder = { nav.navigate("folderEdit") },
                 )
             }
-            composable(PROFILE) {
+            composable(
+                PROFILE,
+                enterTransition = tabFadeEnter, exitTransition = tabFadeExit,
+                popEnterTransition = tabFadeEnter, popExitTransition = tabFadeExit,
+            ) {
                 ProfileScreen(onOpenFsrsSettings = { nav.navigate("fsrsSettings") })
             }
             composable("folder/{folderId}") { entry ->
