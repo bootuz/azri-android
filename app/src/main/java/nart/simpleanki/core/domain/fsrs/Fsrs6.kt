@@ -94,72 +94,87 @@ class Fsrs6(
         return raw.roundToInt().coerceIn(1, maximumInterval)
     }
 
-    /** Sub-day interval (fractional days) for cards still in (re)learning. */
-    private fun learningIntervalDays(stability: Double): Double {
-        val raw = (stability / factor) * (requestRetention.pow(1.0 / decay) - 1.0)
-        return raw.coerceIn(ONE_MINUTE_DAYS, 1.0)
-    }
+    /** Recall stability for a non-lapse grade in the Review state (per-grade difficulty applied). */
+    private fun recallStability(rating: Rating, oldDifficulty: Double, stability: Double, r: Double): Double =
+        nextRecallStability(nextDifficulty(oldDifficulty, rating), stability, r, rating)
 
     fun review(card: FsrsCard, rating: Rating, nowMillis: Long): FsrsReview {
-        val elapsedDays: Double
-        val newDifficulty: Double
-        var newStability: Double
-        var newState: CardState
-        var lapses = card.lapses
+        fun result(
+            stability: Double, difficulty: Double, state: CardState,
+            scheduledDays: Double, dueMillis: Long, elapsedDays: Double, lapses: Int,
+        ) = FsrsReview(
+            stability = stability, difficulty = difficulty, state = state,
+            reps = card.reps + 1, lapses = lapses, dueMillis = dueMillis,
+            scheduledDays = scheduledDays, elapsedDays = elapsedDays, lastReviewMillis = nowMillis,
+        )
+        // Sub-day (re)learning uses FIXED minute steps — mirrors the FSRS short-term scheduler
+        // iOS uses (swift-fsrs BasicScheduler): New 1/5/10m, (re)learning 5/10m, lapse 5m.
+        // Only graduation to the Review state uses the stability-derived day interval.
+        fun step(minutes: Long) = nowMillis + minutes * MILLIS_PER_MINUTE
+        fun days(d: Int) = nowMillis + d.toLong() * MILLIS_PER_DAY
 
-        when (card.state) {
+        return when (card.state) {
             CardState.New -> {
-                elapsedDays = 0.0
-                newDifficulty = initDifficulty(rating)
-                newStability = initStability(rating)
-                newState = if (rating == Rating.Easy) CardState.Review else CardState.Learning
+                val difficulty = initDifficulty(rating)
+                val stability = initStability(rating)
+                when (rating) {
+                    Rating.Again -> result(stability, difficulty, CardState.Learning, 0.0, step(1), 0.0, card.lapses)
+                    Rating.Hard -> result(stability, difficulty, CardState.Learning, 0.0, step(5), 0.0, card.lapses)
+                    Rating.Good -> result(stability, difficulty, CardState.Learning, 0.0, step(10), 0.0, card.lapses)
+                    Rating.Easy -> {
+                        val iv = reviewIntervalDays(stability)
+                        result(stability, difficulty, CardState.Review, iv.toDouble(), days(iv), 0.0, card.lapses)
+                    }
+                }
             }
 
             CardState.Learning, CardState.Relearning -> {
-                elapsedDays = 0.0
-                newDifficulty = nextDifficulty(card.difficulty, rating)
-                newStability = nextShortTermStability(card.stability, rating)
-                newState = when (rating) {
-                    Rating.Again, Rating.Hard -> card.state
-                    Rating.Good, Rating.Easy -> CardState.Review
+                val difficulty = nextDifficulty(card.difficulty, rating)
+                when (rating) {
+                    Rating.Again ->
+                        result(nextShortTermStability(card.stability, Rating.Again), difficulty, card.state, 0.0, step(5), 0.0, card.lapses)
+                    Rating.Hard ->
+                        result(nextShortTermStability(card.stability, Rating.Hard), difficulty, card.state, 0.0, step(10), 0.0, card.lapses)
+                    Rating.Good -> {
+                        val s = nextShortTermStability(card.stability, Rating.Good)
+                        val iv = reviewIntervalDays(s)
+                        result(s, difficulty, CardState.Review, iv.toDouble(), days(iv), 0.0, card.lapses)
+                    }
+                    Rating.Easy -> {
+                        val goodIv = reviewIntervalDays(nextShortTermStability(card.stability, Rating.Good))
+                        val s = nextShortTermStability(card.stability, Rating.Easy)
+                        val iv = maxOf(reviewIntervalDays(s), goodIv + 1)
+                        result(s, difficulty, CardState.Review, iv.toDouble(), days(iv), 0.0, card.lapses)
+                    }
                 }
             }
 
             CardState.Review -> {
-                elapsedDays = card.lastReviewMillis
+                val elapsedDays = card.lastReviewMillis
                     ?.let { (nowMillis - it).coerceAtLeast(0L) / MILLIS_PER_DAY.toDouble() }
                     ?: 0.0
                 val r = retrievability(elapsedDays, card.stability)
-                newDifficulty = nextDifficulty(card.difficulty, rating)
                 if (rating == Rating.Again) {
-                    newStability = nextForgetStability(newDifficulty, card.stability, r)
-                    newState = CardState.Relearning
-                    lapses += 1
+                    val difficulty = nextDifficulty(card.difficulty, rating)
+                    val stability = nextForgetStability(difficulty, card.stability, r)
+                    result(stability, difficulty, CardState.Relearning, 0.0, step(5), elapsedDays, card.lapses + 1)
                 } else {
-                    newStability = nextRecallStability(newDifficulty, card.stability, r, rating)
-                    newState = CardState.Review
+                    val difficulty = nextDifficulty(card.difficulty, rating)
+                    val stability = recallStability(rating, card.difficulty, card.stability, r)
+                    // FSRS interval ordering: hard <= good, good >= hard+1, easy >= good+1.
+                    val hardRaw = reviewIntervalDays(recallStability(Rating.Hard, card.difficulty, card.stability, r))
+                    val goodRaw = reviewIntervalDays(recallStability(Rating.Good, card.difficulty, card.stability, r))
+                    val hardIv = minOf(hardRaw, goodRaw)
+                    val goodIv = maxOf(goodRaw, hardIv + 1)
+                    val iv = when (rating) {
+                        Rating.Hard -> hardIv
+                        Rating.Good -> goodIv
+                        else -> maxOf(reviewIntervalDays(stability), goodIv + 1) // Easy
+                    }
+                    result(stability, difficulty, CardState.Review, iv.toDouble(), days(iv), elapsedDays, card.lapses)
                 }
             }
         }
-
-        val scheduledDays = if (newState == CardState.Review) {
-            reviewIntervalDays(newStability).toDouble()
-        } else {
-            learningIntervalDays(newStability)
-        }
-        val dueMillis = nowMillis + (scheduledDays * MILLIS_PER_DAY).toLong()
-
-        return FsrsReview(
-            stability = newStability,
-            difficulty = newDifficulty,
-            state = newState,
-            reps = card.reps + 1,
-            lapses = lapses,
-            dueMillis = dueMillis,
-            scheduledDays = scheduledDays,
-            elapsedDays = elapsedDays,
-            lastReviewMillis = nowMillis,
-        )
     }
 
     companion object {
@@ -171,6 +186,6 @@ class Fsrs6(
 
         const val MIN_STABILITY = 0.01
         private const val MILLIS_PER_DAY = 86_400_000L
-        private const val ONE_MINUTE_DAYS = 1.0 / 1440.0
+        private const val MILLIS_PER_MINUTE = 60_000L
     }
 }
