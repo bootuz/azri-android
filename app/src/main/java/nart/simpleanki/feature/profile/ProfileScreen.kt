@@ -203,7 +203,7 @@ fun ProfileContent(
                 Text("Sign out", Modifier.padding(start = 8.dp))
             }
             Text(
-                "Made with ❤ by Astemir Boziev",
+                "Made with 💗 by Astemir Boziev",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
