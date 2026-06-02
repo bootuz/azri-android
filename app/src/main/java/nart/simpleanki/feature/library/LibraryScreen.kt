@@ -15,8 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -120,7 +120,7 @@ fun LibraryContent(
 @Composable
 private fun DeckList(decks: List<Deck>, cardCounts: Map<String, Int>, onOpenDeck: (String) -> Unit) {
     if (decks.isEmpty()) {
-        EmptyState(Icons.Outlined.StickyNote2, "No decks yet", "Tap + to create your first deck.")
+        EmptyState(Icons.Outlined.CollectionsBookmark, "No decks yet", "Tap + to create your first deck.")
         return
     }
     LazyColumn(

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.StickyNote2
+import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,7 +24,7 @@ fun DeckRow(deck: Deck, cardCount: Int, onClick: () -> Unit, modifier: Modifier 
     AzriCard(onClick = onClick, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ColorAccentIcon(tint = deck.color.toColor()) {
-                Icon(Icons.Outlined.StickyNote2, null, Modifier.size(18.dp))
+                Icon(Icons.Outlined.CollectionsBookmark, null, Modifier.size(18.dp))
             }
             Column(Modifier.padding(start = 12.dp).weight(1f)) {
                 Text(deck.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
