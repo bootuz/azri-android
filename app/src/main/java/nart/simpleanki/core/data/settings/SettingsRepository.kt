@@ -9,11 +9,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
 
-/** User study settings, mirroring the iOS FSRS preset + daily limits. */
+/** App theme preference. [System] follows the device dark/light setting. */
+enum class ThemeMode { System, Light, Dark }
+
+/** User study settings, mirroring the iOS FSRS preset + daily limits, plus app appearance. */
 data class AppSettings(
     val preset: FsrsPreset = FsrsPreset.Optimal,
     val newCardsPerDay: Int = 20,
     val maxReviewsPerDay: Int = 200,
+    val themeMode: ThemeMode = ThemeMode.System,
 )
 
 interface SettingsRepository {
@@ -21,6 +25,7 @@ interface SettingsRepository {
     suspend fun setPreset(preset: FsrsPreset)
     suspend fun setNewCardsPerDay(value: Int)
     suspend fun setMaxReviewsPerDay(value: Int)
+    suspend fun setThemeMode(mode: ThemeMode)
 }
 
 private val Context.settingsDataStore by preferencesDataStore("azri_settings")
@@ -33,6 +38,7 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
             preset = prefs[PRESET]?.let { runCatching { FsrsPreset.valueOf(it) }.getOrNull() } ?: FsrsPreset.Optimal,
             newCardsPerDay = prefs[NEW_PER_DAY] ?: 20,
             maxReviewsPerDay = prefs[MAX_REVIEWS] ?: 200,
+            themeMode = prefs[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.System,
         )
     }
 
@@ -48,9 +54,14 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
         context.settingsDataStore.edit { it[MAX_REVIEWS] = value.coerceIn(0, 9999) }
     }
 
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        context.settingsDataStore.edit { it[THEME] = mode.name }
+    }
+
     private companion object {
         val PRESET = stringPreferencesKey("fsrs_preset")
         val NEW_PER_DAY = intPreferencesKey("new_per_day")
         val MAX_REVIEWS = intPreferencesKey("max_reviews")
+        val THEME = stringPreferencesKey("theme_mode")
     }
 }

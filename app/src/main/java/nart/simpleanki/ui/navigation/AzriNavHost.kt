@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.Icon
@@ -30,21 +31,23 @@ import nart.simpleanki.feature.decksettings.DeckEditScreen
 import nart.simpleanki.feature.folderdetail.FolderDetailScreen
 import nart.simpleanki.feature.library.FolderEditScreen
 import nart.simpleanki.feature.library.LibraryScreen
+import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
 import nart.simpleanki.feature.study.StudyScreen
 
 private const val QUEUE = "queue"
 private const val LIBRARY = "library"
+private const val PROFILE = "profile"
 
-/** Signed-in navigation graph with a bottom tab bar: Queue (default) and Library. */
+/** Signed-in navigation graph with a bottom tab bar: Queue (default), Library, Profile. */
 @Composable
 fun AzriNavHost() {
     val nav = rememberNavController()
     val backStackEntry by nav.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    // The bottom bar only shows on the two top-level tabs, not on pushed detail screens.
-    val showBottomBar = currentRoute == QUEUE || currentRoute == LIBRARY
+    // The bottom bar only shows on the top-level tabs, not on pushed detail screens.
+    val showBottomBar = currentRoute == QUEUE || currentRoute == LIBRARY || currentRoute == PROFILE
 
     Scaffold(
         bottomBar = {
@@ -68,6 +71,12 @@ fun AzriNavHost() {
                         icon = { Icon(Icons.Filled.Style, contentDescription = null) },
                         label = { Text("Library") },
                     )
+                    NavigationBarItem(
+                        selected = currentRoute == PROFILE,
+                        onClick = { nav.switchTab(PROFILE) },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                        label = { Text("Profile") },
+                    )
                 }
             }
         },
@@ -89,8 +98,10 @@ fun AzriNavHost() {
                     onOpenFolder = { nav.navigate("folder/$it") },
                     onNewDeck = { nav.navigate("deckEdit") },
                     onNewFolder = { nav.navigate("folderEdit") },
-                    onSettings = { nav.navigate("settings") },
                 )
+            }
+            composable(PROFILE) {
+                ProfileScreen(onOpenFsrsSettings = { nav.navigate("fsrsSettings") })
             }
             composable("folder/{folderId}") { entry ->
                 val folderId = entry.arguments?.getString("folderId").orEmpty()
@@ -102,7 +113,7 @@ fun AzriNavHost() {
                     onEditFolder = { nav.navigate("folderEdit/$folderId") },
                 )
             }
-            composable("settings") {
+            composable("fsrsSettings") {
                 SettingsScreen(onBack = { nav.popBackStack() })
             }
             composable("deck/{deckId}") { entry ->

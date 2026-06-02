@@ -11,4 +11,5 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings()) : SettingsRep
     override suspend fun setPreset(preset: FsrsPreset) { state.value = state.value.copy(preset = preset) }
     override suspend fun setNewCardsPerDay(value: Int) { state.value = state.value.copy(newCardsPerDay = value) }
     override suspend fun setMaxReviewsPerDay(value: Int) { state.value = state.value.copy(maxReviewsPerDay = value) }
+    override suspend fun setThemeMode(mode: ThemeMode) { state.value = state.value.copy(themeMode = mode) }
 }

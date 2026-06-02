@@ -18,7 +18,7 @@ class LibraryContentTest {
     @Test
     fun emptyState_showsHint() {
         composeRule.setContent {
-            LibraryContent(LibraryUiState(), onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {})
+            LibraryContent(LibraryUiState(), onOpenDeck = {}, onNewDeck = {}, onNewFolder = {})
         }
         composeRule.onNodeWithText("No decks yet").assertIsDisplayed()
     }
@@ -38,7 +38,6 @@ class LibraryContentTest {
                 onOpenFolder = {},
                 onNewDeck = {},
                 onNewFolder = {},
-                onSettings = {},
             )
         }
         // Decks tab is selected by default: deck visible, folder lives on the other tab.
@@ -61,7 +60,6 @@ class LibraryContentTest {
                 onOpenFolder = { openedFolder = it },
                 onNewDeck = {},
                 onNewFolder = {},
-                onSettings = {},
             )
         }
         // Switch to the Folders tab, then the folder is shown and tappable.

@@ -8,7 +8,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import nart.simpleanki.auth.FakeAuthRepository
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
 import org.junit.After
@@ -23,22 +22,16 @@ class SettingsViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun reflectsSettingsAndAccount() = runTest {
-        val settings = FakeSettingsRepository()
-        val auth = FakeAuthRepository().apply { emit(FakeAuthRepository.GOOGLE_USER) }
-        val vm = SettingsViewModel(settings, auth)
+    fun reflectsSettings() = runTest {
+        val vm = SettingsViewModel(FakeSettingsRepository())
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
-
         assertEquals(FsrsPreset.Optimal, vm.uiState.value.settings.preset)
-        assertEquals("grace@example.com", vm.uiState.value.email)
-        assertEquals(false, vm.uiState.value.isAnonymous)
     }
 
     @Test
     fun updatesPersistThroughRepository() = runTest {
-        val settings = FakeSettingsRepository()
-        val vm = SettingsViewModel(settings, FakeAuthRepository())
+        val vm = SettingsViewModel(FakeSettingsRepository())
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -49,21 +42,5 @@ class SettingsViewModelTest {
         assertEquals(FsrsPreset.Aggressive, vm.uiState.value.settings.preset)
         assertEquals(5, vm.uiState.value.settings.newCardsPerDay)
         assertEquals(50, vm.uiState.value.settings.maxReviewsPerDay)
-    }
-
-    @Test
-    fun signOut_delegatesToAuth() = runTest {
-        val auth = FakeAuthRepository().apply { emit(FakeAuthRepository.ANON_USER) }
-        val vm = SettingsViewModel(FakeSettingsRepository(), auth)
-        vm.signOut()
-        assertEquals(1, auth.signOutCalls)
-    }
-
-    @Test
-    fun deleteAccount_delegatesToAuth() = runTest {
-        val auth = FakeAuthRepository().apply { emit(FakeAuthRepository.GOOGLE_USER) }
-        val vm = SettingsViewModel(FakeSettingsRepository(), auth)
-        vm.deleteAccount(); runCurrent()
-        assertEquals(1, auth.deleteCalls)
     }
 }

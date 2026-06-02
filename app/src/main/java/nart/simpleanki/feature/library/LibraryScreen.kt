@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,11 +56,10 @@ fun LibraryScreen(
     onOpenFolder: (String) -> Unit,
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
-    onSettings: () -> Unit,
     viewModel: LibraryViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    LibraryContent(state, onOpenDeck, onOpenFolder, onNewDeck, onNewFolder, onSettings)
+    LibraryContent(state, onOpenDeck, onOpenFolder, onNewDeck, onNewFolder)
 }
 
 /** Stateless library UI, decoupled from the ViewModel for testing. Decks and folders are split
@@ -74,7 +72,6 @@ fun LibraryContent(
     onOpenFolder: (String) -> Unit = {},
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
-    onSettings: () -> Unit,
     initialTab: Int = 0,
 ) {
     Scaffold(
@@ -90,9 +87,6 @@ fun LibraryContent(
                     }
                     IconButton(onClick = onNewDeck) {
                         Icon(Icons.Default.Add, contentDescription = "New deck")
-                    }
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
             )
@@ -216,7 +210,7 @@ private fun LibraryPreview() {
                 allDecks = sampleDecks,
                 cardCounts = mapOf("d1" to 42, "d2" to 1, "d3" to 0),
             ),
-            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {},
+            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {},
         )
     }
 }
@@ -233,7 +227,7 @@ private fun LibraryFoldersTabPreview() {
                 ),
                 allDecks = sampleDecks,
             ),
-            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {},
+            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {},
             initialTab = 1,
         )
     }
@@ -243,7 +237,7 @@ private fun LibraryFoldersTabPreview() {
 @Composable
 private fun LibraryEmptyPreview() {
     AzriTheme {
-        LibraryContent(LibraryUiState(), onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {})
+        LibraryContent(LibraryUiState(), onOpenDeck = {}, onNewDeck = {}, onNewFolder = {})
     }
 }
 
@@ -253,7 +247,7 @@ private fun LibraryDarkPreview() {
     AzriTheme(darkTheme = true) {
         LibraryContent(
             state = LibraryUiState(decksWithoutFolder = sampleDecks, allDecks = sampleDecks, cardCounts = mapOf("d1" to 42)),
-            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {},
+            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {},
         )
     }
 }

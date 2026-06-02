@@ -24,6 +24,7 @@ import nart.simpleanki.core.data.sync.FirestoreSyncService
 import nart.simpleanki.core.data.sync.RemoteSyncSource
 import nart.simpleanki.core.data.sync.SyncManager
 import nart.simpleanki.feature.cardform.CardFormViewModel
+import nart.simpleanki.feature.profile.ProfileViewModel
 import nart.simpleanki.feature.settings.SettingsViewModel
 import nart.simpleanki.feature.decksettings.DeckEditViewModel
 import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
@@ -85,7 +86,8 @@ val appModule = module {
 
     // Feature ViewModels
     viewModel { SyncViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get()) }
+    viewModel { ProfileViewModel(settingsRepository = get(), authRepository = get()) }
     viewModel { LibraryViewModel(get(), get(), get()) }
     viewModel { params -> DeckDetailViewModel(deckId = params.get(), cardRepository = get(), deckRepository = get()) }
     viewModel { params ->
