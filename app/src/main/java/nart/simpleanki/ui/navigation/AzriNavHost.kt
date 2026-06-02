@@ -3,11 +3,12 @@ package nart.simpleanki.ui.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
@@ -90,23 +91,27 @@ fun AzriNavHost() {
             }
         },
     ) { padding ->
-        val slide = 280
+        // Material "shared axis" spec (MDC-Android Motion docs): motionDurationLong1 = 300ms
+        // with motionEasingStandard = cubic-bezier(0.4, 0, 0.2, 1) = FastOutSlowIn.
+        val dur = 300
+        fun spec() = tween<Float>(dur, easing = FastOutSlowInEasing)
         NavHost(
             navController = nav,
             startDestination = QUEUE,
             modifier = Modifier.padding(padding),
-            // iOS-like push/pop: the entering screen slides in full-width, the leaving
-            // screen parallaxes a quarter-width in the opposite direction (both cross-fade).
-            enterTransition = { slideInHorizontally(tween(slide)) { it } + fadeIn(tween(slide)) },
-            exitTransition = { slideOutHorizontally(tween(slide)) { -it / 4 } + fadeOut(tween(slide)) },
-            popEnterTransition = { slideInHorizontally(tween(slide)) { -it / 4 } + fadeIn(tween(slide)) },
-            popExitTransition = { slideOutHorizontally(tween(slide)) { it } + fadeOut(tween(slide)) },
+            // Material "shared axis Z": drilling into a detail reads as moving forward in
+            // depth — the incoming screen scales up from 80% + fades in, the outgoing scales
+            // past to 110% + fades out. Back reverses it. (Android idiom, not an iOS slide.)
+            enterTransition = { scaleIn(spec(), initialScale = 0.8f) + fadeIn(spec()) },
+            exitTransition = { scaleOut(spec(), targetScale = 1.1f) + fadeOut(spec()) },
+            popEnterTransition = { scaleIn(spec(), initialScale = 1.1f) + fadeIn(spec()) },
+            popExitTransition = { scaleOut(spec(), targetScale = 0.8f) + fadeOut(spec()) },
         ) {
             // Top-level tabs are siblings — cross-fade between them instead of sliding.
             val tabFadeEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
-                { fadeIn(tween(slide)) }
+                { fadeIn(spec()) }
             val tabFadeExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
-                { fadeOut(tween(slide)) }
+                { fadeOut(spec()) }
             composable(
                 QUEUE,
                 enterTransition = tabFadeEnter, exitTransition = tabFadeExit,
