@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,15 +22,21 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,7 +64,8 @@ fun LibraryScreen(
     LibraryContent(state, onOpenDeck, onOpenFolder, onNewDeck, onNewFolder, onSettings)
 }
 
-/** Stateless library UI, decoupled from the ViewModel for testing. */
+/** Stateless library UI, decoupled from the ViewModel for testing. Decks and folders are split
+ *  into two tabs (Decks first, Folders second). [initialTab] seeds the selected tab for previews/tests. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryContent(
@@ -69,6 +75,7 @@ fun LibraryContent(
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
     onSettings: () -> Unit,
+    initialTab: Int = 0,
 ) {
     Scaffold(
         topBar = {
@@ -91,37 +98,63 @@ fun LibraryContent(
             )
         },
     ) { padding ->
-        if (state.folders.isEmpty() && state.allDecks.isEmpty()) {
-            EmptyLibrary(Modifier.padding(padding))
-            return@Scaffold
-        }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = padding.calculateTopPadding(), bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            if (state.folders.isNotEmpty()) {
-                item { SectionHeader("Folders") }
-                items(state.folders, key = { "folder-${it.id}" }) { folder ->
-                    FolderRow(folder, onClick = { onOpenFolder(folder.id) })
-                }
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            var selectedTab by remember { mutableStateOf(initialTab) }
+            PrimaryTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.background,
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Decks") },
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Folders") },
+                )
             }
-            item { SectionHeader("Decks") }
-            items(state.decksWithoutFolder, key = { "deck-${it.id}" }) { deck ->
-                DeckRow(deck = deck, cardCount = state.cardCounts[deck.id] ?: 0, onClick = { onOpenDeck(deck.id) })
+            when (selectedTab) {
+                0 -> DeckList(state.allDecks, state.cardCounts, onOpenDeck)
+                else -> FolderList(state.folders, onOpenFolder)
             }
         }
     }
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-    )
+private fun DeckList(decks: List<Deck>, cardCounts: Map<String, Int>, onOpenDeck: (String) -> Unit) {
+    if (decks.isEmpty()) {
+        EmptyState(Icons.Outlined.StickyNote2, "No decks yet", "Tap + to create your first deck.")
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(decks, key = { it.id }) { deck ->
+            DeckRow(deck = deck, cardCount = cardCounts[deck.id] ?: 0, onClick = { onOpenDeck(deck.id) })
+        }
+    }
+}
+
+@Composable
+private fun FolderList(folders: List<Folder>, onOpenFolder: (String) -> Unit) {
+    if (folders.isEmpty()) {
+        EmptyState(Icons.Outlined.Folder, "No folders yet", "Tap the folder icon above to create one.")
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(folders, key = { it.id }) { folder ->
+            FolderRow(folder, onClick = { onOpenFolder(folder.id) })
+        }
+    }
 }
 
 @Composable
@@ -146,22 +179,18 @@ private fun FolderRow(folder: Folder, onClick: () -> Unit) {
 }
 
 @Composable
-private fun EmptyLibrary(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun EmptyState(icon: ImageVector, title: String, subtitle: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                Icons.Outlined.StickyNote2,
+                icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(48.dp),
             )
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
             Text(
-                "No decks yet",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 12.dp),
-            )
-            Text(
-                "Tap + to create your first deck.",
+                subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
@@ -176,7 +205,7 @@ private val sampleDecks = listOf(
     Deck(id = "d3", name = "Kanji", color = ColorOption.Red, dateCreated = 0, lastModified = 0),
 )
 
-@Preview(name = "Library", showBackground = true)
+@Preview(name = "Library · decks tab", showBackground = true)
 @Composable
 private fun LibraryPreview() {
     AzriTheme {
@@ -188,6 +217,24 @@ private fun LibraryPreview() {
                 cardCounts = mapOf("d1" to 42, "d2" to 1, "d3" to 0),
             ),
             onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {},
+        )
+    }
+}
+
+@Preview(name = "Library · folders tab", showBackground = true)
+@Composable
+private fun LibraryFoldersTabPreview() {
+    AzriTheme {
+        LibraryContent(
+            state = LibraryUiState(
+                folders = listOf(
+                    Folder(id = "f1", name = "Languages", emoji = "🌍", lastModified = 0),
+                    Folder(id = "f2", name = "Science", lastModified = 0),
+                ),
+                allDecks = sampleDecks,
+            ),
+            onOpenDeck = {}, onNewDeck = {}, onNewFolder = {}, onSettings = {},
+            initialTab = 1,
         )
     }
 }

@@ -24,7 +24,7 @@ class LibraryContentTest {
     }
 
     @Test
-    fun showsFoldersAndDecks_andOpensDeck() {
+    fun decksTab_showsDecks_andOpensDeck() {
         var opened: String? = null
         val decks = listOf(Deck(id = "d1", name = "Spanish", dateCreated = 0, lastModified = 0))
         composeRule.setContent {
@@ -35,13 +35,38 @@ class LibraryContentTest {
                     allDecks = decks,
                 ),
                 onOpenDeck = { opened = it },
+                onOpenFolder = {},
                 onNewDeck = {},
                 onNewFolder = {},
                 onSettings = {},
             )
         }
-        composeRule.onNodeWithText("Languages").assertIsDisplayed()
+        // Decks tab is selected by default: deck visible, folder lives on the other tab.
         composeRule.onNodeWithText("Spanish").assertIsDisplayed().performClick()
         assertEquals("d1", opened)
+    }
+
+    @Test
+    fun foldersTab_showsFolders_andOpensFolder() {
+        var openedFolder: String? = null
+        val decks = listOf(Deck(id = "d1", name = "Spanish", dateCreated = 0, lastModified = 0))
+        composeRule.setContent {
+            LibraryContent(
+                state = LibraryUiState(
+                    folders = listOf(Folder(id = "f1", name = "Languages", emoji = "🌍", lastModified = 0)),
+                    decksWithoutFolder = decks,
+                    allDecks = decks,
+                ),
+                onOpenDeck = {},
+                onOpenFolder = { openedFolder = it },
+                onNewDeck = {},
+                onNewFolder = {},
+                onSettings = {},
+            )
+        }
+        // Switch to the Folders tab, then the folder is shown and tappable.
+        composeRule.onNodeWithText("Folders").performClick()
+        composeRule.onNodeWithText("Languages").assertIsDisplayed().performClick()
+        assertEquals("f1", openedFolder)
     }
 }
