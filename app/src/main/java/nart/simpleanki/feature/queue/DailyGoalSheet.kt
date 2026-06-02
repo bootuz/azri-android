@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -64,6 +65,7 @@ fun DailyGoalEditorContent(
     Column(
         Modifier
             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp)
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -116,12 +118,13 @@ fun DailyGoalEditorContent(
 
 @Composable
 private fun StepperRow(title: String, subtitle: String, value: Int, onChange: (Int) -> Unit) {
+    val step = 5
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        FilledTonalIconButton(onClick = { onChange((value - 1).coerceAtLeast(DAILY_GOAL_MIN_PER_BUCKET)) }) {
+        FilledTonalIconButton(onClick = { onChange((value - step).coerceAtLeast(DAILY_GOAL_MIN_PER_BUCKET)) }) {
             Icon(Icons.Filled.Remove, contentDescription = "Decrease $title")
         }
         Text(
@@ -130,7 +133,7 @@ private fun StepperRow(title: String, subtitle: String, value: Int, onChange: (I
             textAlign = TextAlign.Center,
             modifier = Modifier.width(40.dp),
         )
-        FilledTonalIconButton(onClick = { onChange((value + 1).coerceAtMost(DAILY_GOAL_MAX_PER_BUCKET)) }) {
+        FilledTonalIconButton(onClick = { onChange((value + step).coerceAtMost(DAILY_GOAL_MAX_PER_BUCKET)) }) {
             Icon(Icons.Filled.Add, contentDescription = "Increase $title")
         }
     }

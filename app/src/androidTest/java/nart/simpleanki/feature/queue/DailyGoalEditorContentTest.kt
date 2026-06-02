@@ -37,7 +37,7 @@ class DailyGoalEditorContentTest {
             )
         }
         composeRule.onNodeWithContentDescription("Increase New cards").performClick()
-        assertEquals(11, newVal)
+        assertEquals(15, newVal) // step is 5
     }
 
     @Test
