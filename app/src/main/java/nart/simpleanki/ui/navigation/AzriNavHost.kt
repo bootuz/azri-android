@@ -7,8 +7,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
@@ -27,6 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -91,27 +93,31 @@ fun AzriNavHost() {
             }
         },
     ) { padding ->
-        // Material "shared axis" spec (MDC-Android Motion docs): motionDurationLong1 = 300ms
-        // with motionEasingStandard = cubic-bezier(0.4, 0, 0.2, 1) = FastOutSlowIn.
+        // Material "shared axis X" (MDC-Android Motion docs): a 30dp horizontal slide + a
+        // fade-through, motionDurationLong1 = 300ms, motionEasingStandard = FastOutSlowIn.
+        // The slide hints direction; the fade-through (outgoing fades fast, incoming fades in
+        // after) carries the change — NOT a full-width iOS push.
         val dur = 300
-        fun spec() = tween<Float>(dur, easing = FastOutSlowInEasing)
+        val slide = with(LocalDensity.current) { 30.dp.roundToPx() }
+        val slideSpec = tween<IntOffset>(dur, easing = FastOutSlowInEasing)
+        val fadeThroughIn = fadeIn(tween(durationMillis = 195, delayMillis = 105, easing = FastOutSlowInEasing))
+        val fadeThroughOut = fadeOut(tween(durationMillis = 105, easing = FastOutSlowInEasing))
         NavHost(
             navController = nav,
             startDestination = QUEUE,
             modifier = Modifier.padding(padding),
-            // Material "shared axis Z": drilling into a detail reads as moving forward in
-            // depth — the incoming screen scales up from 80% + fades in, the outgoing scales
-            // past to 110% + fades out. Back reverses it. (Android idiom, not an iOS slide.)
-            enterTransition = { scaleIn(spec(), initialScale = 0.8f) + fadeIn(spec()) },
-            exitTransition = { scaleOut(spec(), targetScale = 1.1f) + fadeOut(spec()) },
-            popEnterTransition = { scaleIn(spec(), initialScale = 1.1f) + fadeIn(spec()) },
-            popExitTransition = { scaleOut(spec(), targetScale = 0.8f) + fadeOut(spec()) },
+            // Forward: incoming enters from the right (+30dp), outgoing exits left (−30dp).
+            enterTransition = { slideInHorizontally(slideSpec) { slide } + fadeThroughIn },
+            exitTransition = { slideOutHorizontally(slideSpec) { -slide } + fadeThroughOut },
+            // Back reverses the axis direction.
+            popEnterTransition = { slideInHorizontally(slideSpec) { -slide } + fadeThroughIn },
+            popExitTransition = { slideOutHorizontally(slideSpec) { slide } + fadeThroughOut },
         ) {
-            // Top-level tabs are siblings — cross-fade between them instead of sliding.
+            // Top-level tabs are siblings — fade-through (no slide) instead of sliding.
             val tabFadeEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
-                { fadeIn(spec()) }
+                { fadeThroughIn }
             val tabFadeExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
-                { fadeOut(spec()) }
+                { fadeThroughOut }
             composable(
                 QUEUE,
                 enterTransition = tabFadeEnter, exitTransition = tabFadeExit,
