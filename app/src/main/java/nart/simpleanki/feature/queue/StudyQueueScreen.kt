@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -303,26 +305,29 @@ private fun StudyByStrip(
 
 @Composable
 private fun DeckChip(deck: DeckQueueItem, onClick: () -> Unit) {
-    OutlinedCard(
+    // Filled with the deck's assigned color (white content), mirroring the iOS deck chip.
+    Card(
         onClick = onClick,
         modifier = Modifier.width(168.dp),
-        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(
+            containerColor = deck.color.toColor(),
+            contentColor = Color.White,
+        ),
     ) {
         Column(Modifier.padding(12.dp)) {
-            ColorAccentIcon(tint = deck.color.toColor()) {
-                Icon(Icons.Outlined.CollectionsBookmark, null, Modifier.size(18.dp))
-            }
+            Icon(Icons.Outlined.CollectionsBookmark, null, Modifier.size(18.dp))
             Spacer(Modifier.height(10.dp))
             Text(
                 deck.deckName,
                 style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 chipCounts(deck.dueCount, deck.newCount),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color.White.copy(alpha = 0.85f),
             )
         }
     }
