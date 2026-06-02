@@ -1,5 +1,6 @@
 package nart.simpleanki.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -24,12 +25,16 @@ fun AzriCard(
     content: @Composable () -> Unit,
 ) {
     val shape = MaterialTheme.shapes.large
+    // Hairline border so cards stay defined even when the page background equals the
+    // card surface (e.g. the white light-theme background).
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     if (onClick != null) {
         Surface(
             onClick = onClick,
             shape = shape,
             color = MaterialTheme.colorScheme.surface,
             shadowElevation = 1.dp,
+            border = border,
             modifier = modifier,
             content = content,
         )
@@ -38,6 +43,7 @@ fun AzriCard(
             shape = shape,
             color = MaterialTheme.colorScheme.surface,
             shadowElevation = 1.dp,
+            border = border,
             modifier = modifier,
             content = content,
         )

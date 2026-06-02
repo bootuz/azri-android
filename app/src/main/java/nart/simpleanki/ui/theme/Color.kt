@@ -8,7 +8,7 @@ val SAPrimary = Color(0xFF8299E6)        // periwinkle (Color.main)
 val SAOnPrimary = Color(0xFFFFFFFF)
 
 // Screen background (SABackgroundDark / "bgDark")
-val SAScreenLight = Color(0xFFEBEBEB)
+val SAScreenLight = Color(0xFFFFFFFF)
 val SAScreenDark = Color(0xFF1A1A1A)
 
 // Card / row surface (SABackground / "bg")
