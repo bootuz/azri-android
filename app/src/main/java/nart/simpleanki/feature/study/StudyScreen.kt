@@ -38,12 +38,13 @@ import nart.simpleanki.core.domain.model.Rating
 import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import nart.simpleanki.di.StudyArgs
 
 @Composable
 fun StudyScreen(
-    deckId: String,
+    deckId: String?,
     onDone: () -> Unit,
-    viewModel: StudyViewModel = koinViewModel { parametersOf(deckId) },
+    viewModel: StudyViewModel = koinViewModel { parametersOf(StudyArgs(deckId)) },
 ) {
     val state by viewModel.uiState.collectAsState()
     StudyContent(

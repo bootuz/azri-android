@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Azri</string>
+    <string name="app_name">Azri Flashcards</string>
     <string name="sign_in_with_google">Sign in with Google</string>
     <string name="continue_as_guest">Continue as guest</string>
     <string name="sign_out">Sign out</string>

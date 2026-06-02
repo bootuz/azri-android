@@ -56,6 +56,9 @@ interface CardDao {
     @Query("SELECT * FROM cards WHERE isDeleted = 0 AND deckId = :deckId ORDER BY dateCreated")
     fun observeByDeck(deckId: String): Flow<List<CardEntity>>
 
+    @Query("SELECT * FROM cards WHERE isDeleted = 0 ORDER BY dateCreated")
+    fun observeAll(): Flow<List<CardEntity>>
+
     @Query("SELECT deckId AS deckId, COUNT(*) AS count FROM cards WHERE isDeleted = 0 GROUP BY deckId")
     fun observeCardCountsByDeck(): Flow<List<DeckCardCount>>
 

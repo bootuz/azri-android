@@ -46,6 +46,8 @@ class FakeCardDao : CardDao {
     private val store = MutableStateFlow<Map<String, CardEntity>>(emptyMap())
     override fun observeByDeck(deckId: String): Flow<List<CardEntity>> =
         store.map { it.values.filter { e -> !e.isDeleted && e.deckId == deckId }.sortedBy { e -> e.dateCreated } }
+    override fun observeAll(): Flow<List<CardEntity>> =
+        store.map { it.values.filter { e -> !e.isDeleted }.sortedBy { e -> e.dateCreated } }
     override fun observeCardCountsByDeck(): Flow<List<nart.simpleanki.core.data.local.dao.DeckCardCount>> =
         store.map { m -> m.values.filter { !it.isDeleted }.groupingBy { it.deckId }.eachCount()
             .map { (d, c) -> nart.simpleanki.core.data.local.dao.DeckCardCount(d, c) } }

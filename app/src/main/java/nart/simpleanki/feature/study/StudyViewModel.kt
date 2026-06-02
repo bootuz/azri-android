@@ -33,7 +33,8 @@ data class StudyUiState(
  * persists the updated card, and advances.
  */
 class StudyViewModel(
-    private val deckId: String,
+    /** Deck to study, or null to study the global queue across every deck. */
+    private val deckId: String?,
     private val cardRepository: CardRepository,
     private val settingsRepository: SettingsRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
@@ -51,7 +52,11 @@ class StudyViewModel(
     private suspend fun load() {
         val settings = settingsRepository.settings.first()
         scheduling = SchedulingService(settings.preset)
-        val all = cardRepository.observeCards(deckId).first()
+        val all = if (deckId != null) {
+            cardRepository.observeCards(deckId).first()
+        } else {
+            cardRepository.observeAllCards().first()
+        }
         queue.clear()
         queue.addAll(
             StudyQueueBuilder.buildStudyQueue(

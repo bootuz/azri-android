@@ -30,6 +30,7 @@ import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
 import nart.simpleanki.feature.folderdetail.FolderDetailViewModel
 import nart.simpleanki.feature.library.FolderEditViewModel
 import nart.simpleanki.feature.library.LibraryViewModel
+import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.study.StudyViewModel
 import nart.simpleanki.feature.sync.SyncViewModel
 import org.koin.android.ext.koin.androidContext
@@ -45,6 +46,7 @@ private const val WEB_CLIENT_ID =
 data class CardFormArgs(val deckId: String, val cardId: String? = null)
 data class DeckEditArgs(val deckId: String? = null, val folderId: String? = null)
 data class FolderEditArgs(val folderId: String? = null)
+data class StudyArgs(val deckId: String? = null)
 
 /** Root Koin module. */
 val appModule = module {
@@ -94,7 +96,8 @@ val appModule = module {
             folderRepository = get(),
         )
     }
-    viewModel { params -> StudyViewModel(deckId = params.get(), cardRepository = get(), settingsRepository = get()) }
+    viewModel { params -> StudyViewModel(deckId = params.get<StudyArgs>().deckId, cardRepository = get(), settingsRepository = get()) }
+    viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), settingsRepository = get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
         CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)

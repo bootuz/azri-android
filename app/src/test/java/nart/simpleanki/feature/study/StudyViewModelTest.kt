@@ -29,10 +29,21 @@ class StudyViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun newCard(id: String) = Card(
-        id = id, front = "Q$id", back = "A$id", deckId = "d1",
+    private fun newCard(id: String, deckId: String = "d1") = Card(
+        id = id, front = "Q$id", back = "A$id", deckId = deckId,
         dateCreated = now, lastModified = now, fsrsDue = now, fsrsState = CardState.New.value,
     )
+
+    @Test
+    fun nullDeckId_studiesGlobalQueueAcrossDecks() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        repo.upsert(newCard("c1", deckId = "d1"))
+        repo.upsert(newCard("c2", deckId = "d2"))
+        // null deckId = global queue: cards from every deck are included.
+        val vm = StudyViewModel(null, repo, FakeSettingsRepository(), now = { now })
+        runCurrent()
+        assertEquals(2, vm.uiState.value.remaining)
+    }
 
     @Test
     fun loadsQueue_andStartsWithFirstCard() = runTest {
