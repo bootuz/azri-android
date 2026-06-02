@@ -1,14 +1,17 @@
 package nart.simpleanki.feature.decksettings
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -19,7 +22,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MenuAnchorType
@@ -41,10 +43,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.core.domain.model.ColorOption
 import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.di.DeckEditArgs
+import nart.simpleanki.ui.theme.toColor
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -92,19 +96,7 @@ fun DeckEditScreen(
                 label = { Text("Name") },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Text("Color")
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ColorOption.entries.forEach { color ->
-                    FilterChip(
-                        selected = state.color == color,
-                        onClick = { viewModel.onColorChange(color) },
-                        label = { Text(color.wire) },
-                    )
-                }
-            }
+            ColorPicker(selected = state.color, onSelect = viewModel::onColorChange)
             if (state.folders.isNotEmpty()) {
                 FolderPicker(
                     folders = state.folders,
@@ -151,6 +143,49 @@ fun DeckEditScreen(
         )
     }
 }
+
+/** Deck color selector: a dropdown showing each color as a swatch beside its name. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ColorPicker(selected: ColorOption, onSelect: (ColorOption) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selected.displayName(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Color") },
+            leadingIcon = { ColorSwatch(selected) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ColorOption.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.displayName()) },
+                    leadingIcon = { ColorSwatch(option) },
+                    onClick = { onSelect(option); expanded = false },
+                )
+            }
+        }
+    }
+}
+
+/** A small filled circle of a deck [ColorOption], with a hairline so light swatches read. */
+@Composable
+private fun ColorSwatch(color: ColorOption) {
+    Box(
+        Modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .background(color.toColor())
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+    )
+}
+
+private fun ColorOption.displayName(): String = wire.replaceFirstChar { it.uppercase() }
 
 /** Single-choice folder selector backed by a scrollable dropdown (scales to many folders). */
 @OptIn(ExperimentalMaterial3Api::class)
