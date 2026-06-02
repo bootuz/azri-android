@@ -163,11 +163,6 @@ fun ProfileContent(
             )
 
             CategoryHeader("Appearance")
-            ListItem(
-                headlineContent = { Text("Theme") },
-                leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
-                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
-            )
             ThemeSelector(
                 current = state.themeMode,
                 onSelect = onThemeChange,
