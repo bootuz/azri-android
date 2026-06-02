@@ -242,6 +242,10 @@ private fun ThemeSelector(current: ThemeMode, onSelect: (ThemeMode) -> Unit, mod
                 selected = mode == current,
                 onClick = { onSelect(mode) },
                 shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.primary,
+                    activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
                 icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
             ) {
                 Text(label)

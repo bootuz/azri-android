@@ -198,6 +198,10 @@ private fun CustomParameters(
                     selected = settings.customMaxInterval == days,
                     onClick = { onSetCustomMaxInterval(days) },
                     shape = SegmentedButtonDefaults.itemShape(index, MAX_INTERVAL_OPTIONS.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                 ) { Text(label) }
             }
         }
