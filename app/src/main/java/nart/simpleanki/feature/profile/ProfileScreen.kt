@@ -158,6 +158,7 @@ fun ProfileContent(
                 headlineContent = { Text("Spaced repetition") },
                 supportingContent = { Text("${state.preset.name} preset") },
                 leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                 modifier = Modifier.clickable(onClick = onOpenFsrsSettings),
             )
 
@@ -165,6 +166,7 @@ fun ProfileContent(
             ListItem(
                 headlineContent = { Text("Theme") },
                 leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
             )
             ThemeSelector(
                 current = state.themeMode,
