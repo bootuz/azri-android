@@ -1,5 +1,9 @@
 package nart.simpleanki.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.School
@@ -13,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -44,7 +49,13 @@ fun AzriNavHost() {
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
+                // M3's default NavigationBar is 80dp; trim the content to 64dp but keep the
+                // gesture-nav inset below it so nothing sits under the system pill.
+                val gestureInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                NavigationBar(
+                    modifier = Modifier.height(64.dp + gestureInset),
+                    containerColor = MaterialTheme.colorScheme.background,
+                ) {
                     NavigationBarItem(
                         selected = currentRoute == QUEUE,
                         onClick = { nav.switchTab(QUEUE) },
