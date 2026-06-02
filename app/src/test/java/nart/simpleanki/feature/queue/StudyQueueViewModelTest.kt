@@ -12,6 +12,7 @@ import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
+import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
@@ -85,5 +86,45 @@ class StudyQueueViewModelTest {
         assertFalse(s.hasWork)
         assertEquals(0, s.readyCount)
         assertTrue(s.decks.isEmpty())
+    }
+
+    @Test
+    fun studiedToday_countsTodaysReviews_andMeetsGoal_independentOfQueue() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        deckRepo.upsert(Deck(id = "A", name = "Alpha", dateCreated = now, lastModified = now))
+        // Two cards reviewed today (count toward progress) but due in the future (not in queue).
+        cardRepo.upsert(review("a1", "A").copy(fsrsDue = now + 86_400_000L, fsrsLastReview = now))
+        cardRepo.upsert(review("a2", "A").copy(fsrsDue = now + 86_400_000L, fsrsLastReview = now))
+        // One reviewed yesterday — must NOT count toward today.
+        cardRepo.upsert(review("a3", "A").copy(fsrsDue = now + 86_400_000L, fsrsLastReview = now - 2 * 86_400_000L))
+
+        val settings = FakeSettingsRepository(AppSettings(newCardsTarget = 1, reviewCardsTarget = 1)) // goal total = 2
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, settings, now = { now })
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        val s = vm.uiState.value
+        assertEquals(2, s.studiedToday)
+        assertEquals(2, s.goalTotal)
+        assertTrue("goal met even though the queue is empty", s.goalMet)
+        assertFalse("nothing ready today", s.hasWork)
+        assertEquals(0, s.goalRemaining)
+    }
+
+    @Test
+    fun goalMet_isFalse_whenTrackingDisabled() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        cardRepo.upsert(review("a1", "A").copy(fsrsDue = now + 86_400_000L, fsrsLastReview = now))
+
+        val settings = FakeSettingsRepository(
+            AppSettings(dailyGoalEnabled = false, newCardsTarget = 1, reviewCardsTarget = 0),
+        )
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, settings, now = { now })
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        assertFalse(vm.uiState.value.goalMet)
     }
 }

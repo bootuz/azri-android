@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.stateIn
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
+import nart.simpleanki.core.data.settings.dailyGoalTotal
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
+import java.util.Calendar
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.ColorOption
 
@@ -26,14 +28,21 @@ data class DeckQueueItem(
 
 data class StudyQueueUiState(
     val loading: Boolean = true,
-    /** Cards actually scheduled for today across all decks, after daily limits. */
+    /** Cards ready to study today across all decks (uncapped — the daily goal does not limit this). */
     val readyCount: Int = 0,
     val newCount: Int = 0,
     val dueCount: Int = 0,
     val estimatedMinutes: Int = 0,
     val decks: List<DeckQueueItem> = emptyList(),
+    // Daily goal (soft target). [goalMet] is independent of [hasWork]: you can hit your goal
+    // with cards still queued, or clear the queue without reaching it.
+    val dailyGoalEnabled: Boolean = true,
+    val goalTotal: Int = 0,
+    val studiedToday: Int = 0,
 ) {
     val hasWork: Boolean get() = readyCount > 0
+    val goalMet: Boolean get() = dailyGoalEnabled && goalTotal > 0 && studiedToday >= goalTotal
+    val goalRemaining: Int get() = (goalTotal - studiedToday).coerceAtLeast(0)
 }
 
 /**
@@ -57,11 +66,17 @@ class StudyQueueViewModel(
             val queue = StudyQueueBuilder.buildStudyQueue(
                 cards = cards,
                 nowMillis = nowMillis,
-                newLimit = settings.newCardsPerDay,
-                reviewLimit = settings.maxReviewsPerDay,
+                // Uncapped: the daily goal is a soft target, not a queue limit.
+                newLimit = Int.MAX_VALUE,
+                reviewLimit = Int.MAX_VALUE,
             )
             val newCount = queue.count { it.fsrsState == CardState.New.value }
             val dueCount = queue.size - newCount
+
+            val startOfToday = startOfDay(nowMillis)
+            val studiedToday = cards.count {
+                !it.isDeleted && (it.fsrsLastReview ?: 0L) >= startOfToday
+            }
 
             val perDeck = decks.mapNotNull { deck ->
                 val deckCards = cards.filter { it.deckId == deck.id && !it.isDeleted }
@@ -78,6 +93,9 @@ class StudyQueueViewModel(
                 dueCount = dueCount,
                 estimatedMinutes = estimateMinutes(queue.size),
                 decks = perDeck,
+                dailyGoalEnabled = settings.dailyGoalEnabled,
+                goalTotal = settings.dailyGoalTotal,
+                studiedToday = studiedToday,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -88,4 +106,13 @@ class StudyQueueViewModel(
     /** Rough study-time estimate: ~9s per card, at least a minute if there's anything to do. */
     private fun estimateMinutes(cardCount: Int): Int =
         if (cardCount == 0) 0 else ((cardCount * 9 + 59) / 60).coerceAtLeast(1)
+
+    /** Device-local midnight for [nowMillis] — the cutoff for "studied today". */
+    private fun startOfDay(nowMillis: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = nowMillis
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
 }

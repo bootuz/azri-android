@@ -63,8 +63,9 @@ class StudyViewModel(
             StudyQueueBuilder.buildStudyQueue(
                 cards = all,
                 nowMillis = now(),
-                newLimit = settings.newCardsPerDay,
-                reviewLimit = settings.maxReviewsPerDay,
+                // Daily-goal targets are a soft goal, NOT a queue cap — study everything available.
+                newLimit = Int.MAX_VALUE,
+                reviewLimit = Int.MAX_VALUE,
             ),
         )
         val first = queue.firstOrNull()

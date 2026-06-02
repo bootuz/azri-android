@@ -31,6 +31,7 @@ import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
 import nart.simpleanki.feature.folderdetail.FolderDetailViewModel
 import nart.simpleanki.feature.library.FolderEditViewModel
 import nart.simpleanki.feature.library.LibraryViewModel
+import nart.simpleanki.feature.queue.DailyGoalViewModel
 import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.study.StudyViewModel
 import nart.simpleanki.feature.sync.SyncViewModel
@@ -100,6 +101,7 @@ val appModule = module {
     }
     viewModel { params -> StudyViewModel(deckId = params.get<StudyArgs>().deckId, cardRepository = get(), settingsRepository = get()) }
     viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), settingsRepository = get()) }
+    viewModel { DailyGoalViewModel(settingsRepository = get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
         CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)

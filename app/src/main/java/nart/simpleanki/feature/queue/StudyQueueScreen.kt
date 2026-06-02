@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
@@ -21,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -29,8 +31,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,7 +55,16 @@ fun StudyQueueScreen(
     viewModel: StudyQueueViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    StudyQueueContent(state = state, onStudyAll = onStudyAll, onOpenDeck = onOpenDeck)
+    var showGoalSheet by remember { mutableStateOf(false) }
+    StudyQueueContent(
+        state = state,
+        onStudyAll = onStudyAll,
+        onOpenDeck = onOpenDeck,
+        onEditGoal = { showGoalSheet = true },
+    )
+    if (showGoalSheet) {
+        DailyGoalEditorSheet(onDismiss = { showGoalSheet = false })
+    }
 }
 
 /** Stateless study-queue ("Today") UI, decoupled from the ViewModel for testing. */
@@ -59,6 +74,7 @@ fun StudyQueueContent(
     state: StudyQueueUiState,
     onStudyAll: () -> Unit,
     onOpenDeck: (String) -> Unit,
+    onEditGoal: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -77,6 +93,9 @@ fun StudyQueueContent(
             return@Scaffold
         }
         Column(Modifier.fillMaxSize().padding(padding)) {
+            if (state.dailyGoalEnabled && state.goalTotal > 0) {
+                DailyGoalCard(state, onClick = onEditGoal)
+            }
             HeroCard(state, onStudyAll)
             if (state.decks.isNotEmpty()) {
                 Text(
@@ -94,6 +113,36 @@ fun StudyQueueContent(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DailyGoalCard(state: StudyQueueUiState, onClick: () -> Unit) {
+    AzriCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Daily goal", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text(
+                    "${state.studiedToday} / ${state.goalTotal}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { if (state.goalTotal == 0) 0f else (state.studiedToday.toFloat() / state.goalTotal).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                if (state.goalMet) "Goal reached 🎉" else "${state.goalRemaining} to go",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (state.goalMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -118,6 +167,15 @@ private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (state.goalMet) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "You've hit today's goal 🎉 — keep going if you like",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 Spacer(Modifier.height(20.dp))
                 Button(
                     onClick = onStudyAll,
@@ -125,7 +183,11 @@ private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit) {
                     shape = MaterialTheme.shapes.large,
                 ) {
                     Icon(Icons.Filled.School, contentDescription = null)
-                    Text("Study", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        if (state.goalMet) "Keep studying" else "Study",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
                 }
             } else {
                 Icon(
