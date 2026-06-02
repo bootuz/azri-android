@@ -32,7 +32,7 @@ fun AzriCard(
         Surface(
             onClick = onClick,
             shape = shape,
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             shadowElevation = 1.dp,
             border = border,
             modifier = modifier,
@@ -41,7 +41,7 @@ fun AzriCard(
     } else {
         Surface(
             shape = shape,
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             shadowElevation = 1.dp,
             border = border,
             modifier = modifier,

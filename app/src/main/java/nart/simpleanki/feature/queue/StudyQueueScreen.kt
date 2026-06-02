@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -302,7 +303,11 @@ private fun StudyByStrip(
 
 @Composable
 private fun DeckChip(deck: DeckQueueItem, onClick: () -> Unit) {
-    OutlinedCard(onClick = onClick, modifier = Modifier.width(168.dp)) {
+    OutlinedCard(
+        onClick = onClick,
+        modifier = Modifier.width(168.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
         Column(Modifier.padding(12.dp)) {
             ColorAccentIcon(tint = deck.color.toColor()) {
                 Icon(Icons.Outlined.CollectionsBookmark, null, Modifier.size(18.dp))
@@ -325,7 +330,11 @@ private fun DeckChip(deck: DeckQueueItem, onClick: () -> Unit) {
 
 @Composable
 private fun FolderChip(folder: FolderQueueItem, onClick: () -> Unit) {
-    OutlinedCard(onClick = onClick, modifier = Modifier.width(168.dp)) {
+    OutlinedCard(
+        onClick = onClick,
+        modifier = Modifier.width(168.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
         Column(Modifier.padding(12.dp)) {
             ColorAccentIcon(tint = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.Outlined.Folder, null, Modifier.size(18.dp))
