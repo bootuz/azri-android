@@ -105,6 +105,6 @@ val appModule = module {
     }
     viewModel { params ->
         val a = params.get<FolderEditArgs>()
-        FolderEditViewModel(folderRepository = get(), editingFolderId = a.folderId)
+        FolderEditViewModel(folderRepository = get(), deckRepository = get(), editingFolderId = a.folderId)
     }
 }

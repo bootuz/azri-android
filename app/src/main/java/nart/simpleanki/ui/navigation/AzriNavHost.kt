@@ -89,7 +89,12 @@ fun AzriNavHost() {
             FolderEditScreen(folderId = null, onDone = { nav.popBackStack() })
         }
         composable("folderEdit/{folderId}") { entry ->
-            FolderEditScreen(folderId = entry.arguments?.getString("folderId"), onDone = { nav.popBackStack() })
+            FolderEditScreen(
+                folderId = entry.arguments?.getString("folderId"),
+                onDone = { nav.popBackStack() },
+                // Deleting the folder leaves its now-stale folder-detail screen too: pop both.
+                onDeleted = { nav.popBackStack(); nav.popBackStack() },
+            )
         }
     }
 }

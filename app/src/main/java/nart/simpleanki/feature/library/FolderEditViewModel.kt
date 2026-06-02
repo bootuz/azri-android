@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.domain.model.Folder
 import java.util.UUID
@@ -15,6 +16,8 @@ data class FolderEditUiState(
     val emoji: String? = null,
     val isEdit: Boolean = false,
     val saved: Boolean = false,
+    /** Set once the folder is deleted (its decks moved out, not removed), signalling the screen. */
+    val deleted: Boolean = false,
 ) {
     val canSave: Boolean get() = name.isNotBlank()
 }
@@ -22,6 +25,7 @@ data class FolderEditUiState(
 /** Create a new folder or rename/re-emoji an existing one. */
 class FolderEditViewModel(
     private val folderRepository: FolderRepository,
+    private val deckRepository: DeckRepository,
     private val editingFolderId: String? = null,
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
     private val now: () -> Long = { System.currentTimeMillis() },
@@ -58,6 +62,16 @@ class FolderEditViewModel(
             }
             folderRepository.upsert(folder)
             _uiState.value = _uiState.value.copy(saved = true)
+        }
+    }
+
+    /** Deletes the folder being edited but KEEPS its decks: they're moved to no folder first. */
+    fun delete() {
+        val id = editingFolderId ?: return
+        viewModelScope.launch {
+            deckRepository.unfolderAll(id)
+            folderRepository.delete(id)
+            _uiState.value = _uiState.value.copy(deleted = true)
         }
     }
 }

@@ -130,18 +130,42 @@ class EditViewModelsTest {
     fun folder_create_andEdit() = runTest {
         val dao = FakeFolderDao()
         val repo = FolderRepository(dao, now = { now })
-        val create = FolderEditViewModel(repo, idGenerator = { "fold-1" }, now = { now })
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val create = FolderEditViewModel(repo, deckRepo, idGenerator = { "fold-1" }, now = { now })
         create.onNameChange("Languages")
         create.onEmojiChange("🌍")
         create.save(); runCurrent()
         assertEquals("Languages", dao.getById("fold-1")!!.name)
         assertEquals("🌍", dao.getById("fold-1")!!.emoji)
 
-        val edit = FolderEditViewModel(repo, editingFolderId = "fold-1", now = { now })
+        val edit = FolderEditViewModel(repo, deckRepo, editingFolderId = "fold-1", now = { now })
         runCurrent()
         assertEquals("Languages", edit.uiState.value.name)
         edit.onNameChange("Idiomas")
         edit.save(); runCurrent()
         assertEquals("Idiomas", dao.getById("fold-1")!!.name)
+    }
+
+    @Test
+    fun folder_delete_keepsDecks_movingThemOutOfFolder() = runTest {
+        val folderDao = FakeFolderDao()
+        val deckDao = FakeDeckDao()
+        val folderRepo = FolderRepository(folderDao, now = { now })
+        val deckRepo = DeckRepository(deckDao, now = { now })
+        folderRepo.upsert(Folder(id = "f1", name = "Languages", lastModified = now))
+        deckRepo.upsert(Deck(id = "d1", name = "French", folderId = "f1", dateCreated = now, lastModified = now))
+        deckRepo.upsert(Deck(id = "d2", name = "Loose", folderId = null, dateCreated = now, lastModified = now))
+
+        val vm = FolderEditViewModel(folderRepo, deckRepo, editingFolderId = "f1", now = { now })
+        runCurrent()
+        vm.delete(); runCurrent()
+
+        assertTrue(vm.uiState.value.deleted)
+        assertTrue("folder soft-deleted", folderDao.getById("f1")!!.isDeleted)
+        // The folder's deck survives, now folderless — NOT deleted.
+        assertFalse("deck not deleted", deckDao.getById("d1")!!.isDeleted)
+        assertEquals(null, deckDao.getById("d1")!!.folderId)
+        // Unrelated folderless deck untouched.
+        assertEquals(null, deckDao.getById("d2")!!.folderId)
     }
 }

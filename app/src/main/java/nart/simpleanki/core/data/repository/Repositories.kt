@@ -56,6 +56,15 @@ class DeckRepository(
         val existing = dao.getById(id) ?: return
         dao.upsertAll(listOf(existing.copy(isDeleted = true, lastModified = now(), dirty = true)))
     }
+
+    /** Moves every deck out of [folderId] (folderId -> null) — used when the folder is deleted,
+     *  so its decks survive at the top level instead of being orphaned. */
+    suspend fun unfolderAll(folderId: String) {
+        val t = now()
+        val moved = dao.observeByFolder(folderId).first()
+            .map { it.copy(folderId = null, lastModified = t, dirty = true) }
+        if (moved.isNotEmpty()) dao.upsertAll(moved)
+    }
 }
 
 class CardRepository(
