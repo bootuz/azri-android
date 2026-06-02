@@ -101,7 +101,7 @@ val appModule = module {
     }
     viewModel { params ->
         val a = params.get<DeckEditArgs>()
-        DeckEditViewModel(deckRepository = get(), folderRepository = get(), editingDeckId = a.deckId, initialFolderId = a.folderId)
+        DeckEditViewModel(deckRepository = get(), folderRepository = get(), cardRepository = get(), editingDeckId = a.deckId, initialFolderId = a.folderId)
     }
     viewModel { params ->
         val a = params.get<FolderEditArgs>()

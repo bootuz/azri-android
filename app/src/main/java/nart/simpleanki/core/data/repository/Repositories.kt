@@ -1,6 +1,7 @@
 package nart.simpleanki.core.data.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
@@ -85,5 +86,13 @@ class CardRepository(
     suspend fun delete(id: String) {
         val existing = dao.getById(id) ?: return
         dao.upsertAll(listOf(existing.copy(isDeleted = true, lastModified = now(), dirty = true)))
+    }
+
+    /** Cascade: soft-deletes every (non-deleted) card in a deck — used when the deck is deleted. */
+    suspend fun deleteByDeck(deckId: String) {
+        val t = now()
+        val deleted = dao.observeByDeck(deckId).first()
+            .map { it.copy(isDeleted = true, lastModified = t, dirty = true) }
+        if (deleted.isNotEmpty()) dao.upsertAll(deleted)
     }
 }

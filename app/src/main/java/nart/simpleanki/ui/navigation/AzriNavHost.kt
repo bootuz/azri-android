@@ -74,7 +74,13 @@ fun AzriNavHost() {
             DeckEditScreen(deckId = null, folderId = null, onDone = { nav.popBackStack() })
         }
         composable("deckEdit/{deckId}") { entry ->
-            DeckEditScreen(deckId = entry.arguments?.getString("deckId"), folderId = null, onDone = { nav.popBackStack() })
+            DeckEditScreen(
+                deckId = entry.arguments?.getString("deckId"),
+                folderId = null,
+                onDone = { nav.popBackStack() },
+                // Deleting the deck leaves the now-stale deck-detail screen too: pop both.
+                onDeleted = { nav.popBackStack(); nav.popBackStack() },
+            )
         }
         composable("deckEditInFolder/{folderId}") { entry ->
             DeckEditScreen(deckId = null, folderId = entry.arguments?.getString("folderId"), onDone = { nav.popBackStack() })

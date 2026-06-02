@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.domain.model.ColorOption
@@ -25,6 +26,8 @@ data class DeckEditUiState(
     val folders: List<Folder> = emptyList(),
     val isEdit: Boolean = false,
     val saved: Boolean = false,
+    /** Set once the deck (and its cards) have been deleted, signalling the screen to leave. */
+    val deleted: Boolean = false,
 ) {
     val canSave: Boolean get() = name.isNotBlank()
 }
@@ -33,6 +36,7 @@ data class DeckEditUiState(
 class DeckEditViewModel(
     private val deckRepository: DeckRepository,
     folderRepository: FolderRepository,
+    private val cardRepository: CardRepository,
     private val editingDeckId: String? = null,
     private val initialFolderId: String? = null,
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
@@ -93,6 +97,16 @@ class DeckEditViewModel(
             }
             deckRepository.upsert(deck)
             _uiState.value = _uiState.value.copy(saved = true)
+        }
+    }
+
+    /** Deletes the deck being edited along with all of its cards (cascade), then signals the screen. */
+    fun delete() {
+        val id = editingDeckId ?: return
+        viewModelScope.launch {
+            cardRepository.deleteByDeck(id)
+            deckRepository.delete(id)
+            _uiState.value = _uiState.value.copy(deleted = true)
         }
     }
 }
