@@ -25,3 +25,4 @@ app/google-services.json
 *.jks
 *.keystore
 keystore.properties
+.superpowers/
