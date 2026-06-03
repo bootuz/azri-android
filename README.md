@@ -1,5 +1,8 @@
 # Azri Flashcards — Android
 
+[![CI](https://github.com/bootuz/azri-android/actions/workflows/ci.yml/badge.svg)](https://github.com/bootuz/azri-android/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 A spaced-repetition flashcard app built with Jetpack Compose and the FSRS-6 scheduling
 algorithm. Decks, folders, cloud sync, daily study queue, reverse cards, and a daily-goal
 tracker — backed by Firebase.

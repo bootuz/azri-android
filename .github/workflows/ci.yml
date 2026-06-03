@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  unit-tests:
-    name: Unit tests
+  build-and-test:
+    name: Build & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +62,9 @@ jobs:
       - name: Run JVM unit tests
         run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -69,3 +72,11 @@ jobs:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
