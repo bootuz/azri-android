@@ -41,6 +41,7 @@ import nart.simpleanki.feature.notifications.NotificationsViewModel
 import nart.simpleanki.feature.queue.DailyGoalViewModel
 import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.study.StudyViewModel
+import nart.simpleanki.feature.paywall.PaywallViewModel
 import nart.simpleanki.feature.sync.SyncViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
@@ -122,6 +123,7 @@ val appModule = module {
     viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get()) }
     viewModel { DailyGoalViewModel(settingsRepository = get()) }
     viewModel { NotificationsViewModel(settingsRepository = get(), scheduler = get()) }
+    viewModel { PaywallViewModel(get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
         CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)

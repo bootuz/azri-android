@@ -44,6 +44,7 @@ import nart.simpleanki.feature.folderdetail.FolderDetailScreen
 import nart.simpleanki.feature.library.FolderEditScreen
 import nart.simpleanki.feature.library.LibraryScreen
 import nart.simpleanki.feature.notifications.NotificationsScreen
+import nart.simpleanki.feature.paywall.PaywallScreen
 import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
@@ -170,6 +171,9 @@ fun AzriNavHost() {
             }
             composable("notifications") {
                 NotificationsScreen(onBack = { nav.popBackStack() })
+            }
+            composable("paywall") {
+                PaywallScreen(onClose = { nav.popBackStack() })
             }
             composable("deck/{deckId}") { entry ->
                 val deckId = entry.arguments?.getString("deckId").orEmpty()
