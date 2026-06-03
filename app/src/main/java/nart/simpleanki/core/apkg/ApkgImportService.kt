@@ -2,6 +2,7 @@ package nart.simpleanki.core.apkg
 
 import android.content.Context
 import android.net.Uri
+import com.github.luben.zstd.ZstdInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import nart.simpleanki.core.data.media.MediaManager
@@ -32,7 +33,7 @@ class DefaultApkgImportService(
     private val cardRepository: CardRepository,
     private val appContext: Context? = null,          // null in unit tests (parse not exercised there)
     private val legacyReader: AnkiCollectionReader = LegacyApkgReader(),
-    private val v3Reader: AnkiCollectionReader = LegacyApkgReader(), // replaced in a later task
+    private val v3Reader: AnkiCollectionReader = V3ApkgReader(),
     private val openDb: (File) -> AnkiSqlite = { AndroidAnkiSqlite.open(it) },
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
     private val now: () -> Long = { System.currentTimeMillis() },
@@ -51,11 +52,18 @@ class DefaultApkgImportService(
             unzipper.unzip(apkg, extracted)
 
             val format = detector.detect(extracted)
-            val dbFile = when (format) {
-                ApkgFormat.LEGACY -> detector.legacyDbFile(extracted)
-                ApkgFormat.V3 -> throw ApkgImportError.UnsupportedSchema   // wired in a later task
+            val reader: AnkiCollectionReader
+            val dbFile: File = when (format) {
+                ApkgFormat.LEGACY -> { reader = legacyReader; detector.legacyDbFile(extracted) }
+                ApkgFormat.V3 -> {
+                    reader = v3Reader
+                    val out = File(work, "collection.db")
+                    ZstdInputStream(File(extracted, "collection.anki21b").inputStream()).use { zin ->
+                        out.outputStream().use { zin.copyTo(it) }
+                    }
+                    out
+                }
             }
-            val reader = if (format == ApkgFormat.V3) v3Reader else legacyReader
             val db = openDb(dbFile)
             val data = try { reader.read(db) } finally { db.close() }
 
