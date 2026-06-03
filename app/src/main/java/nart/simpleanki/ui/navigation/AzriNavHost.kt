@@ -53,6 +53,7 @@ import nart.simpleanki.feature.study.StudyScreen
 private const val QUEUE = "queue"
 private const val LIBRARY = "library"
 private const val PROFILE = "profile"
+private const val PAYWALL = "paywall"
 
 /** Signed-in navigation graph with a bottom tab bar: Queue (default), Library, Profile. */
 @Composable
@@ -109,7 +110,9 @@ fun AzriNavHost() {
         NavHost(
             navController = nav,
             startDestination = QUEUE,
-            modifier = Modifier.padding(padding),
+            // The paywall is an immersive full-screen takeover — it draws its own dark background
+            // behind the system bars and handles insets itself, so skip the Scaffold inset padding.
+            modifier = if (currentRoute == PAYWALL) Modifier else Modifier.padding(padding),
             // Forward: incoming enters from the right (+30dp), outgoing exits left (−30dp).
             enterTransition = { slideInHorizontally(slideSpec) { slide } + fadeThroughIn },
             exitTransition = { slideOutHorizontally(slideSpec) { -slide } + fadeThroughOut },
@@ -174,7 +177,7 @@ fun AzriNavHost() {
             composable("notifications") {
                 NotificationsScreen(onBack = { nav.popBackStack() })
             }
-            composable("paywall") {
+            composable(PAYWALL) {
                 PaywallScreen(onClose = { nav.popBackStack() })
             }
             composable("deck/{deckId}") { entry ->

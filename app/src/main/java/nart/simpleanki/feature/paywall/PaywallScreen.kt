@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,12 +41,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import java.util.Locale
 import nart.simpleanki.R
 import nart.simpleanki.core.billing.BillingProducts
@@ -66,6 +70,22 @@ private val accentBrush = Brush.linearGradient(listOf(AccentStart, AccentEnd))
 fun PaywallScreen(onClose: () -> Unit, viewModel: PaywallViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val activity = LocalContext.current as? Activity
+    // The paywall is always dark, so force light system-bar icons while it's shown (the clock /
+    // battery would otherwise be dark-on-navy). Restore the app's setting when it closes.
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        val controller = activity?.window?.let { WindowCompat.getInsetsController(it, view) }
+        val prevStatus = controller?.isAppearanceLightStatusBars
+        val prevNav = controller?.isAppearanceLightNavigationBars
+        controller?.isAppearanceLightStatusBars = false
+        controller?.isAppearanceLightNavigationBars = false
+        onDispose {
+            controller?.let {
+                if (prevStatus != null) it.isAppearanceLightStatusBars = prevStatus
+                if (prevNav != null) it.isAppearanceLightNavigationBars = prevNav
+            }
+        }
+    }
     // Close automatically once premium is unlocked (side effect, not during composition).
     LaunchedEffect(state.isPremium, state.result) {
         if (state.isPremium && state.result == PurchaseResult.Success) onClose()
@@ -92,7 +112,9 @@ fun PaywallContent(
 ) {
     Box(Modifier.fillMaxSize().background(Bg)) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+            // Background (the Box) bleeds behind the status/nav bars; the content inset-pads so it
+            // clears them.
+            Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
         ) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = "Close", tint = Muted)
