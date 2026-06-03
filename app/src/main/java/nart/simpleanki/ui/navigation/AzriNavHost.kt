@@ -26,6 +26,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -44,7 +47,7 @@ import nart.simpleanki.feature.folderdetail.FolderDetailScreen
 import nart.simpleanki.feature.library.FolderEditScreen
 import nart.simpleanki.feature.library.LibraryScreen
 import nart.simpleanki.feature.notifications.NotificationsScreen
-import nart.simpleanki.feature.paywall.PaywallScreen
+import nart.simpleanki.feature.paywall.PaywallSheet
 import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
@@ -53,7 +56,6 @@ import nart.simpleanki.feature.study.StudyScreen
 private const val QUEUE = "queue"
 private const val LIBRARY = "library"
 private const val PROFILE = "profile"
-private const val PAYWALL = "paywall"
 
 /** Signed-in navigation graph with a bottom tab bar: Queue (default), Library, Profile. */
 @Composable
@@ -63,6 +65,8 @@ fun AzriNavHost() {
     val currentRoute = backStackEntry?.destination?.route
     // The bottom bar only shows on the top-level tabs, not on pushed detail screens.
     val showBottomBar = currentRoute == QUEUE || currentRoute == LIBRARY || currentRoute == PROFILE
+    // The paywall is a modal sheet overlaying any screen (not a nav route).
+    var showPaywall by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {
@@ -110,9 +114,7 @@ fun AzriNavHost() {
         NavHost(
             navController = nav,
             startDestination = QUEUE,
-            // The paywall is an immersive full-screen takeover — it draws its own dark background
-            // behind the system bars and handles insets itself, so skip the Scaffold inset padding.
-            modifier = if (currentRoute == PAYWALL) Modifier else Modifier.padding(padding),
+            modifier = Modifier.padding(padding),
             // Forward: incoming enters from the right (+30dp), outgoing exits left (−30dp).
             enterTransition = { slideInHorizontally(slideSpec) { slide } + fadeThroughIn },
             exitTransition = { slideOutHorizontally(slideSpec) { -slide } + fadeThroughOut },
@@ -135,7 +137,7 @@ fun AzriNavHost() {
                     onStudyDeck = { nav.navigate("study/$it") },
                     onStudyFolder = { nav.navigate("studyFolder/$it") },
                     onGoToLibrary = { nav.switchTab(LIBRARY) },
-                    onOpenPaywall = { nav.navigate("paywall") },
+                    onOpenPaywall = { showPaywall = true },
                 )
             }
             composable(
@@ -158,7 +160,7 @@ fun AzriNavHost() {
                 ProfileScreen(
                     onOpenFsrsSettings = { nav.navigate("fsrsSettings") },
                     onOpenNotifications = { nav.navigate("notifications") },
-                    onOpenPaywall = { nav.navigate("paywall") },
+                    onOpenPaywall = { showPaywall = true },
                 )
             }
             composable("folder/{folderId}") { entry ->
@@ -176,9 +178,6 @@ fun AzriNavHost() {
             }
             composable("notifications") {
                 NotificationsScreen(onBack = { nav.popBackStack() })
-            }
-            composable(PAYWALL) {
-                PaywallScreen(onClose = { nav.popBackStack() })
             }
             composable("deck/{deckId}") { entry ->
                 val deckId = entry.arguments?.getString("deckId").orEmpty()
@@ -252,6 +251,10 @@ fun AzriNavHost() {
                 )
             }
         }
+    }
+
+    if (showPaywall) {
+        PaywallSheet(onDismiss = { showPaywall = false })
     }
 }
 
