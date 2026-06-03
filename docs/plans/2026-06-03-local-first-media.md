@@ -683,10 +683,16 @@ Replace `onImagePicked` and `onAudioRecorded`:
 
 (The `MediaUploader` import is no longer needed in this file — remove it.)
 
-- [ ] **Step 4: Flip the card-form preview gating in `CardFormScreen.kt`**
+- [ ] **Step 4: Flip ALL FOUR card-form gates in `CardFormScreen.kt` from path → name**
 
-The image preview wrapper: change `if (state.imagePath != null) {` → `if (state.imageName != null) {`.
-The audio row wrapper: change `if (state.audioPath != null) {` → `if (state.audioName != null) {`.
+Local-only media has `imageName`/`audioName` set but `imagePath`/`audioPath == null`, so every gate that currently keys on the path must key on the name — otherwise the preview and the "add" chip would both show at once. There are FOUR gates (confirm exact lines with grep before editing):
+
+- Image **preview** wrapper (~line 217): `if (state.imagePath != null) {` → `if (state.imageName != null) {`
+- Audio **preview** wrapper (~line 243): `if (state.audioPath != null) {` → `if (state.audioName != null) {`
+- "Add image" **chip** wrapper (~line 255): `if (state.imagePath == null) {` → `if (state.imageName == null) {`
+- "Record audio" **chip** wrapper (~line 269): `if (state.audioPath == null) {` → `if (state.audioName == null) {`
+
+(The "Uploading…" label on the add-image chip still reads from `state.uploadingImage`; leave it — it now reflects the brief local-save and is harmless.)
 
 - [ ] **Step 5: Rewire DI in `AppModule.kt`**
 
