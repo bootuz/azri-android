@@ -133,10 +133,11 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
             ) { Text("Show answer", style = MaterialTheme.typography.labelLarge) }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RatingButton("Again", state.ratingIntervals[Rating.Again], Color(0xFFA02A2A), Modifier.weight(1f)) { onRate(Rating.Again) }
-                RatingButton("Hard", state.ratingIntervals[Rating.Hard], Color(0xFFC25E1D), Modifier.weight(1f)) { onRate(Rating.Hard) }
-                RatingButton("Good", state.ratingIntervals[Rating.Good], Color(0xFF1F8A47), Modifier.weight(1f)) { onRate(Rating.Good) }
-                RatingButton("Easy", state.ratingIntervals[Rating.Easy], Color(0xFF1F60B8), Modifier.weight(1f)) { onRate(Rating.Easy) }
+                // iOS rating colors (SwiftUI system): again=pink, hard=orange, good=indigo, easy=mint.
+                RatingButton("Again", state.ratingIntervals[Rating.Again], Color(0xFFFF2D55), Modifier.weight(1f)) { onRate(Rating.Again) }
+                RatingButton("Hard", state.ratingIntervals[Rating.Hard], Color(0xFFFF9500), Modifier.weight(1f)) { onRate(Rating.Hard) }
+                RatingButton("Good", state.ratingIntervals[Rating.Good], Color(0xFF5856D6), Modifier.weight(1f)) { onRate(Rating.Good) }
+                RatingButton("Easy", state.ratingIntervals[Rating.Easy], Color(0xFF00C7BE), Modifier.weight(1f)) { onRate(Rating.Easy) }
             }
         }
     }
