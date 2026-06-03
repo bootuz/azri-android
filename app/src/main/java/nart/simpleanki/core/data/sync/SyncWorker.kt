@@ -9,6 +9,8 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.google.firebase.auth.FirebaseAuth
+import nart.simpleanki.core.billing.EntitlementRepository
+import nart.simpleanki.core.billing.Entitlements
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.concurrent.TimeUnit
@@ -25,10 +27,15 @@ class SyncWorker(
 
     private val syncManager: SyncManager by inject()
     private val auth: FirebaseAuth by inject()
+    private val entitlements: EntitlementRepository by inject()
 
     override suspend fun doWork(): Result {
-        val uid = auth.currentUser?.uid ?: return Result.success() // nothing to sync when signed out
-        return runCatching { syncManager.sync(uid) }
+        val user = auth.currentUser ?: return Result.success()
+        val signedInWithGoogle = !user.isAnonymous
+        if (!Entitlements.shouldSync(entitlements.entitlement.value.isPremium, signedInWithGoogle)) {
+            return Result.success() // free tier: nothing to sync
+        }
+        return runCatching { syncManager.sync(user.uid) }
             .fold(onSuccess = { Result.success() }, onFailure = { Result.retry() })
     }
 
