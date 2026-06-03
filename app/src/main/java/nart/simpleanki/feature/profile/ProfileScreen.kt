@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -192,7 +191,7 @@ fun ProfileContent(
                         when {
                             state.isPremium && !state.isAnonymous -> "Synced"
                             state.isPremium && state.isAnonymous -> "Sign in to start syncing"
-                            else -> "Off — tap to back up"
+                            else -> "Off — tap to sync your cards"
                         }
                     )
                 },
@@ -202,13 +201,6 @@ fun ProfileContent(
                         contentDescription = null,
                     )
                 },
-                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
-                modifier = if (state.isPremium) Modifier else Modifier.clickable(onClick = onOpenPaywall),
-            )
-            ListItem(
-                headlineContent = { Text("Unlock Cloud Sync") },
-                supportingContent = { Text(if (state.isPremium) "Active · thank you!" else "Back up & sync your cards") },
-                leadingContent = { Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                 modifier = if (state.isPremium) Modifier else Modifier.clickable(onClick = onOpenPaywall),
             )
