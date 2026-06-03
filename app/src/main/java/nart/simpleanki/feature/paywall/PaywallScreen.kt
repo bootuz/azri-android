@@ -41,9 +41,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import nart.simpleanki.core.billing.BillingProducts
 import nart.simpleanki.core.billing.PlanOption
 import nart.simpleanki.core.billing.PlanPricing
 import nart.simpleanki.core.billing.PremiumTier
@@ -223,3 +225,29 @@ private fun planSubtitle(t: PremiumTier, price: String) = when (t) {
     PremiumTier.Lifetime -> "$price · pay once"; PremiumTier.None -> ""
 }
 private fun formatMicros(micros: Long): String = "$" + String.format(Locale.US, "%.2f", micros / 1_000_000.0)
+
+// --- @Preview ---
+// Sample plans for previews (real prices come from Play at runtime).
+private val previewPlans = listOf(
+    PlanOption(PremiumTier.Annual, BillingProducts.SUBSCRIPTION_ID, BillingProducts.BASE_PLAN_ANNUAL, "tokA", "$19.99", 19_990_000L),
+    PlanOption(PremiumTier.Monthly, BillingProducts.SUBSCRIPTION_ID, BillingProducts.BASE_PLAN_MONTHLY, "tokM", "$2.99", 2_990_000L),
+    PlanOption(PremiumTier.Lifetime, BillingProducts.LIFETIME_ID, null, null, "$49.99", 49_990_000L),
+)
+
+@Preview(name = "Paywall · plans")
+@Composable
+private fun PaywallPlansPreview() {
+    PaywallContent(state = PaywallUiState(plans = previewPlans, selected = PremiumTier.Annual, loading = false))
+}
+
+@Preview(name = "Paywall · loading")
+@Composable
+private fun PaywallLoadingPreview() {
+    PaywallContent(state = PaywallUiState(loading = true))
+}
+
+@Preview(name = "Paywall · unavailable")
+@Composable
+private fun PaywallUnavailablePreview() {
+    PaywallContent(state = PaywallUiState(loading = false, plansUnavailable = true))
+}
