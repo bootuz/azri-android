@@ -49,4 +49,17 @@ class PaywallContentTest {
         rule.onNodeWithText("Restore purchase").performClick()
         assertTrue(bought && restored)
     }
+
+    @Test fun plansUnavailable_showsRetry_andFiresCallback() {
+        var retried = false
+        rule.setContent {
+            PaywallContent(
+                state = PaywallUiState(loading = false, plansUnavailable = true),
+                onRetry = { retried = true },
+            )
+        }
+        rule.onNodeWithText("Plans unavailable").assertIsDisplayed()
+        rule.onNodeWithText("Try again").performClick()
+        assertTrue(retried)
+    }
 }

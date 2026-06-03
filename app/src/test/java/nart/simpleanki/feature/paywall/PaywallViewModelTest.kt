@@ -33,9 +33,31 @@ class PaywallViewModelTest {
         runCurrent()
         val s = vm.uiState.value
         assertFalse(s.loading)
+        assertFalse(s.plansUnavailable)
         assertEquals(3, s.plans.size)
         assertEquals(PremiumTier.Annual, s.selected)
         assertEquals(1, repo.refreshCount)
+    }
+
+    @Test fun noPlansAfterLoad_marksUnavailable_notLoading() = runTest {
+        // Store returns nothing (offline / not installed from Play): finish loading, mark unavailable.
+        val repo = FakeEntitlementRepository(plans = emptyList())
+        val vm = PaywallViewModel(repo)
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        val s = vm.uiState.value
+        assertFalse("load attempt finished", s.loading)
+        assertTrue("empty store → unavailable", s.plansUnavailable)
+    }
+
+    @Test fun retry_refetchesPlans() = runTest {
+        val repo = FakeEntitlementRepository(plans = emptyList())
+        val vm = PaywallViewModel(repo)
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        assertEquals(1, repo.refreshCount)
+        vm.retry(); runCurrent()
+        assertEquals(2, repo.refreshCount)
     }
 
     @Test fun select_changesSelectedTier() = runTest {

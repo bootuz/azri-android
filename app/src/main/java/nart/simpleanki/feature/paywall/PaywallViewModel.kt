@@ -18,6 +18,8 @@ data class PaywallUiState(
     val plans: List<PlanOption> = emptyList(),
     val selected: PremiumTier = PremiumTier.Annual,
     val loading: Boolean = true,
+    /** A load finished but the store returned no plans (offline, Play unavailable, or not installed from Play). */
+    val plansUnavailable: Boolean = false,
     val isPremium: Boolean = false,
     val purchasing: Boolean = false,
     val result: PurchaseResult? = null,
@@ -31,23 +33,47 @@ class PaywallViewModel(
     private val selected = MutableStateFlow(PremiumTier.Annual)
     private val purchasing = MutableStateFlow(false)
     private val result = MutableStateFlow<PurchaseResult?>(null)
+    /** False until the first plan-load attempt completes — drives the initial spinner. */
+    private val loadAttempted = MutableStateFlow(false)
+
+    private data class Bits(
+        val selected: PremiumTier,
+        val purchasing: Boolean,
+        val result: PurchaseResult?,
+        val attempted: Boolean,
+    )
 
     val uiState: StateFlow<PaywallUiState> =
-        combine(repository.plans, repository.entitlement, selected, purchasing, result) {
-            plans, entitlement, sel, isPurchasing, res ->
+        combine(
+            repository.plans,
+            repository.entitlement,
+            combine(selected, purchasing, result, loadAttempted) { s, p, r, a -> Bits(s, p, r, a) },
+        ) { plans, entitlement, bits ->
             PaywallUiState(
                 plans = plans,
-                selected = plans.firstOrNull { it.tier == sel }?.tier
+                selected = plans.firstOrNull { it.tier == bits.selected }?.tier
                     ?: plans.firstOrNull { it.tier == PremiumTier.Annual }?.tier
-                    ?: plans.firstOrNull()?.tier ?: sel,
-                loading = plans.isEmpty() && !isPurchasing,
+                    ?: plans.firstOrNull()?.tier ?: bits.selected,
+                // Spinner only until the first load attempt finishes; afterwards an empty list
+                // means "unavailable", not "still loading".
+                loading = !bits.attempted,
+                plansUnavailable = bits.attempted && plans.isEmpty(),
                 isPremium = entitlement.isPremium,
-                purchasing = isPurchasing,
-                result = res,
+                purchasing = bits.purchasing,
+                result = bits.result,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PaywallUiState())
 
-    init { viewModelScope.launch { repository.refresh() } }
+    init { viewModelScope.launch { repository.refresh(); loadAttempted.value = true } }
+
+    /** Re-attempt a plan load (e.g. user tapped Retry on the unavailable state). */
+    fun retry() {
+        viewModelScope.launch {
+            loadAttempted.value = false
+            repository.refresh()
+            loadAttempted.value = true
+        }
+    }
 
     fun select(tier: PremiumTier) { selected.value = tier }
 

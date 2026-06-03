@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -71,6 +72,7 @@ fun PaywallScreen(onClose: () -> Unit, viewModel: PaywallViewModel = koinViewMod
         onSelect = viewModel::select,
         onPurchase = { activity?.let(viewModel::purchase) },
         onRestore = viewModel::restore,
+        onRetry = viewModel::retry,
     )
 }
 
@@ -82,6 +84,7 @@ fun PaywallContent(
     onSelect: (PremiumTier) -> Unit = {},
     onPurchase: () -> Unit = {},
     onRestore: () -> Unit = {},
+    onRetry: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize().background(Bg)) {
         Column(
@@ -104,33 +107,40 @@ fun PaywallContent(
             FeatureRow("Safe, encrypted backup")
             Spacer(Modifier.height(20.dp))
 
-            if (state.loading) {
-                Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = AccentStart)
+            when {
+                state.loading -> {
+                    Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = AccentStart)
+                    }
                 }
-            } else {
-                val monthly = state.plans.firstOrNull { it.tier == PremiumTier.Monthly }
-                state.plans.forEach { plan ->
-                    PlanRow(
-                        plan = plan,
-                        selected = plan.tier == state.selected,
-                        monthlyMicros = monthly?.priceAmountMicros ?: 0L,
-                        onClick = { onSelect(plan.tier) },
-                    )
-                    Spacer(Modifier.height(10.dp))
+                state.plansUnavailable -> {
+                    PlansUnavailable(onRetry = onRetry)
+                }
+                else -> {
+                    val monthly = state.plans.firstOrNull { it.tier == PremiumTier.Monthly }
+                    state.plans.forEach { plan ->
+                        PlanRow(
+                            plan = plan,
+                            selected = plan.tier == state.selected,
+                            monthlyMicros = monthly?.priceAmountMicros ?: 0L,
+                            onClick = { onSelect(plan.tier) },
+                        )
+                        Spacer(Modifier.height(10.dp))
+                    }
                 }
             }
 
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onPurchase,
-                enabled = !state.purchasing && state.plans.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentStart, contentColor = Color.White),
-            ) { Text(if (state.purchasing) "Processing…" else "Continue", fontWeight = FontWeight.Bold) }
-
-            Spacer(Modifier.height(8.dp))
+            if (!state.plansUnavailable) {
+                Button(
+                    onClick = onPurchase,
+                    enabled = !state.purchasing && state.plans.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentStart, contentColor = Color.White),
+                ) { Text(if (state.purchasing) "Processing…" else "Continue", fontWeight = FontWeight.Bold) }
+                Spacer(Modifier.height(8.dp))
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 TextButton(onClick = onRestore) { Text("Restore purchase", color = Muted) }
             }
@@ -150,6 +160,27 @@ private fun FeatureRow(text: String) {
         }
         Spacer(Modifier.width(10.dp))
         Text(text, color = Ink, fontSize = 14.sp)
+    }
+}
+
+@Composable
+private fun PlansUnavailable(onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("Plans unavailable", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Couldn't reach the store. Make sure you're online and signed in to Google Play, then try again.",
+            color = Muted, fontSize = 13.sp, textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentStart, contentColor = Color.White),
+        ) { Text("Try again", fontWeight = FontWeight.Bold) }
     }
 }
 
