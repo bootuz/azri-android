@@ -10,14 +10,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
-import nart.simpleanki.core.data.media.MediaUploader
+import nart.simpleanki.core.data.media.MediaManager
 import org.koin.compose.koinInject
 
-/** Plays a card's audio from Firebase Storage (resolves the download URL, streams via MediaPlayer). */
+/** Plays a card's audio local-first (resolves the file via [MediaManager], streams via MediaPlayer). */
 @Composable
 fun AudioPlayButton(
-    audioPath: String,
-    uploader: MediaUploader = koinInject(),
+    name: String,
+    cloudPath: String?,
+    media: MediaManager = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     val player = remember { MediaPlayer() }
@@ -26,10 +27,10 @@ fun AudioPlayButton(
     }
     IconButton(onClick = {
         scope.launch {
-            val url = uploader.downloadUrl(audioPath).getOrNull() ?: return@launch
+            val file = media.resolve(name, cloudPath) ?: return@launch
             runCatching {
                 player.reset()
-                player.setDataSource(url)
+                player.setDataSource(file.absolutePath)
                 player.setOnPreparedListener { it.start() }
                 player.prepareAsync()
             }

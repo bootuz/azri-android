@@ -103,13 +103,13 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                card.imagePath?.let { path ->
-                    nart.simpleanki.ui.components.MediaImage(path, Modifier.fillMaxWidth().height(160.dp))
+                card.image?.let { name ->
+                    nart.simpleanki.ui.components.MediaImage(name, card.imagePath, Modifier.fillMaxWidth().height(160.dp))
                     Spacer(Modifier.height(16.dp))
                 }
                 Text(card.front, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                card.audioPath?.let { path ->
-                    nart.simpleanki.ui.components.AudioPlayButton(path)
+                card.audioName?.let { name ->
+                    nart.simpleanki.ui.components.AudioPlayButton(name, card.audioPath)
                 }
                 if (state.isRevealed) {
                     Spacer(Modifier.height(16.dp))

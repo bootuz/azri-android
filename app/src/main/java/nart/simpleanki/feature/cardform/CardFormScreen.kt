@@ -222,6 +222,7 @@ fun CardFormContent(
                         .clip(MaterialTheme.shapes.large),
                 ) {
                     MediaImage(
+                        state.imageName ?: "",
                         state.imagePath,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -241,7 +242,7 @@ fun CardFormContent(
             // Audio attached
             if (state.audioPath != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    AudioPlayButton(state.audioPath)
+                    AudioPlayButton(state.audioName ?: "", state.audioPath)
                     Text("Audio attached", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     IconButton(onClick = onRemoveAudio) {
                         Icon(Icons.Default.Delete, contentDescription = "Remove audio", tint = MaterialTheme.colorScheme.onSurfaceVariant)
