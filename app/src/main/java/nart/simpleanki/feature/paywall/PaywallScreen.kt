@@ -21,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -108,9 +107,9 @@ fun PaywallContent(
             Text("Unlock cloud sync & backup", color = Muted, fontSize = 14.sp)
             Spacer(Modifier.height(20.dp))
 
-            FeatureRow("Continuous cloud sync")
-            FeatureRow("Every device, always current")
-            FeatureRow("Safe, encrypted backup")
+            FeatureRow("☁️", "Continuous cloud sync")
+            FeatureRow("📱", "Every device, always current")
+            FeatureRow("🔒", "Safe, encrypted backup")
             Spacer(Modifier.height(20.dp))
 
             when {
@@ -159,12 +158,10 @@ fun PaywallContent(
 }
 
 @Composable
-private fun FeatureRow(text: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(22.dp).clip(RoundedCornerShape(50)).background(accentBrush), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-        }
-        Spacer(Modifier.width(10.dp))
+private fun FeatureRow(emoji: String, text: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(emoji, fontSize = 18.sp)
+        Spacer(Modifier.width(12.dp))
         Text(text, color = Ink, fontSize = 14.sp)
     }
 }
