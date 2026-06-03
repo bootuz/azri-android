@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import nart.simpleanki.core.data.media.MediaUploader
+import nart.simpleanki.core.data.media.MediaManager
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
@@ -33,14 +33,15 @@ data class CardFormUiState(
 }
 
 /**
- * Add or edit a card. Supports attaching an image (uploaded to Firebase Storage at the
- * iOS-matching path). When [CardFormUiState.createReverse] is set for a new card, a second
- * reversed card is created with swapped front/back and a shared [Card.pairId].
+ * Add or edit a card. Supports attaching an image and an audio clip, saved on-device via
+ * [MediaManager]; upload to the cloud happens later during premium sync. When
+ * [CardFormUiState.createReverse] is set for a new card, a second reversed card is created
+ * with swapped front/back and a shared [Card.pairId].
  */
 class CardFormViewModel(
     private val deckId: String,
     private val cardRepository: CardRepository,
-    private val mediaUploader: MediaUploader,
+    private val mediaManager: MediaManager,
     private val editingCardId: String? = null,
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
     private val now: () -> Long = { System.currentTimeMillis() },
@@ -75,26 +76,16 @@ class CardFormViewModel(
     fun onImagePicked(bytes: ByteArray) {
         _uiState.value = _uiState.value.copy(uploadingImage = true)
         viewModelScope.launch {
-            mediaUploader.uploadImage(bytes)
-                .onSuccess { ref ->
-                    _uiState.value = _uiState.value.copy(
-                        imageName = ref.name, imagePath = ref.path, uploadingImage = false,
-                    )
-                }
-                .onFailure { _uiState.value = _uiState.value.copy(uploadingImage = false) }
+            val name = mediaManager.saveImage(bytes)
+            _uiState.value = _uiState.value.copy(imageName = name, imagePath = null, uploadingImage = false)
         }
     }
 
     fun onAudioRecorded(bytes: ByteArray) {
         _uiState.value = _uiState.value.copy(uploadingAudio = true)
         viewModelScope.launch {
-            mediaUploader.uploadAudio(bytes)
-                .onSuccess { ref ->
-                    _uiState.value = _uiState.value.copy(
-                        audioName = ref.name, audioPath = ref.path, uploadingAudio = false,
-                    )
-                }
-                .onFailure { _uiState.value = _uiState.value.copy(uploadingAudio = false) }
+            val name = mediaManager.saveAudio(bytes)
+            _uiState.value = _uiState.value.copy(audioName = name, audioPath = null, uploadingAudio = false)
         }
     }
 

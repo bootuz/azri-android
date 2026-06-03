@@ -214,7 +214,7 @@ fun CardFormContent(
             )
 
             // Image preview
-            if (state.imagePath != null) {
+            if (state.imageName != null) {
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -240,7 +240,7 @@ fun CardFormContent(
                 }
             }
             // Audio attached
-            if (state.audioPath != null) {
+            if (state.audioName != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AudioPlayButton(state.audioName ?: "", state.audioPath)
                     Text("Audio attached", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -252,7 +252,7 @@ fun CardFormContent(
 
             // Attachment actions (Material chips)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (state.imagePath == null) {
+                if (state.imageName == null) {
                     AssistChip(
                         onClick = onAddImage,
                         enabled = !state.uploadingImage,
@@ -263,10 +263,10 @@ fun CardFormContent(
                                 Icon(Icons.Default.Image, contentDescription = null, Modifier.height(18.dp))
                             }
                         },
-                        label = { Text(if (state.uploadingImage) "Uploading…" else "Add image") },
+                        label = { Text(if (state.uploadingImage) "Saving…" else "Add image") },
                     )
                 }
-                if (state.audioPath == null) {
+                if (state.audioName == null) {
                     AssistChip(
                         onClick = onToggleRecording,
                         enabled = !state.uploadingAudio,

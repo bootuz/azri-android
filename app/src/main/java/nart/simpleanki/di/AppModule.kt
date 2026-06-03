@@ -133,7 +133,7 @@ val appModule = module {
     viewModel { PaywallViewModel(get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
-        CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)
+        CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaManager = get(), editingCardId = a.cardId)
     }
     viewModel { params ->
         val a = params.get<DeckEditArgs>()

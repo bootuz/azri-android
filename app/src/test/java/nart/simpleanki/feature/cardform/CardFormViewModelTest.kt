@@ -9,7 +9,8 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import nart.simpleanki.core.data.media.FakeMediaUploader
-import nart.simpleanki.core.data.media.MediaRef
+import nart.simpleanki.core.data.media.LocalMediaStore
+import nart.simpleanki.core.data.media.MediaManager
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.domain.model.Card
@@ -17,15 +18,21 @@ import nart.simpleanki.core.domain.model.CardState
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CardFormViewModelTest {
 
     private val now = 1_700_000_000_000L
+
+    @get:Rule val tmp = TemporaryFolder()
+    private fun media() = MediaManager(LocalMediaStore(tmp.newFolder(), Dispatchers.Unconfined), FakeMediaUploader())
 
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
@@ -38,7 +45,7 @@ class CardFormViewModelTest {
     @Test
     fun canSave_requiresBothSides() {
         val repo = CardRepository(FakeCardDao(), now = { now })
-        val vm = CardFormViewModel("d1", repo, FakeMediaUploader(),now = { now })
+        val vm = CardFormViewModel("d1", repo, media(), now = { now })
         assertFalse(vm.uiState.value.canSave)
         vm.onFrontChange("hello")
         assertFalse(vm.uiState.value.canSave)
@@ -50,7 +57,7 @@ class CardFormViewModelTest {
     fun save_newCard_persistsSingleCard() = runTest {
         val dao = FakeCardDao()
         val repo = CardRepository(dao, now = { now })
-        val vm = CardFormViewModel("d1", repo, FakeMediaUploader(),idGenerator = ids("card-1"), now = { now })
+        val vm = CardFormViewModel("d1", repo, media(), idGenerator = ids("card-1"), now = { now })
         vm.onFrontChange("hello"); vm.onBackChange("hola")
         vm.save(); runCurrent()
 
@@ -72,7 +79,7 @@ class CardFormViewModelTest {
         val repo = CardRepository(dao, now = { now })
         // First save toggles reverse (consumes two ids: original + reverse), second is a plain card.
         val vm = CardFormViewModel(
-            "d1", repo, FakeMediaUploader(),
+            "d1", repo, media(),
             idGenerator = ids("c-1", "c-2", "c-3"), now = { now },
         )
         vm.onFrontChange("a"); vm.onBackChange("1"); vm.onToggleReverse(true)
@@ -92,7 +99,7 @@ class CardFormViewModelTest {
     fun save_withReverse_createsPairedSwappedCards() = runTest {
         val dao = FakeCardDao()
         val repo = CardRepository(dao, now = { now })
-        val vm = CardFormViewModel("d1", repo, FakeMediaUploader(),idGenerator = ids("base", "rev"), now = { now })
+        val vm = CardFormViewModel("d1", repo, media(), idGenerator = ids("base", "rev"), now = { now })
         vm.onFrontChange("dog"); vm.onBackChange("perro"); vm.onToggleReverse(true)
         vm.save(); runCurrent()
 
@@ -110,39 +117,36 @@ class CardFormViewModelTest {
     }
 
     @Test
-    fun imagePicked_uploads_andSavesImageRefOnCard() = runTest {
+    fun imagePicked_savesLocally_withNoCloudPath() = runTest {
         val dao = FakeCardDao()
         val repo = CardRepository(dao, now = { now })
-        val media = FakeMediaUploader(Result.success(MediaRef("pic.jpg", "users/u/images/pic.jpg")))
-        val vm = CardFormViewModel("d1", repo, media, idGenerator = ids("c-1"), now = { now })
+        val vm = CardFormViewModel("d1", repo, media(), idGenerator = ids("c-1"), now = { now })
         vm.onFrontChange("hello"); vm.onBackChange("hola")
         vm.onImagePicked(byteArrayOf(1, 2, 3)); runCurrent()
-        assertEquals(1, media.uploadCalls)
-        assertEquals("pic.jpg", vm.uiState.value.imageName)
+        assertNotNull(vm.uiState.value.imageName)
+        assertNull(vm.uiState.value.imagePath)
         assertFalse(vm.uiState.value.uploadingImage)
 
         vm.save(); runCurrent()
         val saved = dao.observeByDeck("d1").first().first()
-        assertEquals("pic.jpg", saved.image)
-        assertEquals("users/u/images/pic.jpg", saved.imagePath)
+        assertNotNull(saved.image)      // filename persisted on the card
+        assertNull(saved.imagePath)     // local-only: no cloud path yet
     }
 
     @Test
-    fun audioRecorded_uploads_andSavesAudioRefOnOriginalOnly() = runTest {
+    fun audioRecorded_savesLocally_onOriginalOnly() = runTest {
         val dao = FakeCardDao()
         val repo = CardRepository(dao, now = { now })
-        val media = FakeMediaUploader()
-        media.audioUploadResult = Result.success(MediaRef("clip.m4a", "users/u/audio/clip.m4a"))
-        val vm = CardFormViewModel("d1", repo, media, idGenerator = ids("base", "rev"), now = { now })
+        val vm = CardFormViewModel("d1", repo, media(), idGenerator = ids("base", "rev"), now = { now })
         vm.onFrontChange("dog"); vm.onBackChange("perro"); vm.onToggleReverse(true)
         vm.onAudioRecorded(byteArrayOf(9, 9)); runCurrent()
-        assertEquals(1, media.audioUploadCalls)
-        assertEquals("clip.m4a", vm.uiState.value.audioName)
+        assertNotNull(vm.uiState.value.audioName)
+        assertNull(vm.uiState.value.audioPath)
 
         vm.save(); runCurrent()
-        val cards = dao.observeByDeck("d1").first().sortedBy { it.isReverse }
-        assertEquals("users/u/audio/clip.m4a", cards[0].audioPath) // original has audio
-        assertNull(cards[1].audioPath)                              // reverse is audio-free
+        val cards = dao.observeByDeck("d1").first()
+        assertNotNull(cards.first { !it.isReverse }.audioName)   // original keeps audio
+        assertNull(cards.first { it.isReverse }.audioName)        // reverse is audio-free
     }
 
     @Test
@@ -153,7 +157,7 @@ class CardFormViewModelTest {
             Card(id = "c1", front = "old", back = "viejo", deckId = "d1", dateCreated = now,
                 lastModified = now, fsrsDue = now, fsrsState = CardState.Review.value),
         )
-        val vm = CardFormViewModel("d1", repo, FakeMediaUploader(),editingCardId = "c1", now = { now })
+        val vm = CardFormViewModel("d1", repo, media(), editingCardId = "c1", now = { now })
         runCurrent()
         assertEquals("old", vm.uiState.value.front)
         assertTrue(vm.uiState.value.isEdit)
