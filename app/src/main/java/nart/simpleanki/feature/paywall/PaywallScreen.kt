@@ -2,7 +2,6 @@ package nart.simpleanki.feature.paywall
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,14 +35,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
-import nart.simpleanki.R
 import nart.simpleanki.core.billing.BillingProducts
 import nart.simpleanki.core.billing.PlanOption
 import nart.simpleanki.core.billing.PlanPricing
@@ -101,11 +98,10 @@ fun PaywallContent(
     Column(
         Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp).padding(bottom = 20.dp),
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_app_logo),
-            contentDescription = null,
-            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)),
-        )
+        Box(
+            Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(accentBrush),
+            contentAlignment = Alignment.Center,
+        ) { Text("👑", fontSize = 28.sp) }
         Spacer(Modifier.height(14.dp))
         Text("Azri Premium", color = Ink, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
         Text("Unlock cloud sync & backup", color = Muted, fontSize = 14.sp)
