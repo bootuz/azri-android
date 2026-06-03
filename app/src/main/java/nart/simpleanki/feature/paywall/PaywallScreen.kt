@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -23,6 +24,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +49,9 @@ import nart.simpleanki.core.billing.PlanOption
 import nart.simpleanki.core.billing.PlanPricing
 import nart.simpleanki.core.billing.PremiumTier
 import nart.simpleanki.core.billing.PurchaseResult
+import nart.simpleanki.feature.profile.ProfileContent
+import nart.simpleanki.feature.profile.ProfileUiState
+import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 
 // Dark Luxe palette
@@ -232,5 +237,43 @@ private fun PaywallPlansPreview() {
 private fun PaywallUnavailablePreview() {
     Box(Modifier.background(Bg)) {
         PaywallContent(state = PaywallUiState(loading = false, plansUnavailable = true))
+    }
+}
+
+/**
+ * The paywall sheet presented over the Profile screen. The real [ModalBottomSheet] renders in a
+ * separate window that previews can't show, so the sheet chrome (scrim + rounded navy surface +
+ * drag handle) is reproduced here to preview the composed result.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(name = "Paywall over Profile", showBackground = true, widthDp = 412, heightDp = 920)
+@Composable
+private fun PaywallOverProfilePreview() {
+    AzriTheme {
+        Box(Modifier.fillMaxSize()) {
+            ProfileContent(
+                state = ProfileUiState(isAnonymous = true, isPremium = false),
+                onOpenFsrsSettings = {},
+                onThemeChange = {},
+                onSignOut = {},
+                onDeleteAccount = {},
+            )
+            // Scrim dimming the screen behind the sheet.
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+            // The paywall sheet pinned to the bottom.
+            Surface(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = Bg,
+            ) {
+                Column {
+                    BottomSheetDefaults.DragHandle(
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        color = Muted,
+                    )
+                    PaywallContent(state = PaywallUiState(plans = previewPlans, selected = PremiumTier.Annual, loading = false))
+                }
+            }
+        }
     }
 }
