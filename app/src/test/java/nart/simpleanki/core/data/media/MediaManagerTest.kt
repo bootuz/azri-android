@@ -71,4 +71,17 @@ class MediaManagerTest {
         m.prefetch("y.m4a", "users/u/audio/y.m4a") // now local
         assertEquals(1, up.downloadCalls)
     }
+
+    @Test fun importImage_preservesExtension() = runTest {
+        val (m, _) = managerWith()
+        val name = m.importImage(byteArrayOf(1, 2), "png")
+        assertTrue(name.endsWith(".png"))
+        assertArrayEquals(byteArrayOf(1, 2), m.resolve(name, null)!!.readBytes())
+    }
+
+    @Test fun importAudio_preservesExtension() = runTest {
+        val (m, _) = managerWith()
+        val name = m.importAudio(byteArrayOf(9), "ogg")
+        assertTrue(name.endsWith(".ogg"))
+    }
 }
