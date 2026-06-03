@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.stateIn
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
+import nart.simpleanki.core.billing.EntitlementRepository
+import nart.simpleanki.core.billing.Entitlements
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.dailyGoalTotal
 import nart.simpleanki.core.domain.fsrs.QueueSortOrder
@@ -72,6 +74,7 @@ data class StudyQueueUiState(
      * cleared today's queue (show "All caught up").
      */
     val hasAnyCards: Boolean = false,
+    val showPremiumNudge: Boolean = false,
 ) {
     val hasWork: Boolean get() = readyCount > 0
     val hasFolders: Boolean get() = folders.isNotEmpty()
@@ -88,6 +91,7 @@ class StudyQueueViewModel(
     deckRepository: DeckRepository,
     folderRepository: FolderRepository,
     private val settingsRepository: SettingsRepository,
+    private val entitlementRepository: EntitlementRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
 
@@ -97,7 +101,8 @@ class StudyQueueViewModel(
             deckRepository.observeDecks(),
             folderRepository.observeFolders(),
             settingsRepository.settings,
-        ) { cards, decks, folders, settings ->
+            entitlementRepository.entitlement,
+        ) { cards, decks, folders, settings, entitlement ->
             val nowMillis = now()
             val queue = StudyQueueBuilder.buildStudyQueue(
                 cards = cards,
@@ -149,6 +154,8 @@ class StudyQueueViewModel(
                 )
             }
 
+            val hasAnyCards = cards.any { !it.isDeleted }
+
             StudyQueueUiState(
                 loading = false,
                 readyCount = queue.size,
@@ -162,13 +169,20 @@ class StudyQueueViewModel(
                 dailyGoalEnabled = settings.dailyGoalEnabled,
                 goalTotal = settings.dailyGoalTotal,
                 studiedToday = studiedToday,
-                hasAnyCards = cards.any { !it.isDeleted },
+                hasAnyCards = hasAnyCards,
+                showPremiumNudge = Entitlements.shouldShowPremiumNudge(
+                    isPremium = entitlement.isPremium,
+                    dismissed = settings.premiumNudgeDismissed,
+                    hasAnyCards = hasAnyCards,
+                ),
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = StudyQueueUiState(),
         )
+
+    fun dismissPremiumNudge() = viewModelScope.launch { settingsRepository.setPremiumNudgeDismissed(true) }
 
     /** Persist the chosen order; selecting Shuffle also rolls a new seed (so re-tapping reshuffles). */
     fun setSortOrder(order: QueueSortOrder) = viewModelScope.launch {

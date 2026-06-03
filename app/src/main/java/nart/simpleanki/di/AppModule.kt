@@ -120,7 +120,7 @@ val appModule = module {
             settingsRepository = get(),
         )
     }
-    viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get()) }
+    viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get(), entitlementRepository = get()) }
     viewModel { DailyGoalViewModel(settingsRepository = get()) }
     viewModel { NotificationsViewModel(settingsRepository = get(), scheduler = get()) }
     viewModel { PaywallViewModel(get()) }

@@ -132,6 +132,7 @@ fun AzriNavHost() {
                     onStudyDeck = { nav.navigate("study/$it") },
                     onStudyFolder = { nav.navigate("studyFolder/$it") },
                     onGoToLibrary = { nav.switchTab(LIBRARY) },
+                    onOpenPaywall = { nav.navigate("paywall") },
                 )
             }
             composable(

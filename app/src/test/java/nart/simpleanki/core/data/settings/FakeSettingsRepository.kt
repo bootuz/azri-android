@@ -27,4 +27,7 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings()) : SettingsRep
         state.value = state.value.copy(queueSortOrder = order)
     }
     override suspend fun setQueueShuffleSeed(seed: Long) { state.value = state.value.copy(queueShuffleSeed = seed) }
+    override suspend fun setPremiumNudgeDismissed(dismissed: Boolean) {
+        state.value = state.value.copy(premiumNudgeDismissed = dismissed)
+    }
 }

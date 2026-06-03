@@ -8,6 +8,7 @@ import androidx.compose.ui.test.performClick
 import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.model.ColorOption
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -150,6 +151,34 @@ class StudyQueueContentTest {
         }
         composeRule.onNodeWithText("0 / 30").assertIsDisplayed()
         composeRule.onNodeWithText("Set up your daily goal").assertDoesNotExist()
+    }
+
+    @Test
+    fun premiumNudge_visible_andOpensPaywall() {
+        var opened = false
+        composeRule.setContent {
+            StudyQueueContent(
+                state = StudyQueueUiState(loading = false, hasAnyCards = true, showPremiumNudge = true),
+                onStudyAll = {},
+                onOpenPaywall = { opened = true },
+            )
+        }
+        composeRule.onNodeWithText("Back up your cards").assertIsDisplayed().performClick()
+        assertTrue(opened)
+    }
+
+    @Test
+    fun premiumNudge_dismissButton_firesCallback() {
+        var dismissed = false
+        composeRule.setContent {
+            StudyQueueContent(
+                state = StudyQueueUiState(loading = false, hasAnyCards = true, showPremiumNudge = true),
+                onStudyAll = {},
+                onDismissNudge = { dismissed = true },
+            )
+        }
+        composeRule.onNodeWithContentDescription("Dismiss").performClick()
+        assertTrue(dismissed)
     }
 
     @Test
