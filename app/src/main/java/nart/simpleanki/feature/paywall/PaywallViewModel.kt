@@ -64,9 +64,7 @@ class PaywallViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PaywallUiState())
 
-    init { viewModelScope.launch { repository.refresh(); loadAttempted.value = true } }
-
-    /** Re-attempt a plan load (e.g. user tapped Retry on the unavailable state). */
+    /** (Re)load plans from the store. Called when the sheet opens and from the Retry button. */
     fun retry() {
         viewModelScope.launch {
             loadAttempted.value = false

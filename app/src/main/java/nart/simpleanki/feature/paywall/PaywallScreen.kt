@@ -63,6 +63,8 @@ private val accentBrush = Brush.linearGradient(listOf(AccentStart, AccentEnd))
 fun PaywallSheet(onDismiss: () -> Unit, viewModel: PaywallViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val activity = LocalActivity.current
+    // Fetch the latest plans each time the sheet opens (the ViewModel is retained across opens).
+    LaunchedEffect(Unit) { viewModel.retry() }
     // Dismiss automatically once premium is unlocked (side effect, not during composition).
     LaunchedEffect(state.isPremium, state.result) {
         if (state.isPremium && state.result == PurchaseResult.Success) onDismiss()

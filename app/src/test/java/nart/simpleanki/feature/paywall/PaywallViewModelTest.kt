@@ -27,10 +27,11 @@ class PaywallViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     @Test fun loadsPlans_andPreselectsAnnual() = runTest {
+        // The sheet calls retry() on open to (re)load plans.
         val repo = FakeEntitlementRepository()
         val vm = PaywallViewModel(repo)
         backgroundScope.launch { vm.uiState.collect {} }
-        runCurrent()
+        vm.retry(); runCurrent()
         val s = vm.uiState.value
         assertFalse(s.loading)
         assertFalse(s.plansUnavailable)
@@ -44,7 +45,7 @@ class PaywallViewModelTest {
         val repo = FakeEntitlementRepository(plans = emptyList())
         val vm = PaywallViewModel(repo)
         backgroundScope.launch { vm.uiState.collect {} }
-        runCurrent()
+        vm.retry(); runCurrent()
         val s = vm.uiState.value
         assertFalse("load attempt finished", s.loading)
         assertTrue("empty store → unavailable", s.plansUnavailable)
@@ -54,7 +55,7 @@ class PaywallViewModelTest {
         val repo = FakeEntitlementRepository(plans = emptyList())
         val vm = PaywallViewModel(repo)
         backgroundScope.launch { vm.uiState.collect {} }
-        runCurrent()
+        vm.retry(); runCurrent()
         assertEquals(1, repo.refreshCount)
         vm.retry(); runCurrent()
         assertEquals(2, repo.refreshCount)
