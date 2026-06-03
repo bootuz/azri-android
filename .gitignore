@@ -16,3 +16,12 @@ local.properties
 
 # Android Studio / IntelliJ
 .idea/
+
+# Firebase — each developer supplies their own (see app/google-services.json.template)
+google-services.json
+app/google-services.json
+
+# Signing — never commit keystores or their passwords
+*.jks
+*.keystore
+keystore.properties

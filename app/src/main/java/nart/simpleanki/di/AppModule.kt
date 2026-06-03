@@ -1,6 +1,7 @@
 package nart.simpleanki.di
 
 import androidx.room.Room
+import nart.simpleanki.R
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
@@ -44,10 +45,6 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.module
 
-/** Firebase Web client ID (OAuth client_type 3) for Credential Manager. */
-private const val WEB_CLIENT_ID =
-    "592209129003-sfmoavbuj0crmqm35dslhfpo3b10ol19.apps.googleusercontent.com"
-
 /** Injection args for screens that take optional ids (unambiguous vs. positional params). */
 data class CardFormArgs(val deckId: String, val cardId: String? = null)
 data class DeckEditArgs(val deckId: String? = null, val folderId: String? = null)
@@ -64,7 +61,9 @@ val appModule = module {
 
     // Auth
     single<AuthRepository> { FirebaseAuthRepository(get()) }
-    single { GoogleSignInClient(serverClientId = WEB_CLIENT_ID) }
+    // Web client ID (OAuth client_type 3) is generated from each developer's own
+    // google-services.json by the google-services plugin — never hard-coded.
+    single { GoogleSignInClient(serverClientId = androidContext().getString(R.string.default_web_client_id)) }
     viewModel { AuthViewModel(get()) }
 
     // Local persistence (Room)
