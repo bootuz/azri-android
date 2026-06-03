@@ -1,6 +1,6 @@
 package nart.simpleanki.feature.paywall
 
-import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,7 +62,7 @@ private val accentBrush = Brush.linearGradient(listOf(AccentStart, AccentEnd))
 @Composable
 fun PaywallSheet(onDismiss: () -> Unit, viewModel: PaywallViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsState()
-    val activity = LocalContext.current as? Activity
+    val activity = LocalActivity.current
     // Dismiss automatically once premium is unlocked (side effect, not during composition).
     LaunchedEffect(state.isPremium, state.result) {
         if (state.isPremium && state.result == PurchaseResult.Success) onDismiss()
