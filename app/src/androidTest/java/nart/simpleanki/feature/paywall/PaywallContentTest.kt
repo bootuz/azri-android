@@ -28,7 +28,7 @@ class PaywallContentTest {
 
     @Test fun showsPlans_andTitle() {
         rule.setContent { PaywallContent(state = loaded) }
-        rule.onNodeWithText("Azri Premium").assertIsDisplayed()
+        rule.onNodeWithText("Unlock Cloud Sync").assertIsDisplayed()
         rule.onNodeWithText("Annual").assertIsDisplayed()
         rule.onNodeWithText("Monthly").assertIsDisplayed()
         rule.onNodeWithText("Lifetime").assertIsDisplayed()
