@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Single source of truth for premium state and available plans. Implementations:
- * [PlayBillingRepository] (real) and [LocalEntitlementRepository] / FakeEntitlementRepository.
+ * [PlayBillingRepository] (real) and FakeEntitlementRepository (tests).
  */
 interface EntitlementRepository {
     /** Current entitlement; cached so it survives offline. Defaults to free. */

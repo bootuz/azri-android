@@ -21,8 +21,9 @@ import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
+import nart.simpleanki.core.billing.EntitlementCache
 import nart.simpleanki.core.billing.EntitlementRepository
-import nart.simpleanki.core.billing.LocalEntitlementRepository
+import nart.simpleanki.core.billing.PlayBillingRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
 import nart.simpleanki.core.data.sync.RemoteSyncSource
 import nart.simpleanki.core.data.sync.SyncManager
@@ -88,8 +89,9 @@ val appModule = module {
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
     single { SyncManager(get(), get(), get(), get()) }
 
-    // Billing / entitlement (LocalEntitlementRepository is a placeholder until Play Billing — Task 9)
-    single<EntitlementRepository> { LocalEntitlementRepository() }
+    // Billing / entitlement
+    single { EntitlementCache(androidContext()) }
+    single<EntitlementRepository> { PlayBillingRepository(androidContext(), get()) }
 
     // Settings
     single<SettingsRepository> { DataStoreSettingsRepository(androidContext()) }
