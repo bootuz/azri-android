@@ -28,7 +28,10 @@ data class ApkgImportUiState(
     val previewCards: List<ApkgPreviewCard> = emptyList(),
     val busy: Boolean = false,
     val error: String? = null,
-)
+) {
+    val canGeneratePreview: Boolean
+        get() = frontField != null && backField != null && frontField != backField
+}
 
 class ApkgImportViewModel(
     private val service: ApkgImportService,
@@ -71,11 +74,6 @@ class ApkgImportViewModel(
     fun setFrontField(name: String) { _uiState.value = _uiState.value.copy(frontField = name) }
     fun setBackField(name: String) { _uiState.value = _uiState.value.copy(backField = name) }
     fun setImportMedia(value: Boolean) { _uiState.value = _uiState.value.copy(importMedia = value) }
-
-    fun canGeneratePreview(): Boolean {
-        val s = _uiState.value
-        return s.frontField != null && s.backField != null && s.frontField != s.backField
-    }
 
     fun generatePreview() {
         val data = collection ?: return

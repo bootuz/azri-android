@@ -1,5 +1,8 @@
 package nart.simpleanki.ui.navigation
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -40,6 +43,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import nart.simpleanki.feature.apkgimport.ApkgImportScreen
 import nart.simpleanki.feature.cardform.CardFormScreen
 import nart.simpleanki.feature.deckdetail.DeckDetailScreen
 import nart.simpleanki.feature.decksettings.DeckEditScreen
@@ -67,6 +71,10 @@ fun AzriNavHost() {
     val showBottomBar = currentRoute == QUEUE || currentRoute == LIBRARY || currentRoute == PROFILE
     // The paywall is a modal sheet overlaying any screen (not a nav route).
     var showPaywall by remember { mutableStateOf(false) }
+    var importUri by remember { mutableStateOf<Uri?>(null) }
+    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importUri = uri
+    }
 
     Scaffold(
         bottomBar = {
@@ -150,6 +158,7 @@ fun AzriNavHost() {
                     onOpenFolder = { nav.navigate("folder/$it") },
                     onNewDeck = { nav.navigate("deckEdit") },
                     onNewFolder = { nav.navigate("folderEdit") },
+                    onImport = { importPicker.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
                 )
             }
             composable(
@@ -255,6 +264,10 @@ fun AzriNavHost() {
 
     if (showPaywall) {
         PaywallSheet(onDismiss = { showPaywall = false })
+    }
+
+    importUri?.let { uri ->
+        ApkgImportScreen(uri = uri, deckName = "Imported deck", onClose = { importUri = null })
     }
 }
 

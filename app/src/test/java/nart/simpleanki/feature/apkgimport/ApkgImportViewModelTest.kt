@@ -49,9 +49,9 @@ class ApkgImportViewModelTest {
         vm.selectNoteType(collection.noteTypes[0]); runCurrent()
         assertEquals(ImportStep.FieldMapping, vm.uiState.value.step)
         vm.setFrontField("Front"); vm.setBackField("Front")
-        assertFalse(vm.canGeneratePreview())
+        assertFalse(vm.uiState.value.canGeneratePreview)
         vm.setBackField("Back")
-        assertTrue(vm.canGeneratePreview())
+        assertTrue(vm.uiState.value.canGeneratePreview)
     }
 
     @Test fun generatePreview_thenImport_callsServiceWithSelectedCards() = runTest {
