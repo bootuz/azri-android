@@ -298,7 +298,7 @@ class MediaManagerTest {
         val (m, up) = managerWith()
         val name = m.saveImage(byteArrayOf(1))
         val path = m.ensureUploaded(name, null)
-        assertEquals("users/u/media/$name", path)
+        assertEquals("users/u/images/$name", path)   // .jpg → images folder (matches FakeMediaUploader)
         assertEquals(1, up.uploadPathCalls)
     }
 
