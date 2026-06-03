@@ -20,16 +20,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -50,11 +58,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.model.ColorOption
 import nart.simpleanki.ui.components.AzriCard
 import nart.simpleanki.ui.components.ColorAccentIcon
@@ -79,6 +89,7 @@ fun StudyQueueScreen(
         onStudyDeck = onStudyDeck,
         onStudyFolder = onStudyFolder,
         onEditGoal = { showGoalSheet = true },
+        onSortChange = viewModel::setSortOrder,
     )
     if (showGoalSheet) {
         DailyGoalEditorSheet(onDismiss = { showGoalSheet = false })
@@ -94,6 +105,7 @@ fun StudyQueueContent(
     onStudyDeck: (String) -> Unit = {},
     onStudyFolder: (String) -> Unit = {},
     onEditGoal: () -> Unit = {},
+    onSortChange: (QueueSortOrder) -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -138,7 +150,7 @@ fun StudyQueueContent(
             }
 
             if (state.queueCards.isNotEmpty()) {
-                item { SectionHeader("Queue") }
+                item { QueueHeader(sortOrder = state.sortOrder, onSortChange = onSortChange) }
                 itemsIndexed(state.queueCards, key = { _, c -> c.cardId }) { index, card ->
                     QueueCardRow(index + 1, card)
                 }
@@ -148,13 +160,48 @@ fun StudyQueueContent(
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
-    )
+private fun QueueHeader(sortOrder: QueueSortOrder, onSortChange: (QueueSortOrder) -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 20.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Queue",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort cards")
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                QueueSortOrder.entries.forEach { order ->
+                    DropdownMenuItem(
+                        text = { Text(order.label()) },
+                        leadingIcon = { Icon(order.icon(), contentDescription = null) },
+                        trailingIcon = {
+                            if (order == sortOrder) Icon(Icons.Default.Check, contentDescription = "Selected")
+                        },
+                        onClick = { onSortChange(order); menuOpen = false },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun QueueSortOrder.label(): String = when (this) {
+    QueueSortOrder.DueDate -> "Due date"
+    QueueSortOrder.Difficulty -> "Difficulty"
+    QueueSortOrder.Shuffle -> "Shuffle"
+}
+
+private fun QueueSortOrder.icon(): ImageVector = when (this) {
+    QueueSortOrder.DueDate -> Icons.Default.Schedule
+    QueueSortOrder.Difficulty -> Icons.Default.BarChart
+    QueueSortOrder.Shuffle -> Icons.Default.Shuffle
 }
 
 @Composable

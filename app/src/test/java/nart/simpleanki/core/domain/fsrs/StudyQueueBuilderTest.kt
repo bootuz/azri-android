@@ -19,9 +19,10 @@ class StudyQueueBuilderTest {
         created: Long = now,
         deleted: Boolean = false,
         reverse: Boolean = false,
+        difficulty: Double = 0.0,
     ) = Card(
         id = id, front = "f", back = "b", deckId = "d", dateCreated = created, lastModified = created,
-        fsrsDue = due, fsrsState = state, isDeleted = deleted, isReverse = reverse,
+        fsrsDue = due, fsrsState = state, isDeleted = deleted, isReverse = reverse, fsrsDifficulty = difficulty,
     )
 
     @Test
@@ -75,5 +76,40 @@ class StudyQueueBuilderTest {
         val b = StudyQueueBuilder.buildStudyQueue(cards, now, 0, 10, shuffleSeed = 42)
         assertEquals(a.map { it.id }, b.map { it.id })
         assertTrue(a.size == 8)
+    }
+
+    // --- sort() ---
+
+    @Test
+    fun sort_dueDate_ascending() {
+        val cards = listOf(
+            card("late", due = now + 3 * day),
+            card("early", due = now - 2 * day),
+            card("mid", due = now),
+        )
+        val sorted = StudyQueueBuilder.sort(cards, QueueSortOrder.DueDate, shuffleSeed = 0)
+        assertEquals(listOf("early", "mid", "late"), sorted.map { it.id })
+    }
+
+    @Test
+    fun sort_difficulty_descending_hardestFirst() {
+        val cards = listOf(
+            card("easy", difficulty = 2.0),
+            card("hard", difficulty = 9.0),
+            card("medium", difficulty = 5.0),
+        )
+        val sorted = StudyQueueBuilder.sort(cards, QueueSortOrder.Difficulty, shuffleSeed = 0)
+        assertEquals(listOf("hard", "medium", "easy"), sorted.map { it.id })
+    }
+
+    @Test
+    fun sort_shuffle_isDeterministicPerSeed_andDiffersAcrossSeeds() {
+        val cards = (1..12).map { card("c$it") }
+        val a = StudyQueueBuilder.sort(cards, QueueSortOrder.Shuffle, shuffleSeed = 7).map { it.id }
+        val again = StudyQueueBuilder.sort(cards, QueueSortOrder.Shuffle, shuffleSeed = 7).map { it.id }
+        val other = StudyQueueBuilder.sort(cards, QueueSortOrder.Shuffle, shuffleSeed = 99).map { it.id }
+        assertEquals(a, again)                      // same seed → same order
+        assertEquals(cards.size, a.size)            // keeps every card
+        assertTrue("different seed → different order", a != other)
     }
 }

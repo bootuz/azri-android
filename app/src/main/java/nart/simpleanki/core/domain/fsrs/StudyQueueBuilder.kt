@@ -3,6 +3,10 @@ package nart.simpleanki.core.domain.fsrs
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.ReviewCardFilter
+import kotlin.random.Random
+
+/** How the study queue is ordered (mirrors iOS StudyQueueSortOrder). */
+enum class QueueSortOrder { DueDate, Difficulty, Shuffle }
 
 /**
  * Builds study/review queues from a deck's cards, mirroring the iOS study flow.
@@ -33,7 +37,17 @@ object StudyQueueBuilder {
             .sortedBy { it.dateCreated }
             .take(newLimit.coerceAtLeast(0))
         val queue = due + new
-        return if (shuffleSeed != null) queue.shuffled(kotlin.random.Random(shuffleSeed)) else queue
+        return if (shuffleSeed != null) queue.shuffled(Random(shuffleSeed)) else queue
+    }
+
+    /**
+     * Re-orders an already-built queue by the user's chosen [order]. Pure — [shuffleSeed] makes
+     * [QueueSortOrder.Shuffle] reproducible, so the preview list and the study session match.
+     */
+    fun sort(cards: List<Card>, order: QueueSortOrder, shuffleSeed: Long): List<Card> = when (order) {
+        QueueSortOrder.DueDate -> cards.sortedBy { it.fsrsDue }
+        QueueSortOrder.Difficulty -> cards.sortedByDescending { it.fsrsDifficulty }
+        QueueSortOrder.Shuffle -> cards.shuffled(Random(shuffleSeed))
     }
 
     fun buildReviewQueue(

@@ -11,7 +11,9 @@ import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
+import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
+import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Deck
@@ -137,6 +139,22 @@ class StudyViewModelTest {
         assertTrue(s.finished)
         assertNull(s.current)
         assertEquals(1, s.completed)
+    }
+
+    @Test
+    fun appliesQueueSortOrder_difficultyHardestFirst() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        // Review cards must have stability > 0 (real FSRS invariant) so the interval preview is valid.
+        fun reviewCard(id: String, difficulty: Double) = newCard(id).copy(
+            fsrsState = CardState.Review.value, fsrsDue = now - 1000,
+            fsrsDifficulty = difficulty, fsrsStability = 10.0, fsrsLastReview = now - 86_400_000L,
+        )
+        repo.upsert(reviewCard("easy", 2.0))
+        repo.upsert(reviewCard("hard", 9.0))
+        val settings = FakeSettingsRepository(AppSettings(queueSortOrder = QueueSortOrder.Difficulty))
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), settings, now = { now })
+        runCurrent()
+        assertEquals("hard", vm.uiState.value.current?.id) // hardest card first
     }
 
     @Test

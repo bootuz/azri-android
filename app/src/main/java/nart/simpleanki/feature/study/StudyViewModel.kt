@@ -65,16 +65,16 @@ class StudyViewModel(
             deckId != null -> cardRepository.observeCards(deckId).first()
             else -> cardRepository.observeAllCards().first()
         }
-        queue.clear()
-        queue.addAll(
-            StudyQueueBuilder.buildStudyQueue(
-                cards = all,
-                nowMillis = now(),
-                // Daily-goal targets are a soft goal, NOT a queue cap — study everything available.
-                newLimit = Int.MAX_VALUE,
-                reviewLimit = Int.MAX_VALUE,
-            ),
+        val built = StudyQueueBuilder.buildStudyQueue(
+            cards = all,
+            nowMillis = now(),
+            // Daily-goal targets are a soft goal, NOT a queue cap — study everything available.
+            newLimit = Int.MAX_VALUE,
+            reviewLimit = Int.MAX_VALUE,
         )
+        queue.clear()
+        // Honor the user's queue order (shared with the Queue preview via persisted settings).
+        queue.addAll(StudyQueueBuilder.sort(built, settings.queueSortOrder, settings.queueShuffleSeed))
         val first = queue.firstOrNull()
         _uiState.value = StudyUiState(
             loading = false,

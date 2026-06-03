@@ -11,7 +11,10 @@ import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.dailyGoalTotal
+import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
+import kotlinx.coroutines.launch
+import kotlin.random.Random
 import java.util.Calendar
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.ColorOption
@@ -62,6 +65,7 @@ data class StudyQueueUiState(
     val dailyGoalEnabled: Boolean = true,
     val goalTotal: Int = 0,
     val studiedToday: Int = 0,
+    val sortOrder: QueueSortOrder = QueueSortOrder.DueDate,
 ) {
     val hasWork: Boolean get() = readyCount > 0
     val hasFolders: Boolean get() = folders.isNotEmpty()
@@ -77,7 +81,7 @@ class StudyQueueViewModel(
     cardRepository: CardRepository,
     deckRepository: DeckRepository,
     folderRepository: FolderRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
 
@@ -96,6 +100,7 @@ class StudyQueueViewModel(
                 newLimit = Int.MAX_VALUE,
                 reviewLimit = Int.MAX_VALUE,
             )
+            val sorted = StudyQueueBuilder.sort(queue, settings.queueSortOrder, settings.queueShuffleSeed)
             val newCount = queue.count { it.fsrsState == CardState.New.value }
             val dueCount = queue.size - newCount
 
@@ -127,8 +132,8 @@ class StudyQueueViewModel(
                 else FolderQueueItem(folder.id, folder.name, deckCount = folderDecks.size, dueCount = due, newCount = new)
             }.sortedWith(compareByDescending<FolderQueueItem> { it.dueCount }.thenByDescending { it.total })
 
-            // The ready cards, in queue order, with deck + folder names for the preview list.
-            val queueCards = queue.map { card ->
+            // The ready cards, in the chosen order, with deck + folder names for the preview list.
+            val queueCards = sorted.map { card ->
                 val deck = deckById[card.deckId]
                 QueueCardItem(
                     cardId = card.id,
@@ -147,6 +152,7 @@ class StudyQueueViewModel(
                 decks = perDeck,
                 folders = perFolder,
                 queueCards = queueCards,
+                sortOrder = settings.queueSortOrder,
                 dailyGoalEnabled = settings.dailyGoalEnabled,
                 goalTotal = settings.dailyGoalTotal,
                 studiedToday = studiedToday,
@@ -156,6 +162,12 @@ class StudyQueueViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = StudyQueueUiState(),
         )
+
+    /** Persist the chosen order; selecting Shuffle also rolls a new seed (so re-tapping reshuffles). */
+    fun setSortOrder(order: QueueSortOrder) = viewModelScope.launch {
+        settingsRepository.setQueueSortOrder(order)
+        if (order == QueueSortOrder.Shuffle) settingsRepository.setQueueShuffleSeed(Random.nextLong())
+    }
 
     /** Rough study-time estimate: ~9s per card, at least a minute if there's anything to do. */
     private fun estimateMinutes(cardCount: Int): Int =

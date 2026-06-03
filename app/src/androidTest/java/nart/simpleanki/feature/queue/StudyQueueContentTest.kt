@@ -2,8 +2,10 @@ package nart.simpleanki.feature.queue
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.model.ColorOption
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -82,6 +84,25 @@ class StudyQueueContentTest {
         }
         composeRule.onNodeWithText("Queue").assertIsDisplayed()
         composeRule.onNodeWithText("hola").assertIsDisplayed()
+    }
+
+    @Test
+    fun sortMenu_opens_andSelectingInvokesCallback() {
+        var picked: QueueSortOrder? = null
+        composeRule.setContent {
+            StudyQueueContent(
+                state = StudyQueueUiState(
+                    loading = false, readyCount = 1,
+                    queueCards = listOf(QueueCardItem("c1", "hola", "Spanish", null)),
+                    sortOrder = QueueSortOrder.DueDate,
+                ),
+                onStudyAll = {},
+                onSortChange = { picked = it },
+            )
+        }
+        composeRule.onNodeWithContentDescription("Sort cards").performClick()
+        composeRule.onNodeWithText("Difficulty").performClick()
+        assertEquals(QueueSortOrder.Difficulty, picked)
     }
 
     @Test

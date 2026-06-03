@@ -5,12 +5,14 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import nart.simpleanki.core.domain.fsrs.FsrsParameters
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
+import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 
 /** App theme preference. [System] follows the device dark/light setting. */
 enum class ThemeMode { System, Light, Dark }
@@ -35,6 +37,9 @@ data class AppSettings(
     val goalReminderEnabled: Boolean = false,
     val goalReminderHour: Int = 20,
     val goalReminderMinute: Int = 0,
+    // Queue ordering — shared by the queue preview and the study session.
+    val queueSortOrder: QueueSortOrder = QueueSortOrder.DueDate,
+    val queueShuffleSeed: Long = 0L,
 )
 
 /** Total cards-per-day goal = new + review targets (derived, never stored). */
@@ -66,6 +71,8 @@ interface SettingsRepository {
     suspend fun setReviewCardsTarget(value: Int)
     suspend fun setStudyReminder(enabled: Boolean, hour: Int, minute: Int)
     suspend fun setGoalReminder(enabled: Boolean, hour: Int, minute: Int)
+    suspend fun setQueueSortOrder(order: QueueSortOrder)
+    suspend fun setQueueShuffleSeed(seed: Long)
 }
 
 private val Context.settingsDataStore by preferencesDataStore("azri_settings")
@@ -90,6 +97,9 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
             goalReminderEnabled = prefs[GOAL_REMINDER_ON] ?: false,
             goalReminderHour = prefs[GOAL_REMINDER_HOUR] ?: 20,
             goalReminderMinute = prefs[GOAL_REMINDER_MIN] ?: 0,
+            queueSortOrder = prefs[QUEUE_SORT]?.let { runCatching { QueueSortOrder.valueOf(it) }.getOrNull() }
+                ?: QueueSortOrder.DueDate,
+            queueShuffleSeed = prefs[QUEUE_SHUFFLE_SEED] ?: 0L,
         )
     }
 
@@ -149,6 +159,14 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
         }
     }
 
+    override suspend fun setQueueSortOrder(order: QueueSortOrder) {
+        context.settingsDataStore.edit { it[QUEUE_SORT] = order.name }
+    }
+
+    override suspend fun setQueueShuffleSeed(seed: Long) {
+        context.settingsDataStore.edit { it[QUEUE_SHUFFLE_SEED] = seed }
+    }
+
     private companion object {
         val PRESET = stringPreferencesKey("fsrs_preset")
         val THEME = stringPreferencesKey("theme_mode")
@@ -165,5 +183,7 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
         val GOAL_REMINDER_ON = booleanPreferencesKey("goal_reminder_on")
         val GOAL_REMINDER_HOUR = intPreferencesKey("goal_reminder_hour")
         val GOAL_REMINDER_MIN = intPreferencesKey("goal_reminder_min")
+        val QUEUE_SORT = stringPreferencesKey("queue_sort_order")
+        val QUEUE_SHUFFLE_SEED = longPreferencesKey("queue_shuffle_seed")
     }
 }

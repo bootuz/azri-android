@@ -18,6 +18,7 @@ import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
+import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
 import org.junit.After
@@ -155,5 +156,38 @@ class StudyQueueViewModelTest {
         assertEquals("hola", card.front)
         assertEquals("Spanish", card.deckName)
         assertEquals("Languages", card.folderName)
+    }
+
+    @Test
+    fun sortOrder_difficulty_reordersQueuePreview_hardestFirst() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        deckRepo.upsert(Deck(id = "A", name = "Alpha", dateCreated = now, lastModified = now))
+        cardRepo.upsert(review("easy", "A").copy(fsrsDifficulty = 2.0))
+        cardRepo.upsert(review("hard", "A").copy(fsrsDifficulty = 9.0))
+
+        val settings = FakeSettingsRepository(AppSettings(queueSortOrder = QueueSortOrder.Difficulty))
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, now = { now })
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        assertEquals(QueueSortOrder.Difficulty, vm.uiState.value.sortOrder)
+        assertEquals(listOf("hard", "easy"), vm.uiState.value.queueCards.map { it.cardId })
+    }
+
+    @Test
+    fun setSortOrder_persistsThroughRepository() = runTest {
+        val settings = FakeSettingsRepository()
+        val vm = StudyQueueViewModel(
+            CardRepository(FakeCardDao(), now = { now }),
+            DeckRepository(FakeDeckDao(), now = { now }),
+            FolderRepository(FakeFolderDao(), now = { now }),
+            settings, now = { now },
+        )
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        vm.setSortOrder(QueueSortOrder.Shuffle); runCurrent()
+        assertEquals(QueueSortOrder.Shuffle, vm.uiState.value.sortOrder)
     }
 }

@@ -23,4 +23,8 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings()) : SettingsRep
     override suspend fun setGoalReminder(enabled: Boolean, hour: Int, minute: Int) {
         state.value = state.value.copy(goalReminderEnabled = enabled, goalReminderHour = hour, goalReminderMinute = minute)
     }
+    override suspend fun setQueueSortOrder(order: nart.simpleanki.core.domain.fsrs.QueueSortOrder) {
+        state.value = state.value.copy(queueSortOrder = order)
+    }
+    override suspend fun setQueueShuffleSeed(seed: Long) { state.value = state.value.copy(queueShuffleSeed = seed) }
 }
