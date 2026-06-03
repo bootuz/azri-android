@@ -59,6 +59,10 @@ Firebase project so the public code is never tied to a specific backend.
 - A Firebase **client** config is not a private credential, but data is only as safe as your
   **Firestore/Storage Security Rules** — lock them down and consider enabling **App Check**.
 
+## Contributing
+
+Please be respectful and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
-_TODO: add a license (e.g. MIT or Apache-2.0) before publishing._
+Licensed under the [Apache License 2.0](LICENSE).
