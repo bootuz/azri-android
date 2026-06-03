@@ -18,11 +18,13 @@ import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
@@ -38,10 +40,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -73,6 +75,7 @@ private const val PRIVACY_URL = "https://azri.app/privacy"
 @Composable
 fun ProfileScreen(
     onOpenFsrsSettings: () -> Unit,
+    onOpenNotifications: () -> Unit,
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -84,6 +87,7 @@ fun ProfileScreen(
     ProfileContent(
         state = state,
         onOpenFsrsSettings = onOpenFsrsSettings,
+        onOpenNotifications = onOpenNotifications,
         onThemeChange = viewModel::setThemeMode,
         onSignOut = viewModel::signOut,
         onDeleteAccount = viewModel::deleteAccount,
@@ -108,6 +112,7 @@ fun ProfileContent(
     state: ProfileUiState,
     onOpenFsrsSettings: () -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
+    onOpenNotifications: () -> Unit = {},
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onRate: () -> Unit = {},
@@ -131,7 +136,19 @@ fun ProfileContent(
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Delete account", color = MaterialTheme.colorScheme.error) },
+                            text = {
+                                Text(
+                                    "Delete account",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            },
                             onClick = { showMenu = false; showDeleteDialog = true },
                         )
                     }
@@ -148,7 +165,9 @@ fun ProfileContent(
             CategoryHeader("Account")
             ListItem(
                 headlineContent = { Text("Email") },
-                supportingContent = { Text(state.email?.takeIf { it.isNotBlank() } ?: "Not signed in") },
+                supportingContent = {
+                    Text(state.email?.takeIf { it.isNotBlank() } ?: "Not signed in")
+                },
                 leadingContent = { Icon(Icons.Default.Email, contentDescription = null) },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
             )
@@ -171,6 +190,13 @@ fun ProfileContent(
                 leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                 modifier = Modifier.clickable(onClick = onOpenFsrsSettings),
+            )
+            ListItem(
+                headlineContent = { Text("Notifications") },
+                supportingContent = { Text("Daily study & goal reminders") },
+                leadingContent = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.clickable(onClick = onOpenNotifications),
             )
 
             CategoryHeader("Appearance")
@@ -199,15 +225,25 @@ fun ProfileContent(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
             ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                Text("Sign out", Modifier.padding(start = 8.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    "Sign out",
+                    Modifier.padding(start = 8.dp),
+                    color = MaterialTheme.colorScheme.error
+                )
             }
             Text(
                 "Made with 💗 by Astemir Boziev",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
             )
         }
     }
@@ -222,7 +258,11 @@ fun ProfileContent(
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                }) { Text("Cancel") }
+            },
         )
     }
 }
@@ -230,7 +270,11 @@ fun ProfileContent(
 /** Inline tri-state theme switch — the M3 segmented control replaces an iOS-style picker dialog. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ThemeSelector(current: ThemeMode, onSelect: (ThemeMode) -> Unit, modifier: Modifier = Modifier) {
+private fun ThemeSelector(
+    current: ThemeMode,
+    onSelect: (ThemeMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val options = listOf(
         Triple(ThemeMode.System, "System", Icons.Default.Brightness6),
         Triple(ThemeMode.Light, "Light", Icons.Default.LightMode),
@@ -288,7 +332,11 @@ private fun ProfilePreview() {
     }
 }
 
-@Preview(name = "Profile · guest dark", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Preview(
+    name = "Profile · guest dark",
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
 private fun ProfileGuestPreview() {
     AzriTheme(darkTheme = true) {

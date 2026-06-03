@@ -46,6 +46,7 @@ import nart.simpleanki.feature.library.LibraryScreen
 import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
+import nart.simpleanki.feature.notifications.NotificationsScreen
 import nart.simpleanki.feature.study.StudyScreen
 
 private const val QUEUE = "queue"
@@ -146,7 +147,10 @@ fun AzriNavHost() {
                 enterTransition = tabFadeEnter, exitTransition = tabFadeExit,
                 popEnterTransition = tabFadeEnter, popExitTransition = tabFadeExit,
             ) {
-                ProfileScreen(onOpenFsrsSettings = { nav.navigate("fsrsSettings") })
+                ProfileScreen(
+                    onOpenFsrsSettings = { nav.navigate("fsrsSettings") },
+                    onOpenNotifications = { nav.navigate("notifications") },
+                )
             }
             composable("folder/{folderId}") { entry ->
                 val folderId = entry.arguments?.getString("folderId").orEmpty()
@@ -160,6 +164,9 @@ fun AzriNavHost() {
             }
             composable("fsrsSettings") {
                 SettingsScreen(onBack = { nav.popBackStack() })
+            }
+            composable("notifications") {
+                NotificationsScreen(onBack = { nav.popBackStack() })
             }
             composable("deck/{deckId}") { entry ->
                 val deckId = entry.arguments?.getString("deckId").orEmpty()

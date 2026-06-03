@@ -17,4 +17,10 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings()) : SettingsRep
     override suspend fun setDailyGoalEnabled(enabled: Boolean) { state.value = state.value.copy(dailyGoalEnabled = enabled) }
     override suspend fun setNewCardsTarget(value: Int) { state.value = state.value.copy(newCardsTarget = value) }
     override suspend fun setReviewCardsTarget(value: Int) { state.value = state.value.copy(reviewCardsTarget = value) }
+    override suspend fun setStudyReminder(enabled: Boolean, hour: Int, minute: Int) {
+        state.value = state.value.copy(studyReminderEnabled = enabled, studyReminderHour = hour, studyReminderMinute = minute)
+    }
+    override suspend fun setGoalReminder(enabled: Boolean, hour: Int, minute: Int) {
+        state.value = state.value.copy(goalReminderEnabled = enabled, goalReminderHour = hour, goalReminderMinute = minute)
+    }
 }

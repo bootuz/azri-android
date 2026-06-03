@@ -28,6 +28,13 @@ data class AppSettings(
     val dailyGoalEnabled: Boolean = true,
     val newCardsTarget: Int = 10,
     val reviewCardsTarget: Int = 20,
+    // Notifications — off until the user opts in (and grants POST_NOTIFICATIONS).
+    val studyReminderEnabled: Boolean = false,
+    val studyReminderHour: Int = 9,
+    val studyReminderMinute: Int = 0,
+    val goalReminderEnabled: Boolean = false,
+    val goalReminderHour: Int = 20,
+    val goalReminderMinute: Int = 0,
 )
 
 /** Total cards-per-day goal = new + review targets (derived, never stored). */
@@ -57,6 +64,8 @@ interface SettingsRepository {
     suspend fun setDailyGoalEnabled(enabled: Boolean)
     suspend fun setNewCardsTarget(value: Int)
     suspend fun setReviewCardsTarget(value: Int)
+    suspend fun setStudyReminder(enabled: Boolean, hour: Int, minute: Int)
+    suspend fun setGoalReminder(enabled: Boolean, hour: Int, minute: Int)
 }
 
 private val Context.settingsDataStore by preferencesDataStore("azri_settings")
@@ -75,6 +84,12 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
             dailyGoalEnabled = prefs[DAILY_GOAL_ENABLED] ?: true,
             newCardsTarget = prefs[NEW_TARGET] ?: 10,
             reviewCardsTarget = prefs[REVIEW_TARGET] ?: 20,
+            studyReminderEnabled = prefs[STUDY_REMINDER_ON] ?: false,
+            studyReminderHour = prefs[STUDY_REMINDER_HOUR] ?: 9,
+            studyReminderMinute = prefs[STUDY_REMINDER_MIN] ?: 0,
+            goalReminderEnabled = prefs[GOAL_REMINDER_ON] ?: false,
+            goalReminderHour = prefs[GOAL_REMINDER_HOUR] ?: 20,
+            goalReminderMinute = prefs[GOAL_REMINDER_MIN] ?: 0,
         )
     }
 
@@ -118,6 +133,22 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
         }
     }
 
+    override suspend fun setStudyReminder(enabled: Boolean, hour: Int, minute: Int) {
+        context.settingsDataStore.edit {
+            it[STUDY_REMINDER_ON] = enabled
+            it[STUDY_REMINDER_HOUR] = hour.coerceIn(0, 23)
+            it[STUDY_REMINDER_MIN] = minute.coerceIn(0, 59)
+        }
+    }
+
+    override suspend fun setGoalReminder(enabled: Boolean, hour: Int, minute: Int) {
+        context.settingsDataStore.edit {
+            it[GOAL_REMINDER_ON] = enabled
+            it[GOAL_REMINDER_HOUR] = hour.coerceIn(0, 23)
+            it[GOAL_REMINDER_MIN] = minute.coerceIn(0, 59)
+        }
+    }
+
     private companion object {
         val PRESET = stringPreferencesKey("fsrs_preset")
         val THEME = stringPreferencesKey("theme_mode")
@@ -128,5 +159,11 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
         val DAILY_GOAL_ENABLED = booleanPreferencesKey("daily_goal_enabled")
         val NEW_TARGET = intPreferencesKey("daily_goal_new")
         val REVIEW_TARGET = intPreferencesKey("daily_goal_review")
+        val STUDY_REMINDER_ON = booleanPreferencesKey("study_reminder_on")
+        val STUDY_REMINDER_HOUR = intPreferencesKey("study_reminder_hour")
+        val STUDY_REMINDER_MIN = intPreferencesKey("study_reminder_min")
+        val GOAL_REMINDER_ON = booleanPreferencesKey("goal_reminder_on")
+        val GOAL_REMINDER_HOUR = intPreferencesKey("goal_reminder_hour")
+        val GOAL_REMINDER_MIN = intPreferencesKey("goal_reminder_min")
     }
 }

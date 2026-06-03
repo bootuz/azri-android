@@ -31,6 +31,10 @@ import nart.simpleanki.feature.deckdetail.DeckDetailViewModel
 import nart.simpleanki.feature.folderdetail.FolderDetailViewModel
 import nart.simpleanki.feature.library.FolderEditViewModel
 import nart.simpleanki.feature.library.LibraryViewModel
+import nart.simpleanki.core.notifications.Notifier
+import nart.simpleanki.core.notifications.ReminderScheduler
+import nart.simpleanki.core.notifications.WorkManagerReminderScheduler
+import nart.simpleanki.feature.notifications.NotificationsViewModel
 import nart.simpleanki.feature.queue.DailyGoalViewModel
 import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.study.StudyViewModel
@@ -84,6 +88,8 @@ val appModule = module {
 
     // Settings
     single<SettingsRepository> { DataStoreSettingsRepository(androidContext()) }
+    single { Notifier(androidContext()) }
+    single<ReminderScheduler> { WorkManagerReminderScheduler(androidContext()) }
 
     // Feature ViewModels
     viewModel { SyncViewModel(get()) }
@@ -111,6 +117,7 @@ val appModule = module {
     }
     viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get()) }
     viewModel { DailyGoalViewModel(settingsRepository = get()) }
+    viewModel { NotificationsViewModel(settingsRepository = get(), scheduler = get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
         CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)
