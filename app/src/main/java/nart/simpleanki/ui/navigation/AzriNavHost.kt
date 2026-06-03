@@ -155,6 +155,7 @@ fun AzriNavHost() {
                 ProfileScreen(
                     onOpenFsrsSettings = { nav.navigate("fsrsSettings") },
                     onOpenNotifications = { nav.navigate("notifications") },
+                    onOpenPaywall = { nav.navigate("paywall") },
                 )
             }
             composable("folder/{folderId}") { entry ->

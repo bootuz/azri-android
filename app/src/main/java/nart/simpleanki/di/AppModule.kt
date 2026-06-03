@@ -99,7 +99,7 @@ val appModule = module {
     // Feature ViewModels
     viewModel { SyncViewModel(get()) }
     viewModel { SettingsViewModel(get()) }
-    viewModel { ProfileViewModel(settingsRepository = get(), authRepository = get()) }
+    viewModel { ProfileViewModel(settingsRepository = get(), authRepository = get(), entitlementRepository = get()) }
     viewModel { LibraryViewModel(get(), get(), get()) }
     viewModel { params -> DeckDetailViewModel(deckId = params.get(), cardRepository = get(), deckRepository = get()) }
     viewModel { params ->
