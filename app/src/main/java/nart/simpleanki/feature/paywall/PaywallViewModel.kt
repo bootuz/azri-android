@@ -69,6 +69,4 @@ class PaywallViewModel(
             purchasing.value = false
         }
     }
-
-    fun clearResult() { result.value = null }
 }
