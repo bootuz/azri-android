@@ -806,6 +806,7 @@ This task builds the orchestration seam and the two pure-ish operations (`previe
 package nart.simpleanki.core.apkg
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import nart.simpleanki.core.data.media.LocalMediaStore
 import nart.simpleanki.core.data.media.MediaManager
@@ -853,9 +854,9 @@ class ApkgImportServiceTest {
         val (svc, deckDao, cardDao) = service()
         val cards = listOf(ApkgPreviewCard("F1", "B1", imageName = null, audioName = null, selected = true))
         svc.import(cards, deckName = "MyDeck")
-        val decks = deckDao.store.value.values
+        val decks = deckDao.observeAll().first()    // FakeDeckDao.store is private; read via the DAO API
         assertEquals(listOf("MyDeck"), decks.map { it.name })
-        val saved = cardDao.store.value.values.single()
+        val saved = cardDao.observeAll().first().single()
         assertEquals("F1", saved.front)
         assertEquals("apkg", saved.source)
         assertEquals(0, saved.fsrsState)            // CardState.New
@@ -864,7 +865,7 @@ class ApkgImportServiceTest {
 }
 ```
 
-(Confirm `FakeDeckDao`/`FakeCardDao` expose a `store` map — they do in `app/src/test/.../repository/FakeDaos.kt`; if the accessor name differs, query via the DAO's observe/get methods instead.)
+(`FakeDeckDao`/`FakeCardDao` keep their backing `store` PRIVATE, so the test reads inserted rows via the public DAO API — `deckDao.observeAll().first()` / `cardDao.observeAll().first()` — which returns the entity rows.)
 
 - [ ] **Step 2: Run to verify failure**
 
