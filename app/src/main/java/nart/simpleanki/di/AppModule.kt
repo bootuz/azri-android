@@ -10,7 +10,10 @@ import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
 import nart.simpleanki.auth.AuthRepository
+import java.io.File
 import nart.simpleanki.core.data.media.FirebaseMediaRepository
+import nart.simpleanki.core.data.media.LocalMediaStore
+import nart.simpleanki.core.data.media.MediaManager
 import nart.simpleanki.core.data.media.MediaUploader
 import nart.simpleanki.auth.AuthViewModel
 import nart.simpleanki.auth.FirebaseAuthRepository
@@ -62,6 +65,8 @@ val appModule = module {
     single<FirebaseFirestore> { Firebase.firestore }
     single<FirebaseStorage> { Firebase.storage }
     single<MediaUploader> { FirebaseMediaRepository(get(), get()) }
+    single { LocalMediaStore(File(androidContext().filesDir, "media")) }
+    single { MediaManager(get(), get()) }
 
     // Auth
     single<AuthRepository> { FirebaseAuthRepository(get()) }
