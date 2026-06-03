@@ -41,6 +41,7 @@ data class AppSettings(
     // Queue ordering — shared by the queue preview and the study session.
     val queueSortOrder: QueueSortOrder = QueueSortOrder.DueDate,
     val queueShuffleSeed: Long = 0L,
+    val premiumNudgeDismissed: Boolean = false,
 )
 
 /** Total cards-per-day goal = new + review targets (derived, never stored). */
@@ -74,6 +75,7 @@ interface SettingsRepository {
     suspend fun setGoalReminder(enabled: Boolean, hour: Int, minute: Int)
     suspend fun setQueueSortOrder(order: QueueSortOrder)
     suspend fun setQueueShuffleSeed(seed: Long)
+    suspend fun setPremiumNudgeDismissed(dismissed: Boolean)
 }
 
 private val Context.settingsDataStore by preferencesDataStore("azri_settings")
@@ -101,6 +103,7 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
             queueSortOrder = prefs[QUEUE_SORT]?.let { runCatching { QueueSortOrder.valueOf(it) }.getOrNull() }
                 ?: QueueSortOrder.DueDate,
             queueShuffleSeed = prefs[QUEUE_SHUFFLE_SEED] ?: 0L,
+            premiumNudgeDismissed = prefs[PREMIUM_NUDGE_DISMISSED] ?: false,
         )
     }
 
@@ -168,6 +171,10 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
         context.settingsDataStore.edit { it[QUEUE_SHUFFLE_SEED] = seed }
     }
 
+    override suspend fun setPremiumNudgeDismissed(dismissed: Boolean) {
+        context.settingsDataStore.edit { it[PREMIUM_NUDGE_DISMISSED] = dismissed }
+    }
+
     private companion object {
         val PRESET = stringPreferencesKey("fsrs_preset")
         val THEME = stringPreferencesKey("theme_mode")
@@ -186,5 +193,6 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
         val GOAL_REMINDER_MIN = intPreferencesKey("goal_reminder_min")
         val QUEUE_SORT = stringPreferencesKey("queue_sort_order")
         val QUEUE_SHUFFLE_SEED = longPreferencesKey("queue_shuffle_seed")
+        val PREMIUM_NUDGE_DISMISSED = booleanPreferencesKey("premium_nudge_dismissed")
     }
 }

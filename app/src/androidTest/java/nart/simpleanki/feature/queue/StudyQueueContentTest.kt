@@ -153,6 +153,34 @@ class StudyQueueContentTest {
     }
 
     @Test
+    fun premiumNudge_visible_andOpensPaywall() {
+        var opened = false
+        composeRule.setContent {
+            StudyQueueContent(
+                state = StudyQueueUiState(loading = false, hasAnyCards = true, showPremiumNudge = true),
+                onStudyAll = {},
+                onOpenPaywall = { opened = true },
+            )
+        }
+        composeRule.onNodeWithText("Back up your cards").assertIsDisplayed().performClick()
+        assertTrue(opened)
+    }
+
+    @Test
+    fun premiumNudge_dismissButton_firesCallback() {
+        var dismissed = false
+        composeRule.setContent {
+            StudyQueueContent(
+                state = StudyQueueUiState(loading = false, hasAnyCards = true, showPremiumNudge = true),
+                onStudyAll = {},
+                onDismissNudge = { dismissed = true },
+            )
+        }
+        composeRule.onNodeWithContentDescription("Dismiss").performClick()
+        assertTrue(dismissed)
+    }
+
+    @Test
     fun newUser_noCards_showsOnboarding_andGoToLibrary() {
         var wentToLibrary = false
         composeRule.setContent {

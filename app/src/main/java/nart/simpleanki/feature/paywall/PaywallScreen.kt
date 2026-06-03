@@ -1,0 +1,275 @@
+package nart.simpleanki.feature.paywall
+
+import androidx.activity.compose.LocalActivity
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.util.Locale
+import nart.simpleanki.core.billing.BillingProducts
+import nart.simpleanki.core.billing.PlanOption
+import nart.simpleanki.core.billing.PlanPricing
+import nart.simpleanki.core.billing.PremiumTier
+import nart.simpleanki.core.billing.PurchaseResult
+import nart.simpleanki.feature.profile.ProfileContent
+import nart.simpleanki.feature.profile.ProfileUiState
+import nart.simpleanki.ui.theme.AzriTheme
+import org.koin.androidx.compose.koinViewModel
+
+// Dark Luxe palette
+private val Bg = Color(0xFF0E1020)
+private val Ink = Color(0xFFEDEEF7)
+private val Muted = Color(0xFF9A9CB5)
+private val AccentStart = Color(0xFF7C5CFF)
+private val AccentEnd = Color(0xFFFF5BA6)
+private val accentBrush = Brush.linearGradient(listOf(AccentStart, AccentEnd))
+
+/** Dark Luxe paywall, presented as a modal bottom sheet. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PaywallSheet(onDismiss: () -> Unit, viewModel: PaywallViewModel = koinViewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    val activity = LocalActivity.current
+    // Fetch the latest plans each time the sheet opens (the ViewModel is retained across opens).
+    LaunchedEffect(Unit) { viewModel.retry() }
+    // Dismiss automatically once premium is unlocked (side effect, not during composition).
+    LaunchedEffect(state.isPremium, state.result) {
+        if (state.isPremium && state.result == PurchaseResult.Success) onDismiss()
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Bg,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Muted) },
+    ) {
+        PaywallContent(
+            state = state,
+            onSelect = viewModel::select,
+            onPurchase = { activity?.let(viewModel::purchase) },
+            onRestore = viewModel::restore,
+            onRetry = viewModel::retry,
+        )
+    }
+}
+
+/** Stateless paywall body (sheet content), decoupled from the ViewModel for testing/preview. */
+@Composable
+fun PaywallContent(
+    state: PaywallUiState,
+    onSelect: (PremiumTier) -> Unit = {},
+    onPurchase: () -> Unit = {},
+    onRestore: () -> Unit = {},
+    onRetry: () -> Unit = {},
+) {
+    Column(
+        Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp).padding(bottom = 20.dp),
+    ) {
+        Box(
+            Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(accentBrush),
+            contentAlignment = Alignment.Center,
+        ) { Text("👑", fontSize = 28.sp) }
+        Spacer(Modifier.height(14.dp))
+        Text("Azri Premium", color = Ink, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
+        Text("Unlock cloud sync & backup", color = Muted, fontSize = 14.sp)
+        Spacer(Modifier.height(20.dp))
+
+        when {
+            state.loading -> {
+                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = AccentStart)
+                }
+            }
+            state.plansUnavailable -> {
+                PlansUnavailable(onRetry = onRetry)
+            }
+            else -> {
+                val monthly = state.plans.firstOrNull { it.tier == PremiumTier.Monthly }
+                state.plans.forEach { plan ->
+                    PlanRow(
+                        plan = plan,
+                        selected = plan.tier == state.selected,
+                        monthlyMicros = monthly?.priceAmountMicros ?: 0L,
+                        onClick = { onSelect(plan.tier) },
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        if (!state.plansUnavailable) {
+            Button(
+                onClick = onPurchase,
+                enabled = !state.purchasing && state.plans.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AccentStart, contentColor = Color.White),
+            ) { Text(if (state.purchasing) "Processing…" else "Continue", fontWeight = FontWeight.Bold) }
+            Spacer(Modifier.height(8.dp))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            TextButton(onClick = onRestore) { Text("Restore purchase", color = Muted) }
+        }
+        Text(
+            "Subscriptions renew automatically until cancelled. Terms · Privacy.",
+            color = Muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun PlansUnavailable(onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("Plans unavailable", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Couldn't reach the store. Make sure you're online and signed in to Google Play, then try again.",
+            color = Muted, fontSize = 13.sp, textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentStart, contentColor = Color.White),
+        ) { Text("Try again", fontWeight = FontWeight.Bold) }
+    }
+}
+
+@Composable
+private fun PlanRow(plan: PlanOption, selected: Boolean, monthlyMicros: Long, onClick: () -> Unit) {
+    val border = if (selected) BorderStroke(2.dp, AccentStart) else BorderStroke(1.dp, Color(0x22FFFFFF))
+    val perMonth = PlanPricing.perMonthMicros(plan.tier, plan.priceAmountMicros)
+    val savings = if (plan.tier == PremiumTier.Annual) PlanPricing.annualSavingsPercent(monthlyMicros, plan.priceAmountMicros) else 0
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Color(0x267C5CFF) else Color(0x0DFFFFFF))
+            .border(border, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(planLabel(plan.tier), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(planSubtitle(plan.tier, plan.formattedPrice), color = Muted, fontSize = 12.sp)
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            if (savings > 0) {
+                Box(Modifier.clip(RoundedCornerShape(6.dp)).background(accentBrush).padding(horizontal = 7.dp, vertical = 2.dp)) {
+                    Text("BEST VALUE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
+                }
+                Spacer(Modifier.height(3.dp))
+            }
+            Text(perMonth?.let { "${formatMicros(it)}/mo" } ?: plan.formattedPrice, color = Ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+    }
+}
+
+private fun planLabel(t: PremiumTier) = when (t) {
+    PremiumTier.Monthly -> "Monthly"; PremiumTier.Annual -> "Annual"
+    PremiumTier.Lifetime -> "Lifetime"; PremiumTier.None -> ""
+}
+private fun planSubtitle(t: PremiumTier, price: String) = when (t) {
+    PremiumTier.Annual -> "$price / year"; PremiumTier.Monthly -> "Billed monthly"
+    PremiumTier.Lifetime -> "$price · pay once"; PremiumTier.None -> ""
+}
+private fun formatMicros(micros: Long): String = "$" + String.format(Locale.US, "%.2f", micros / 1_000_000.0)
+
+// --- @Preview ---
+// Sample plans for previews (real prices come from Play at runtime).
+private val previewPlans = listOf(
+    PlanOption(PremiumTier.Annual, BillingProducts.SUBSCRIPTION_ID, BillingProducts.BASE_PLAN_ANNUAL, "tokA", "$19.99", 19_990_000L),
+    PlanOption(PremiumTier.Monthly, BillingProducts.SUBSCRIPTION_ID, BillingProducts.BASE_PLAN_MONTHLY, "tokM", "$2.99", 2_990_000L),
+    PlanOption(PremiumTier.Lifetime, BillingProducts.LIFETIME_ID, null, null, "$49.99", 49_990_000L),
+)
+
+@Preview(name = "Paywall · plans")
+@Composable
+private fun PaywallPlansPreview() {
+    Box(Modifier.background(Bg)) {
+        PaywallContent(state = PaywallUiState(plans = previewPlans, selected = PremiumTier.Annual, loading = false))
+    }
+}
+
+@Preview(name = "Paywall · unavailable")
+@Composable
+private fun PaywallUnavailablePreview() {
+    Box(Modifier.background(Bg)) {
+        PaywallContent(state = PaywallUiState(loading = false, plansUnavailable = true))
+    }
+}
+
+/**
+ * The paywall sheet presented over the Profile screen. The real [ModalBottomSheet] renders in a
+ * separate window that previews can't show, so the sheet chrome (scrim + rounded navy surface +
+ * drag handle) is reproduced here to preview the composed result.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(name = "Paywall over Profile", showBackground = true, widthDp = 412, heightDp = 920)
+@Composable
+private fun PaywallOverProfilePreview() {
+    AzriTheme {
+        Box(Modifier.fillMaxSize()) {
+            ProfileContent(
+                state = ProfileUiState(isAnonymous = true, isPremium = false),
+                onOpenFsrsSettings = {},
+                onThemeChange = {},
+                onSignOut = {},
+                onDeleteAccount = {},
+            )
+            // Scrim dimming the screen behind the sheet.
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+            // The paywall sheet pinned to the bottom.
+            Surface(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = Bg,
+            ) {
+                Column {
+                    BottomSheetDefaults.DragHandle(
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        color = Muted,
+                    )
+                    PaywallContent(state = PaywallUiState(plans = previewPlans, selected = PremiumTier.Annual, loading = false))
+                }
+            }
+        }
+    }
+}

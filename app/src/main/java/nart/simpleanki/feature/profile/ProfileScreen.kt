@@ -2,6 +2,7 @@ package nart.simpleanki.feature.profile
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,9 +28,11 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -61,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import nart.simpleanki.core.billing.PurchaseResult
 import nart.simpleanki.core.data.settings.ThemeMode
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
 import nart.simpleanki.ui.theme.AzriTheme
@@ -76,6 +80,7 @@ private const val PRIVACY_URL = "https://azri.app/privacy"
 fun ProfileScreen(
     onOpenFsrsSettings: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onOpenPaywall: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -88,6 +93,13 @@ fun ProfileScreen(
         state = state,
         onOpenFsrsSettings = onOpenFsrsSettings,
         onOpenNotifications = onOpenNotifications,
+        onOpenPaywall = onOpenPaywall,
+        onRestorePurchases = {
+            viewModel.restorePurchases { result ->
+                val msg = if (result == PurchaseResult.Success) "Purchases restored" else "No purchases to restore"
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            }
+        },
         onThemeChange = viewModel::setThemeMode,
         onSignOut = viewModel::signOut,
         onDeleteAccount = viewModel::deleteAccount,
@@ -113,6 +125,8 @@ fun ProfileContent(
     onOpenFsrsSettings: () -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
     onOpenNotifications: () -> Unit = {},
+    onOpenPaywall: () -> Unit = {},
+    onRestorePurchases: () -> Unit = {},
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onRate: () -> Unit = {},
@@ -173,14 +187,36 @@ fun ProfileContent(
             )
             ListItem(
                 headlineContent = { Text("Cloud sync") },
-                supportingContent = { Text(if (state.isAnonymous) "Not synced — guest" else "Synced") },
+                supportingContent = {
+                    Text(
+                        when {
+                            state.isPremium && !state.isAnonymous -> "Synced"
+                            state.isPremium && state.isAnonymous -> "Sign in to start syncing"
+                            else -> "Off — tap to back up"
+                        }
+                    )
+                },
                 leadingContent = {
                     Icon(
-                        if (state.isAnonymous) Icons.Default.CloudOff else Icons.Default.CloudDone,
+                        if (state.isPremium && !state.isAnonymous) Icons.Default.CloudDone else Icons.Default.CloudOff,
                         contentDescription = null,
                     )
                 },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+                modifier = if (state.isPremium) Modifier else Modifier.clickable(onClick = onOpenPaywall),
+            )
+            ListItem(
+                headlineContent = { Text("Azri Premium") },
+                supportingContent = { Text(if (state.isPremium) "Active · thank you!" else "Unlock cloud sync & backup") },
+                leadingContent = { Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+                modifier = if (state.isPremium) Modifier else Modifier.clickable(onClick = onOpenPaywall),
+            )
+            ListItem(
+                headlineContent = { Text("Restore purchases") },
+                leadingContent = { Icon(Icons.Default.Restore, contentDescription = null) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.clickable(onClick = onRestorePurchases),
             )
 
             CategoryHeader("Settings")

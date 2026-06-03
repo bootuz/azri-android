@@ -26,6 +26,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -44,6 +47,7 @@ import nart.simpleanki.feature.folderdetail.FolderDetailScreen
 import nart.simpleanki.feature.library.FolderEditScreen
 import nart.simpleanki.feature.library.LibraryScreen
 import nart.simpleanki.feature.notifications.NotificationsScreen
+import nart.simpleanki.feature.paywall.PaywallSheet
 import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
@@ -61,6 +65,8 @@ fun AzriNavHost() {
     val currentRoute = backStackEntry?.destination?.route
     // The bottom bar only shows on the top-level tabs, not on pushed detail screens.
     val showBottomBar = currentRoute == QUEUE || currentRoute == LIBRARY || currentRoute == PROFILE
+    // The paywall is a modal sheet overlaying any screen (not a nav route).
+    var showPaywall by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {
@@ -131,6 +137,7 @@ fun AzriNavHost() {
                     onStudyDeck = { nav.navigate("study/$it") },
                     onStudyFolder = { nav.navigate("studyFolder/$it") },
                     onGoToLibrary = { nav.switchTab(LIBRARY) },
+                    onOpenPaywall = { showPaywall = true },
                 )
             }
             composable(
@@ -153,6 +160,7 @@ fun AzriNavHost() {
                 ProfileScreen(
                     onOpenFsrsSettings = { nav.navigate("fsrsSettings") },
                     onOpenNotifications = { nav.navigate("notifications") },
+                    onOpenPaywall = { showPaywall = true },
                 )
             }
             composable("folder/{folderId}") { entry ->
@@ -243,6 +251,10 @@ fun AzriNavHost() {
                 )
             }
         }
+    }
+
+    if (showPaywall) {
+        PaywallSheet(onDismiss = { showPaywall = false })
     }
 }
 

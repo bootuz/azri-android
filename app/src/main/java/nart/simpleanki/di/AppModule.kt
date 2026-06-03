@@ -21,6 +21,9 @@ import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
+import nart.simpleanki.core.billing.EntitlementCache
+import nart.simpleanki.core.billing.EntitlementRepository
+import nart.simpleanki.core.billing.PlayBillingRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
 import nart.simpleanki.core.data.sync.RemoteSyncSource
 import nart.simpleanki.core.data.sync.SyncManager
@@ -39,6 +42,7 @@ import nart.simpleanki.feature.notifications.NotificationsViewModel
 import nart.simpleanki.feature.queue.DailyGoalViewModel
 import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.study.StudyViewModel
+import nart.simpleanki.feature.paywall.PaywallViewModel
 import nart.simpleanki.feature.sync.SyncViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
@@ -85,6 +89,10 @@ val appModule = module {
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
     single { SyncManager(get(), get(), get(), get()) }
 
+    // Billing / entitlement
+    single { EntitlementCache(androidContext()) }
+    single<EntitlementRepository> { PlayBillingRepository(androidContext(), get()) }
+
     // Settings
     single<SettingsRepository> { DataStoreSettingsRepository(androidContext()) }
     single { Notifier(androidContext()) }
@@ -93,7 +101,7 @@ val appModule = module {
     // Feature ViewModels
     viewModel { SyncViewModel(get()) }
     viewModel { SettingsViewModel(get()) }
-    viewModel { ProfileViewModel(settingsRepository = get(), authRepository = get()) }
+    viewModel { ProfileViewModel(settingsRepository = get(), authRepository = get(), entitlementRepository = get()) }
     viewModel { LibraryViewModel(get(), get(), get()) }
     viewModel { params -> DeckDetailViewModel(deckId = params.get(), cardRepository = get(), deckRepository = get()) }
     viewModel { params ->
@@ -114,9 +122,10 @@ val appModule = module {
             settingsRepository = get(),
         )
     }
-    viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get()) }
+    viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get(), entitlementRepository = get()) }
     viewModel { DailyGoalViewModel(settingsRepository = get()) }
     viewModel { NotificationsViewModel(settingsRepository = get(), scheduler = get()) }
+    viewModel { PaywallViewModel(get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
         CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Shuffle
@@ -82,6 +83,7 @@ fun StudyQueueScreen(
     onStudyDeck: (String) -> Unit,
     onStudyFolder: (String) -> Unit,
     onGoToLibrary: () -> Unit,
+    onOpenPaywall: () -> Unit = {},
     viewModel: StudyQueueViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -94,6 +96,8 @@ fun StudyQueueScreen(
         onEditGoal = { showGoalSheet = true },
         onSortChange = viewModel::setSortOrder,
         onGoToLibrary = onGoToLibrary,
+        onOpenPaywall = onOpenPaywall,
+        onDismissNudge = viewModel::dismissPremiumNudge,
     )
     if (showGoalSheet) {
         DailyGoalEditorSheet(onDismiss = { showGoalSheet = false })
@@ -111,6 +115,8 @@ fun StudyQueueContent(
     onEditGoal: () -> Unit = {},
     onSortChange: (QueueSortOrder) -> Unit = {},
     onGoToLibrary: () -> Unit = {},
+    onOpenPaywall: () -> Unit = {},
+    onDismissNudge: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -144,6 +150,9 @@ fun StudyQueueContent(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
+            if (state.showPremiumNudge) {
+                item { PremiumNudgeCard(onClick = onOpenPaywall, onDismiss = onDismissNudge) }
+            }
             // Progress when goal tracking is on; a "set up" nudge for brand-new users when it's off.
             // An existing user who deliberately turned it off sees nothing.
             if ((state.dailyGoalEnabled && state.goalTotal > 0) || !state.hasAnyCards) {
@@ -168,6 +177,25 @@ fun StudyQueueContent(
                 itemsIndexed(state.queueCards, key = { _, c -> c.cardId }) { index, card ->
                     QueueCardRow(index + 1, card)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PremiumNudgeCard(onClick: () -> Unit, onDismiss: () -> Unit) {
+    AzriCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("☁️", modifier = Modifier.padding(end = 12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Back up your cards", style = MaterialTheme.typography.titleSmall)
+                Text("Sync across devices with Premium", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

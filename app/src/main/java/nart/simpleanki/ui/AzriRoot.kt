@@ -11,6 +11,8 @@ import nart.simpleanki.auth.AuthUiState
 import nart.simpleanki.auth.AuthViewModel
 import nart.simpleanki.auth.GoogleSignInClient
 import nart.simpleanki.feature.auth.SignInScreen
+import nart.simpleanki.core.billing.EntitlementRepository
+import nart.simpleanki.core.billing.Entitlements
 import nart.simpleanki.feature.sync.SyncViewModel
 import nart.simpleanki.ui.navigation.AzriNavHost
 import org.koin.androidx.compose.koinViewModel
@@ -22,6 +24,7 @@ fun AzriRoot(
     viewModel: AuthViewModel = koinViewModel(),
     googleSignInClient: GoogleSignInClient = koinInject(),
     syncViewModel: SyncViewModel = koinViewModel(),
+    entitlementRepository: EntitlementRepository = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -33,7 +36,10 @@ fun AzriRoot(
             // (and remote changes from iOS/web) propagate without a relaunch.
             LaunchedEffect(s.user.uid) {
                 while (true) {
-                    syncViewModel.sync(s.user.uid)
+                    val premium = entitlementRepository.entitlement.value.isPremium
+                    if (Entitlements.shouldSync(isPremium = premium, signedInWithGoogle = !s.user.isAnonymous)) {
+                        syncViewModel.sync(s.user.uid)
+                    }
                     kotlinx.coroutines.delay(20_000)
                 }
             }
