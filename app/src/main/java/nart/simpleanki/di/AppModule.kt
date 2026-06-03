@@ -92,7 +92,7 @@ val appModule = module {
 
     // Sync
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
-    single { SyncManager(get(), get(), get(), get()) }
+    single { SyncManager(get(), get(), get(), get(), get()) }
 
     // Billing / entitlement
     single { EntitlementCache(androidContext()) }

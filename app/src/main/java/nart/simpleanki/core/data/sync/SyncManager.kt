@@ -8,6 +8,7 @@ import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.local.toEntity
+import nart.simpleanki.core.data.media.MediaManager
 
 /**
  * Two-way sync, mirroring the iOS SyncManager:
@@ -21,6 +22,7 @@ class SyncManager(
     private val deckDao: DeckDao,
     private val cardDao: CardDao,
     private val remote: RemoteSyncSource,
+    private val media: MediaManager,
 ) {
     suspend fun sync(uid: String) {
         push(uid)
@@ -37,8 +39,27 @@ class SyncManager(
             rows.forEach { deckDao.clearDirty(it.id, it.lastModified) }
         }
         cardDao.getDirty().takeIf { it.isNotEmpty() }?.let { rows ->
-            remote.pushCards(uid, rows.map { CardDto.fromDomain(it.toDomain()) })
-            rows.forEach { cardDao.clearDirty(it.id, it.lastModified) }
+            val updated = rows.mapNotNull { entity ->
+                val card = entity.toDomain()
+                val imagePath = media.ensureUploaded(card.image, card.imagePath)
+                val audioPath = media.ensureUploaded(card.audioName, card.audioPath)
+                // A local-only file that failed to upload: keep the card dirty, retry next sync.
+                val imageFailed = card.image != null && card.imagePath == null && imagePath == null
+                val audioFailed = card.audioName != null && card.audioPath == null && audioPath == null
+                if (imageFailed || audioFailed) null
+                else card.copy(imagePath = imagePath, audioPath = audioPath)
+            }
+            if (updated.isNotEmpty()) {
+                remote.pushCards(uid, updated.map { CardDto.fromDomain(it) })
+                updated.forEach { card ->
+                    val current = cardDao.getById(card.id)
+                    if (current != null && current.lastModified == card.lastModified) {
+                        cardDao.upsertAll(
+                            listOf(current.copy(imagePath = card.imagePath, audioPath = card.audioPath, dirty = false)),
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -65,6 +86,8 @@ class SyncManager(
                 shouldApplyRemote(cardDao.getById(domain.id)?.lastModified, domain.lastModified)
             ) {
                 cardDao.upsertAll(listOf(domain.toEntity(dirty = false)))
+                media.prefetch(domain.image, domain.imagePath)
+                media.prefetch(domain.audioName, domain.audioPath)
             }
         }
     }
