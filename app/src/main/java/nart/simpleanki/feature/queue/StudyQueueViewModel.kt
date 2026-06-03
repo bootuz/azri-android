@@ -62,10 +62,16 @@ data class StudyQueueUiState(
     val queueCards: List<QueueCardItem> = emptyList(),
     // Daily goal (soft target). [goalMet] is independent of [hasWork]: you can hit your goal
     // with cards still queued, or clear the queue without reaching it.
-    val dailyGoalEnabled: Boolean = true,
+    val dailyGoalEnabled: Boolean = false,
     val goalTotal: Int = 0,
     val studiedToday: Int = 0,
     val sortOrder: QueueSortOrder = QueueSortOrder.DueDate,
+    /**
+     * Whether the user owns any (non-deleted) card at all — a *lifetime* signal, not a "today"
+     * one. Distinguishes a brand-new user (show onboarding) from a returning user who has merely
+     * cleared today's queue (show "All caught up").
+     */
+    val hasAnyCards: Boolean = false,
 ) {
     val hasWork: Boolean get() = readyCount > 0
     val hasFolders: Boolean get() = folders.isNotEmpty()
@@ -156,6 +162,7 @@ class StudyQueueViewModel(
                 dailyGoalEnabled = settings.dailyGoalEnabled,
                 goalTotal = settings.dailyGoalTotal,
                 studiedToday = studiedToday,
+                hasAnyCards = cards.any { !it.isDeleted },
             )
         }.stateIn(
             scope = viewModelScope,

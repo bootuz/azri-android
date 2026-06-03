@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.settings.SettingsRepository
 
 data class DailyGoalUiState(
-    val enabled: Boolean = true,
+    val enabled: Boolean = false,
     val newCardsTarget: Int = 10,
     val reviewCardsTarget: Int = 20,
 ) {

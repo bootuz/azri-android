@@ -43,10 +43,10 @@ import nart.simpleanki.feature.decksettings.DeckEditScreen
 import nart.simpleanki.feature.folderdetail.FolderDetailScreen
 import nart.simpleanki.feature.library.FolderEditScreen
 import nart.simpleanki.feature.library.LibraryScreen
+import nart.simpleanki.feature.notifications.NotificationsScreen
 import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
-import nart.simpleanki.feature.notifications.NotificationsScreen
 import nart.simpleanki.feature.study.StudyScreen
 
 private const val QUEUE = "queue"
@@ -67,7 +67,8 @@ fun AzriNavHost() {
             if (showBottomBar) {
                 // M3's default NavigationBar is 80dp; trim the content to 64dp but keep the
                 // gesture-nav inset below it so nothing sits under the system pill.
-                val gestureInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val gestureInset =
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 NavigationBar(
                     modifier = Modifier.height(64.dp + gestureInset),
                     containerColor = MaterialTheme.colorScheme.background,
@@ -76,7 +77,7 @@ fun AzriNavHost() {
                         selected = currentRoute == QUEUE,
                         onClick = { nav.switchTab(QUEUE) },
                         icon = { Icon(Icons.Filled.School, contentDescription = null) },
-                        label = { Text("Queue") },
+                        label = { Text("Study") },
                     )
                     NavigationBarItem(
                         selected = currentRoute == LIBRARY,
@@ -101,7 +102,8 @@ fun AzriNavHost() {
         val dur = 300
         val slide = with(LocalDensity.current) { 30.dp.roundToPx() }
         val slideSpec = tween<IntOffset>(dur, easing = FastOutSlowInEasing)
-        val fadeThroughIn = fadeIn(tween(durationMillis = 195, delayMillis = 105, easing = FastOutSlowInEasing))
+        val fadeThroughIn =
+            fadeIn(tween(durationMillis = 195, delayMillis = 105, easing = FastOutSlowInEasing))
         val fadeThroughOut = fadeOut(tween(durationMillis = 105, easing = FastOutSlowInEasing))
         NavHost(
             navController = nav,
@@ -128,6 +130,7 @@ fun AzriNavHost() {
                     onStudyAll = { nav.navigate("studyAll") },
                     onStudyDeck = { nav.navigate("study/$it") },
                     onStudyFolder = { nav.navigate("studyFolder/$it") },
+                    onGoToLibrary = { nav.switchTab(LIBRARY) },
                 )
             }
             composable(
@@ -180,7 +183,9 @@ fun AzriNavHost() {
                 )
             }
             composable("study/{deckId}") { entry ->
-                StudyScreen(entry.arguments?.getString("deckId").orEmpty(), onDone = { nav.popBackStack() })
+                StudyScreen(
+                    entry.arguments?.getString("deckId").orEmpty(),
+                    onDone = { nav.popBackStack() })
             }
             composable("studyAll") {
                 StudyScreen(deckId = null, onDone = { nav.popBackStack() })
@@ -221,7 +226,10 @@ fun AzriNavHost() {
                 )
             }
             composable("deckEditInFolder/{folderId}") { entry ->
-                DeckEditScreen(deckId = null, folderId = entry.arguments?.getString("folderId"), onDone = { nav.popBackStack() })
+                DeckEditScreen(
+                    deckId = null,
+                    folderId = entry.arguments?.getString("folderId"),
+                    onDone = { nav.popBackStack() })
             }
             composable("folderEdit") {
                 FolderEditScreen(folderId = null, onDone = { nav.popBackStack() })

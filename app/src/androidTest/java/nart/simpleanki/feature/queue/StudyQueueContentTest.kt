@@ -82,7 +82,9 @@ class StudyQueueContentTest {
                 onStudyAll = {},
             )
         }
-        composeRule.onNodeWithText("Queue").assertIsDisplayed()
+        // The queue-list header is identified by its sort control (the "Study" label collides
+        // with the hero Study button when there's work).
+        composeRule.onNodeWithContentDescription("Sort cards").assertIsDisplayed()
         composeRule.onNodeWithText("hola").assertIsDisplayed()
     }
 
@@ -106,10 +108,63 @@ class StudyQueueContentTest {
     }
 
     @Test
-    fun noWork_showsAllCaughtUp() {
+    fun noWork_butHasCards_showsAllCaughtUp() {
+        // Returning user who cleared today's queue — has cards, nothing due.
         composeRule.setContent {
-            StudyQueueContent(state = StudyQueueUiState(loading = false), onStudyAll = {})
+            StudyQueueContent(
+                state = StudyQueueUiState(loading = false, hasAnyCards = true),
+                onStudyAll = {},
+            )
         }
         composeRule.onNodeWithText("All caught up").assertIsDisplayed()
+    }
+
+    @Test
+    fun goalTrackingOff_showsSetupPrompt_notProgress() {
+        composeRule.setContent {
+            // Goal tracking off (the default) for a new user → "set up" nudge, no progress bar.
+            StudyQueueContent(
+                state = StudyQueueUiState(
+                    loading = false, hasAnyCards = false,
+                    dailyGoalEnabled = false, goalTotal = 30, studiedToday = 0,
+                ),
+                onStudyAll = {},
+            )
+        }
+        composeRule.onNodeWithText("Set up your daily goal").assertIsDisplayed()
+        // No progress readout while tracking is off.
+        composeRule.onNodeWithText("0 / 30").assertDoesNotExist()
+        composeRule.onNodeWithText("30 to go").assertDoesNotExist()
+    }
+
+    @Test
+    fun goalTrackingOn_showsProgress_notSetupPrompt() {
+        composeRule.setContent {
+            StudyQueueContent(
+                state = StudyQueueUiState(
+                    loading = false, hasAnyCards = true,
+                    dailyGoalEnabled = true, goalTotal = 30, studiedToday = 0,
+                ),
+                onStudyAll = {},
+            )
+        }
+        composeRule.onNodeWithText("0 / 30").assertIsDisplayed()
+        composeRule.onNodeWithText("Set up your daily goal").assertDoesNotExist()
+    }
+
+    @Test
+    fun newUser_noCards_showsOnboarding_andGoToLibrary() {
+        var wentToLibrary = false
+        composeRule.setContent {
+            // Default state: no cards at all (hasAnyCards = false) → onboarding nudge.
+            StudyQueueContent(
+                state = StudyQueueUiState(loading = false),
+                onStudyAll = {},
+                onGoToLibrary = { wentToLibrary = true },
+            )
+        }
+        composeRule.onNodeWithText("Let's create your first flashcards").assertIsDisplayed()
+        composeRule.onNodeWithText("Go to Library").performClick()
+        assertTrue(wentToLibrary)
     }
 }

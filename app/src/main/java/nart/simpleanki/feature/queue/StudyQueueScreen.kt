@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Button
@@ -79,6 +81,7 @@ fun StudyQueueScreen(
     onStudyAll: () -> Unit,
     onStudyDeck: (String) -> Unit,
     onStudyFolder: (String) -> Unit,
+    onGoToLibrary: () -> Unit,
     viewModel: StudyQueueViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -90,6 +93,7 @@ fun StudyQueueScreen(
         onStudyFolder = onStudyFolder,
         onEditGoal = { showGoalSheet = true },
         onSortChange = viewModel::setSortOrder,
+        onGoToLibrary = onGoToLibrary,
     )
     if (showGoalSheet) {
         DailyGoalEditorSheet(onDismiss = { showGoalSheet = false })
@@ -106,6 +110,7 @@ fun StudyQueueContent(
     onStudyFolder: (String) -> Unit = {},
     onEditGoal: () -> Unit = {},
     onSortChange: (QueueSortOrder) -> Unit = {},
+    onGoToLibrary: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -118,7 +123,11 @@ fun StudyQueueContent(
         },
     ) { padding ->
         if (state.loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding), contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
             return@Scaffold
@@ -126,16 +135,21 @@ fun StudyQueueContent(
 
         // Mode is pure view state; fall back to Decks if folders disappear.
         var mode by rememberSaveable { mutableStateOf(StudyByMode.Decks) }
-        val effectiveMode = if (mode == StudyByMode.Folders && state.hasFolders) StudyByMode.Folders else StudyByMode.Decks
+        val effectiveMode =
+            if (mode == StudyByMode.Folders && state.hasFolders) StudyByMode.Folders else StudyByMode.Decks
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
-            if (state.dailyGoalEnabled && state.goalTotal > 0) {
+            // Progress when goal tracking is on; a "set up" nudge for brand-new users when it's off.
+            // An existing user who deliberately turned it off sees nothing.
+            if ((state.dailyGoalEnabled && state.goalTotal > 0) || !state.hasAnyCards) {
                 item { DailyGoalCard(state, onClick = onEditGoal) }
             }
-            item { HeroCard(state, onStudyAll) }
+            item { HeroCard(state, onStudyAll, onGoToLibrary) }
 
             if (state.decks.isNotEmpty()) {
                 item {
@@ -163,7 +177,9 @@ fun StudyQueueContent(
 private fun QueueHeader(sortOrder: QueueSortOrder, onSortChange: (QueueSortOrder) -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 20.dp, bottom = 4.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 4.dp, top = 20.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -182,7 +198,10 @@ private fun QueueHeader(sortOrder: QueueSortOrder, onSortChange: (QueueSortOrder
                         text = { Text(order.label()) },
                         leadingIcon = { Icon(order.icon(), contentDescription = null) },
                         trailingIcon = {
-                            if (order == sortOrder) Icon(Icons.Default.Check, contentDescription = "Selected")
+                            if (order == sortOrder) Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Selected"
+                            )
                         },
                         onClick = { onSortChange(order); menuOpen = false },
                     )
@@ -208,11 +227,41 @@ private fun QueueSortOrder.icon(): ImageVector = when (this) {
 private fun DailyGoalCard(state: StudyQueueUiState, onClick: () -> Unit) {
     AzriCard(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            if (!state.dailyGoalEnabled) {
+                // Goal tracking off (the default) — invite the user to set one up instead of progress.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Set up your daily goal", style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "Choose how many cards to study each day.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                return@Column
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Daily goal", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text(
+                    "Daily goal",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
+                )
                 Text(
                     "${state.studiedToday} / ${state.goalTotal}",
                     style = MaterialTheme.typography.labelLarge,
@@ -221,8 +270,16 @@ private fun DailyGoalCard(state: StudyQueueUiState, onClick: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             LinearProgressIndicator(
-                progress = { if (state.goalTotal == 0) 0f else (state.studiedToday.toFloat() / state.goalTotal).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                progress = {
+                    if (state.goalTotal == 0) 0f else (state.studiedToday.toFloat() / state.goalTotal).coerceIn(
+                        0f,
+                        1f
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
             )
             Spacer(Modifier.height(8.dp))
             Text(
@@ -235,13 +292,54 @@ private fun DailyGoalCard(state: StudyQueueUiState, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit) {
-    AzriCard(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit, onGoToLibrary: () -> Unit) {
+    AzriCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
         Column(
-            Modifier.fillMaxWidth().padding(24.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (state.hasWork) {
+            if (!state.hasWork && !state.hasAnyCards) {
+                // Brand-new user: onboarding nudge toward creating their first cards.
+                Icon(
+                    Icons.Outlined.CollectionsBookmark,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(56.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Let's create your first flashcards",
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    "Add a deck and some cards, then come back here to start studying.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = onGoToLibrary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Filled.Style, contentDescription = null)
+                    Text(
+                        "Go to Library",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            } else if (state.hasWork) {
                 Text(
                     state.readyCount.toString(),
                     style = MaterialTheme.typography.displayMedium,
@@ -266,7 +364,9 @@ private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit) {
                 Spacer(Modifier.height(20.dp))
                 Button(
                     onClick = onStudyAll,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
                     shape = MaterialTheme.shapes.large,
                 ) {
                     Icon(Icons.Filled.School, contentDescription = null)
@@ -308,7 +408,9 @@ private fun StudyByStrip(
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -323,7 +425,10 @@ private fun StudyByStrip(
                         SegmentedButton(
                             selected = m == mode,
                             onClick = { onModeChange(m) },
-                            shape = SegmentedButtonDefaults.itemShape(index, StudyByMode.entries.size),
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index,
+                                StudyByMode.entries.size
+                            ),
                             colors = SegmentedButtonDefaults.colors(
                                 activeContainerColor = MaterialTheme.colorScheme.primary,
                                 activeContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -402,7 +507,12 @@ private fun FolderChip(folder: FolderQueueItem, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "${folder.deckCount} ${if (folder.deckCount == 1) "deck" else "decks"} · ${chipCounts(folder.dueCount, folder.newCount)}",
+                "${folder.deckCount} ${if (folder.deckCount == 1) "deck" else "decks"} · ${
+                    chipCounts(
+                        folder.dueCount,
+                        folder.newCount
+                    )
+                }",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -420,7 +530,9 @@ private fun chipCounts(due: Int, new: Int): String =
 @Composable
 private fun QueueCardRow(index: Int, card: QueueCardItem) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -436,7 +548,11 @@ private fun QueueCardRow(index: Int, card: QueueCardItem) {
                 color = MaterialTheme.colorScheme.primary,
             )
         }
-        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+        Column(
+            Modifier
+                .padding(start = 12.dp)
+                .weight(1f)
+        ) {
             Text(
                 card.front,
                 style = MaterialTheme.typography.bodyLarge,
@@ -466,10 +582,24 @@ private fun StudyQueuePreview() {
             state = StudyQueueUiState(
                 loading = false, readyCount = 23, newCount = 8, dueCount = 15, estimatedMinutes = 4,
                 decks = listOf(
-                    DeckQueueItem("d1", "Spanish 101", ColorOption.Indigo, dueCount = 12, newCount = 3),
+                    DeckQueueItem(
+                        "d1",
+                        "Spanish 101",
+                        ColorOption.Indigo,
+                        dueCount = 12,
+                        newCount = 3
+                    ),
                     DeckQueueItem("d2", "Biology", ColorOption.Green, dueCount = 3, newCount = 5),
                 ),
-                folders = listOf(FolderQueueItem("f1", "Languages", deckCount = 2, dueCount = 12, newCount = 3)),
+                folders = listOf(
+                    FolderQueueItem(
+                        "f1",
+                        "Languages",
+                        deckCount = 2,
+                        dueCount = 12,
+                        newCount = 3
+                    )
+                ),
                 queueCards = listOf(
                     QueueCardItem("c1", "hola", "Spanish 101", "Languages"),
                     QueueCardItem("c2", "mitochondria", "Biology", null),
@@ -484,6 +614,16 @@ private fun StudyQueuePreview() {
 @Preview(name = "Queue · all caught up", showBackground = true)
 @Composable
 private fun StudyQueueEmptyPreview() {
+    AzriTheme {
+        StudyQueueContent(
+            state = StudyQueueUiState(loading = false, hasAnyCards = true),
+            onStudyAll = {})
+    }
+}
+
+@Preview(name = "Queue · new user onboarding", showBackground = true)
+@Composable
+private fun StudyQueueOnboardingPreview() {
     AzriTheme {
         StudyQueueContent(state = StudyQueueUiState(loading = false), onStudyAll = {})
     }

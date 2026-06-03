@@ -93,6 +93,23 @@ class StudyQueueViewModelTest {
     }
 
     @Test
+    fun hasAnyCards_isFalseForNewUser_andTrueOnceACardExists() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), now = { now })
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        // Brand-new user: no cards at all.
+        assertFalse(vm.uiState.value.hasAnyCards)
+
+        // A card due in the future: nothing ready today, but the user is no longer "new".
+        cardRepo.upsert(review("a1", "A").copy(fsrsDue = now + 86_400_000L))
+        runCurrent()
+        assertFalse("nothing ready today", vm.uiState.value.hasWork)
+        assertTrue("owns a card → not onboarding", vm.uiState.value.hasAnyCards)
+    }
+
+    @Test
     fun studiedToday_countsTodaysReviews_andMeetsGoal_independentOfQueue() = runTest {
         val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
         val cardRepo = CardRepository(FakeCardDao(), now = { now })
@@ -103,7 +120,7 @@ class StudyQueueViewModelTest {
         // One reviewed yesterday — must NOT count toward today.
         cardRepo.upsert(review("a3", "A").copy(fsrsDue = now + 86_400_000L, fsrsLastReview = now - 2 * 86_400_000L))
 
-        val settings = FakeSettingsRepository(AppSettings(newCardsTarget = 1, reviewCardsTarget = 1)) // goal total = 2
+        val settings = FakeSettingsRepository(AppSettings(dailyGoalEnabled = true, newCardsTarget = 1, reviewCardsTarget = 1)) // goal total = 2
         val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()

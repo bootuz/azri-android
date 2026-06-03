@@ -27,7 +27,8 @@ data class AppSettings(
     val enableFuzz: Boolean = true,
     val enableShortTerm: Boolean = true,
     // Daily goal — a SOFT target (does not cap the study queue). Mirrors iOS DailyGoalManager.
-    val dailyGoalEnabled: Boolean = true,
+    // Off by default: users opt in (e.g. from the "Set up your daily goal" prompt).
+    val dailyGoalEnabled: Boolean = false,
     val newCardsTarget: Int = 10,
     val reviewCardsTarget: Int = 20,
     // Notifications — off until the user opts in (and grants POST_NOTIFICATIONS).
@@ -88,7 +89,7 @@ class DataStoreSettingsRepository(private val context: Context) : SettingsReposi
             customMaxInterval = prefs[CUSTOM_MAX_INTERVAL] ?: 365,
             enableFuzz = prefs[ENABLE_FUZZ] ?: true,
             enableShortTerm = prefs[ENABLE_SHORT_TERM] ?: true,
-            dailyGoalEnabled = prefs[DAILY_GOAL_ENABLED] ?: true,
+            dailyGoalEnabled = prefs[DAILY_GOAL_ENABLED] ?: false,
             newCardsTarget = prefs[NEW_TARGET] ?: 10,
             reviewCardsTarget = prefs[REVIEW_TARGET] ?: 20,
             studyReminderEnabled = prefs[STUDY_REMINDER_ON] ?: false,

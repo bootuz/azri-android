@@ -25,7 +25,7 @@ class DailyGoalViewModelTest {
 
     @Test
     fun reflectsSettings_andDerivesTotal() = runTest {
-        val vm = DailyGoalViewModel(FakeSettingsRepository(AppSettings(newCardsTarget = 10, reviewCardsTarget = 20)))
+        val vm = DailyGoalViewModel(FakeSettingsRepository(AppSettings(dailyGoalEnabled = true, newCardsTarget = 10, reviewCardsTarget = 20)))
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
         assertTrue(vm.uiState.value.enabled)
