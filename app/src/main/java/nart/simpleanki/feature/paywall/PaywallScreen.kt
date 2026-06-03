@@ -101,10 +101,10 @@ fun PaywallContent(
         Box(
             Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(accentBrush),
             contentAlignment = Alignment.Center,
-        ) { Text("👑", fontSize = 28.sp) }
+        ) { Text("☁️", fontSize = 28.sp) }
         Spacer(Modifier.height(14.dp))
-        Text("Azri Premium", color = Ink, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
-        Text("Unlock cloud sync & backup", color = Muted, fontSize = 14.sp)
+        Text("Unlock Cloud Sync", color = Ink, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
+        Text("Never lose a card — every card safe and in sync.", color = Muted, fontSize = 14.sp)
         Spacer(Modifier.height(20.dp))
 
         when {

@@ -206,8 +206,8 @@ fun ProfileContent(
                 modifier = if (state.isPremium) Modifier else Modifier.clickable(onClick = onOpenPaywall),
             )
             ListItem(
-                headlineContent = { Text("Azri Premium") },
-                supportingContent = { Text(if (state.isPremium) "Active · thank you!" else "Unlock cloud sync & backup") },
+                headlineContent = { Text("Unlock Cloud Sync") },
+                supportingContent = { Text(if (state.isPremium) "Active · thank you!" else "Back up & sync your cards") },
                 leadingContent = { Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                 modifier = if (state.isPremium) Modifier else Modifier.clickable(onClick = onOpenPaywall),
