@@ -10,7 +10,10 @@ import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
 import nart.simpleanki.auth.AuthRepository
+import java.io.File
 import nart.simpleanki.core.data.media.FirebaseMediaRepository
+import nart.simpleanki.core.data.media.LocalMediaStore
+import nart.simpleanki.core.data.media.MediaManager
 import nart.simpleanki.core.data.media.MediaUploader
 import nart.simpleanki.auth.AuthViewModel
 import nart.simpleanki.auth.FirebaseAuthRepository
@@ -62,6 +65,8 @@ val appModule = module {
     single<FirebaseFirestore> { Firebase.firestore }
     single<FirebaseStorage> { Firebase.storage }
     single<MediaUploader> { FirebaseMediaRepository(get(), get()) }
+    single { LocalMediaStore(File(androidContext().filesDir, "media")) }
+    single { MediaManager(get(), get()) }
 
     // Auth
     single<AuthRepository> { FirebaseAuthRepository(get()) }
@@ -87,7 +92,7 @@ val appModule = module {
 
     // Sync
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
-    single { SyncManager(get(), get(), get(), get()) }
+    single { SyncManager(get(), get(), get(), get(), get()) }
 
     // Billing / entitlement
     single { EntitlementCache(androidContext()) }
@@ -128,7 +133,7 @@ val appModule = module {
     viewModel { PaywallViewModel(get()) }
     viewModel { params ->
         val a = params.get<CardFormArgs>()
-        CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaUploader = get(), editingCardId = a.cardId)
+        CardFormViewModel(deckId = a.deckId, cardRepository = get(), mediaManager = get(), editingCardId = a.cardId)
     }
     viewModel { params ->
         val a = params.get<DeckEditArgs>()

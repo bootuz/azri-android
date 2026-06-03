@@ -214,7 +214,7 @@ fun CardFormContent(
             )
 
             // Image preview
-            if (state.imagePath != null) {
+            if (state.imageName != null) {
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -222,6 +222,7 @@ fun CardFormContent(
                         .clip(MaterialTheme.shapes.large),
                 ) {
                     MediaImage(
+                        state.imageName,
                         state.imagePath,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -239,9 +240,9 @@ fun CardFormContent(
                 }
             }
             // Audio attached
-            if (state.audioPath != null) {
+            if (state.audioName != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    AudioPlayButton(state.audioPath)
+                    AudioPlayButton(state.audioName, state.audioPath)
                     Text("Audio attached", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     IconButton(onClick = onRemoveAudio) {
                         Icon(Icons.Default.Delete, contentDescription = "Remove audio", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -251,7 +252,7 @@ fun CardFormContent(
 
             // Attachment actions (Material chips)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (state.imagePath == null) {
+                if (state.imageName == null) {
                     AssistChip(
                         onClick = onAddImage,
                         enabled = !state.uploadingImage,
@@ -262,10 +263,10 @@ fun CardFormContent(
                                 Icon(Icons.Default.Image, contentDescription = null, Modifier.height(18.dp))
                             }
                         },
-                        label = { Text(if (state.uploadingImage) "Uploading…" else "Add image") },
+                        label = { Text(if (state.uploadingImage) "Saving…" else "Add image") },
                     )
                 }
-                if (state.audioPath == null) {
+                if (state.audioName == null) {
                     AssistChip(
                         onClick = onToggleRecording,
                         enabled = !state.uploadingAudio,
@@ -279,7 +280,7 @@ fun CardFormContent(
                         label = {
                             Text(
                                 when {
-                                    state.uploadingAudio -> "Uploading…"
+                                    state.uploadingAudio -> "Saving…"
                                     isRecording -> "Stop recording"
                                     else -> "Record audio"
                                 },

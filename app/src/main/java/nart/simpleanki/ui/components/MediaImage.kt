@@ -9,26 +9,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
-import nart.simpleanki.core.data.media.MediaUploader
+import nart.simpleanki.core.data.media.MediaManager
 import org.koin.compose.koinInject
+import java.io.File
 
 /**
- * Displays a card image stored in Firebase Storage. Resolves the download URL for the
- * given [imagePath] (the `users/{uid}/images/...` path shared with iOS) and loads it via Coil.
+ * Displays a card image local-first: resolves [name] from on-device storage (falling back to
+ * the cloud [cloudPath] and caching) via [MediaManager], then loads the file with Coil.
  */
 @Composable
 fun MediaImage(
-    imagePath: String,
+    name: String,
+    cloudPath: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
-    uploader: MediaUploader = koinInject(),
+    media: MediaManager = koinInject(),
 ) {
-    var url by remember(imagePath) { mutableStateOf<String?>(null) }
-    LaunchedEffect(imagePath) { url = uploader.downloadUrl(imagePath).getOrNull() }
-    val resolved = url
-    if (resolved != null) {
+    var file by remember(name, cloudPath) { mutableStateOf<File?>(null) }
+    LaunchedEffect(name, cloudPath) { file = media.resolve(name, cloudPath) }
+    file?.let {
         AsyncImage(
-            model = resolved,
+            model = it,
             contentDescription = "Card image",
             contentScale = contentScale,
             modifier = modifier,
