@@ -109,7 +109,7 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
         if (!state.isRevealed) {
             if (state.showFlipHint) {
                 Row(
-                    Modifier.fillMaxWidth().height(50.dp),
+                    Modifier.fillMaxWidth().height(60.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -127,7 +127,7 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
                 }
             } else {
                 // Keep the layout stable once the hint is gone.
-                Spacer(Modifier.height(50.dp))
+                Spacer(Modifier.height(60.dp))
             }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
