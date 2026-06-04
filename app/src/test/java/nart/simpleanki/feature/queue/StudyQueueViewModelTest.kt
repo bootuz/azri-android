@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -75,6 +76,36 @@ class StudyQueueViewModelTest {
         val alpha = s.decks.first { it.deckId == "A" }
         assertEquals(2, alpha.dueCount)
         assertEquals(1, alpha.newCount)
+    }
+
+    @Test
+    fun dueCount_updatesLive_whenAFutureCardBecomesDue() = runTest {
+        // The @Before sets Main to an UnconfinedTestDispatcher with its OWN scheduler; override it
+        // here so the VM's coroutines (incl. the ticker's delay) share THIS test's scheduler and
+        // are driven by advanceTimeBy below.
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        // Clock tied to virtual time: advancing the scheduler advances now().
+        val clock = { now + testScheduler.currentTime }
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        deckRepo.upsert(Deck(id = "A", name = "Alpha", dateCreated = now, lastModified = now))
+        // A review card due 60s from now — not ready yet.
+        cardRepo.upsert(review("a1", "A").copy(fsrsDue = now + 60_000L))
+
+        val vm = StudyQueueViewModel(
+            cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }),
+            FakeSettingsRepository(), FakeEntitlementRepository(), now = clock,
+        )
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        assertEquals("not due yet", 0, vm.uiState.value.dueCount)
+        assertFalse("no work yet", vm.uiState.value.hasWork)
+
+        advanceTimeBy(61_000L)   // cross the due moment
+        runCurrent()
+        assertEquals("became due", 1, vm.uiState.value.dueCount)
+        assertEquals(1, vm.uiState.value.readyCount)
+        assertTrue(vm.uiState.value.hasWork)
     }
 
     @Test

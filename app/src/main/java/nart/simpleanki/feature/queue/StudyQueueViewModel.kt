@@ -15,6 +15,7 @@ import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.dailyGoalTotal
 import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
+import nart.simpleanki.core.domain.fsrs.withDueTicks
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import java.util.Calendar
@@ -97,13 +98,12 @@ class StudyQueueViewModel(
 
     val uiState: StateFlow<StudyQueueUiState> =
         combine(
-            cardRepository.observeAllCards(),
+            cardRepository.observeAllCards().withDueTicks(now),
             deckRepository.observeDecks(),
             folderRepository.observeFolders(),
             settingsRepository.settings,
             entitlementRepository.entitlement,
-        ) { cards, decks, folders, settings, entitlement ->
-            val nowMillis = now()
+        ) { (cards, nowMillis), decks, folders, settings, entitlement ->
             val queue = StudyQueueBuilder.buildStudyQueue(
                 cards = cards,
                 nowMillis = nowMillis,
