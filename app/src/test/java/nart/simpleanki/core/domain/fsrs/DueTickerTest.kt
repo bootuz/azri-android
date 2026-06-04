@@ -59,6 +59,30 @@ class DueTickerTest {
     }
 
     @Test
+    fun reEmits_whenAFutureLearningCardBecomesDue() = runTest {
+        val clock = { base + testScheduler.currentTime }
+        val learning = Card(
+            id = "l1", front = "Q", back = "A", deckId = "d1",
+            dateCreated = 0, lastModified = 0, fsrsDue = base + 45_000L, fsrsState = CardState.Learning.value,
+        )
+        flowOf(listOf(learning)).withDueTicks(clock).test {
+            assertEquals(base, awaitItem().second)
+            assertEquals(base + 45_000L, awaitItem().second)  // Learning cards are watched, not just Review
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun idles_whenTheOnlyFutureDueCardIsDeleted() = runTest {
+        val clock = { base + testScheduler.currentTime }
+        val deleted = reviewCard("r1", due = base + 60_000L).copy(isDeleted = true)
+        flowOf(listOf(deleted)).withDueTicks(clock).test {
+            assertEquals(base, awaitItem().second)  // emits current now once
+            awaitComplete()                          // deleted card ignored → no tick scheduled
+        }
+    }
+
+    @Test
     fun reEmitsImmediately_whenCardListChanges() = runTest {
         val clock = { base + testScheduler.currentTime }
         val source = MutableStateFlow(listOf(newCard("n1")))
