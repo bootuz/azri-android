@@ -1,6 +1,5 @@
 package nart.simpleanki.core.csv
 
-import com.github.doyaaaaaken.kotlincsv.dsl.context.InsufficientFieldsRowBehaviour
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 
 /**
@@ -29,17 +28,19 @@ object CsvParser {
 
     fun parse(text: String, hasHeader: Boolean): ParsedCsv {
         val clean = text.removePrefix("\uFEFF")
+        // Known limitation: if the first physical line begins a multi-line quoted field, delimiter detection may fall back to comma.
         val firstLine = clean.lineSequence().firstOrNull { it.isNotBlank() } ?: ""
         val delimiter = detectDelimiter(firstLine)
 
-        // skipEmptyLine drops blank lines (incl. a trailing newline's phantom row) — they aren't cards.
-        // insufficientFieldsRowBehaviour = EMPTY_STRING: kotlin-csv 1.10.0 throws on ragged rows by
-        // default; instead it pads short rows with "" (the max-width padding below is a safety net).
-        val grid = csvReader {
-            this.delimiter = delimiter
-            this.skipEmptyLine = true
-            this.insufficientFieldsRowBehaviour = InsufficientFieldsRowBehaviour.EMPTY_STRING
-        }.readAll(clean)
+        // readAll() pins every row to the first row's field count (throwing, trimming, or dropping
+        // ragged rows in 1.10.0). We instead read row-by-row via readNext(), which applies no
+        // cross-row width check, so each record survives verbatim — over-wide bodies included. The
+        // max-width padding below then squares the grid off. skipEmptyLine drops blank lines (incl. a
+        // trailing newline's phantom row); RFC 4180 quoting and embedded newlines are still honored.
+        val grid = csvReader { this.delimiter = delimiter; this.skipEmptyLine = true }
+            .open(clean.byteInputStream()) {
+                generateSequence { readNext() }.toList()
+            }
         if (grid.isEmpty()) return ParsedCsv(emptyList(), emptyList())
 
         val width = grid.maxOf { it.size }
