@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import nart.simpleanki.auth.AuthUiState
 import nart.simpleanki.auth.AuthViewModel
 import nart.simpleanki.auth.GoogleSignInClient
+import nart.simpleanki.core.analytics.LogManager
 import nart.simpleanki.feature.auth.SignInScreen
 import nart.simpleanki.core.billing.EntitlementRepository
 import nart.simpleanki.core.billing.Entitlements
@@ -29,6 +30,7 @@ fun AzriRoot(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val logManager: LogManager = koinInject()
 
     when (val s = state) {
         is AuthUiState.SignedIn -> {
@@ -43,18 +45,28 @@ fun AzriRoot(
                     kotlinx.coroutines.delay(20_000)
                 }
             }
+            LaunchedEffect(s.user.uid) {
+                logManager.identifyUser(s.user.uid, s.user.displayName, s.user.email)
+            }
             AzriNavHost()
         }
-        else -> SignInScreen(
-            onGoogleClick = {
-                scope.launch {
-                    googleSignInClient.getIdToken(context)
-                        .onSuccess { viewModel.onGoogleIdToken(it) }
-                        .onFailure { viewModel.onGoogleSignInError(it.message ?: "Sign-in cancelled") }
-                }
-            },
-            onGuestClick = viewModel::onContinueAsGuest,
-            errorMessage = (s as? AuthUiState.Error)?.message,
-        )
+        else -> {
+            // Only clear once auth has actually resolved to signed-out/error — not during the
+            // initial Loading flash, which would emit a spurious clear on every cold start.
+            if (s !is AuthUiState.Loading) {
+                LaunchedEffect(Unit) { logManager.clearUser() }
+            }
+            SignInScreen(
+                onGoogleClick = {
+                    scope.launch {
+                        googleSignInClient.getIdToken(context)
+                            .onSuccess { viewModel.onGoogleIdToken(it) }
+                            .onFailure { viewModel.onGoogleSignInError(it.message ?: "Sign-in cancelled") }
+                    }
+                },
+                onGuestClick = viewModel::onContinueAsGuest,
+                errorMessage = (s as? AuthUiState.Error)?.message,
+            )
+        }
     }
 }

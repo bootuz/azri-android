@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import nart.simpleanki.core.analytics.LoggableEvent
+import nart.simpleanki.core.analytics.LogManager
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
@@ -43,6 +45,7 @@ class StudyViewModel(
     private val deckRepository: DeckRepository,
     private val settingsRepository: SettingsRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
+    private val logManager: LogManager = LogManager(emptyList()),
 ) : ViewModel() {
 
     private val queue = ArrayDeque<Card>()
@@ -83,6 +86,7 @@ class StudyViewModel(
             ratingIntervals = intervalsFor(first),
             finished = queue.isEmpty(),
         )
+        logManager.track(Event.ReviewSessionStart(deckId, folderId))
     }
 
     /** Formats the next-due interval per rating for [card] (empty when there's no card). */
@@ -117,5 +121,25 @@ class StudyViewModel(
             ratingIntervals = intervalsFor(next),
             finished = next == null,
         )
+        logManager.track(Event.CardRated(rating))
+        if (next == null) logManager.track(Event.ReviewSessionComplete(prev.completed + 1))
+    }
+
+    private sealed interface Event : LoggableEvent {
+        data class ReviewSessionStart(val deckId: String?, val folderId: String?) : Event {
+            override val eventName = "review_session_start"
+            override val params get() = buildMap {
+                deckId?.let { put("deck_id", it) }
+                folderId?.let { put("folder_id", it) }
+            }
+        }
+        data class CardRated(val rating: Rating) : Event {
+            override val eventName = "card_rated"
+            override val params get() = mapOf("rating" to rating.name.lowercase())
+        }
+        data class ReviewSessionComplete(val count: Int) : Event {
+            override val eventName = "review_session_complete"
+            override val params get() = mapOf("count" to count)
+        }
     }
 }

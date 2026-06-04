@@ -7,6 +7,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import nart.simpleanki.core.analytics.FakeLogService
+import nart.simpleanki.core.analytics.LogManager
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
@@ -155,6 +157,32 @@ class StudyViewModelTest {
         val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), settings, now = { now })
         runCurrent()
         assertEquals("hard", vm.uiState.value.current?.id) // hardest card first
+    }
+
+    @Test
+    fun load_tracksReviewSessionStart() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        repo.upsert(newCard("c1"))
+        val log = FakeLogService()
+        StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now }, logManager = LogManager(listOf(log)))
+        runCurrent()
+        assertTrue(log.events.any { it.eventName == "review_session_start" })
+    }
+
+    @Test
+    fun rating_tracksCardRated_andCompletionOnLastCard() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        repo.upsert(newCard("c1"))
+        val log = FakeLogService()
+        val vm = StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now }, logManager = LogManager(listOf(log)))
+        runCurrent()
+        vm.onRate(Rating.Good)
+        runCurrent()
+        // card_rated carries the lowercased rating name; review_session_complete carries the Int count.
+        val rated = log.events.first { it.eventName == "card_rated" }
+        assertEquals("good", rated.params["rating"])
+        val done = log.events.first { it.eventName == "review_session_complete" }
+        assertEquals(1, done.params["count"])
     }
 
     @Test
