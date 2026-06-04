@@ -3,7 +3,6 @@ package nart.simpleanki.ui.components
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -52,13 +51,13 @@ fun FlipCard(
         label = "flip",
     )
     AzriCard(
-        modifier = modifier
-            .graphicsLayer {
-                rotationY = rotation
-                cameraDistance = 12f * density
-            }
-            .clickable(enabled = !revealed) { onFlip() },
+        onClick = if (!revealed) onFlip else null,
+        modifier = modifier.graphicsLayer {
+            rotationY = rotation
+            cameraDistance = 12f * density
+        },
     ) {
+        // Reading rotation here is intentional: swapping faces at 90° avoids composing both MediaImage/AudioPlayButton at once; the per-frame recomposition over ~450ms is negligible.
         if (rotation <= 90f) {
             CardFace(
                 label = "QUESTION",
@@ -77,7 +76,7 @@ fun FlipCard(
                 label = "ANSWER",
                 text = card.back,
                 textStyle = MaterialTheme.typography.titleLarge,
-                textColor = MaterialTheme.colorScheme.primary,
+                textColor = MaterialTheme.colorScheme.primary, // answer in the accent color (per design spec)
                 // Image is the question prompt — front only. Audio replays on the answer.
                 imageName = null,
                 imagePath = null,
