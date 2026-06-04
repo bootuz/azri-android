@@ -89,6 +89,7 @@ dependencies {
 
     implementation(libs.material)
     implementation(libs.zstd.jni)
+    implementation(libs.kotlin.csv)
 
     testImplementation(libs.junit)
     testImplementation(libs.org.json)

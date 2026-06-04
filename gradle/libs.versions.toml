@@ -1,6 +1,7 @@
 [versions]
 agp = "9.2.1"
 kotlin = "2.3.0"
+kotlinCsv = "1.10.0"
 ksp = "2.3.9"
 coreKtx = "1.17.0"
 lifecycle = "2.9.4"
@@ -78,6 +79,7 @@ kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "ko
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 zstd-jni = { group = "com.github.luben", name = "zstd-jni", version.ref = "zstd" }
+kotlin-csv = { group = "com.github.doyaaaaaken", name = "kotlin-csv-jvm", version.ref = "kotlinCsv" }
 org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 
 # Test
