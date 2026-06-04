@@ -375,7 +375,10 @@ private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit, onGoToLib
                     style = MaterialTheme.typography.displayMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Text("cards ready", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (state.readyCount == 1) "card ready" else "cards ready",
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "~${state.estimatedMinutes} min · ${state.newCount} new · ${state.dueCount} due",
