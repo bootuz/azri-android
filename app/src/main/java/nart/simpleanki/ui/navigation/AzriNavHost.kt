@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import nart.simpleanki.core.analytics.LogManager
+import nart.simpleanki.core.analytics.screenName
 import nart.simpleanki.feature.apkgimport.ApkgImportScreen
 import nart.simpleanki.feature.cardform.CardFormScreen
 import nart.simpleanki.feature.csvimport.CsvImportScreen
@@ -62,6 +65,7 @@ import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
 import nart.simpleanki.feature.study.StudyScreen
+import org.koin.compose.koinInject
 
 private const val QUEUE = "queue"
 private const val LIBRARY = "library"
@@ -71,6 +75,14 @@ private const val PROFILE = "profile"
 @Composable
 fun AzriNavHost() {
     val nav = rememberNavController()
+    val logManager: LogManager = koinInject()
+    DisposableEffect(nav) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            logManager.trackScreen(screenName(destination.route))
+        }
+        nav.addOnDestinationChangedListener(listener)
+        onDispose { nav.removeOnDestinationChangedListener(listener) }
+    }
     val backStackEntry by nav.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     // The bottom bar only shows on the top-level tabs, not on pushed detail screens.
