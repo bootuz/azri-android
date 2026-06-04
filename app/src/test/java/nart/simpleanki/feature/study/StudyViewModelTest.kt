@@ -217,4 +217,21 @@ class StudyViewModelTest {
         assertTrue(vm.uiState.value.finished)
         assertNull(vm.uiState.value.current)
     }
+
+    @Test
+    fun finishingSession_stampsElapsedDuration() = runTest {
+        var clock = now
+        val repo = CardRepository(FakeCardDao(), now = { clock })
+        repo.upsert(newCard("c1"))
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { clock }), FakeSettingsRepository(), now = { clock })
+        runCurrent()
+        // Session started at `now`; advance the clock 3s, then rate the only card to finish.
+        clock = now + 3_000
+        vm.onRate(Rating.Good)
+        runCurrent()
+
+        val s = vm.uiState.value
+        assertTrue(s.finished)
+        assertEquals(3_000L, s.durationMillis)
+    }
 }

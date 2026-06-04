@@ -31,6 +31,8 @@ data class StudyUiState(
     /** Next-due interval label per rating for the current card (e.g. Good -> "4d"), shown on the answer buttons. */
     val ratingIntervals: Map<Rating, String> = emptyMap(),
     val finished: Boolean = false,
+    /** Wall-clock millis from session start to finish; stamped once when the session finishes. */
+    val durationMillis: Long = 0,
 )
 
 /**
@@ -51,6 +53,7 @@ class StudyViewModel(
 ) : ViewModel() {
 
     private val queue = ArrayDeque<Card>()
+    private var sessionStartMillis: Long = 0L
     private lateinit var scheduling: SchedulingService
     private val _uiState = MutableStateFlow(StudyUiState())
     val uiState: StateFlow<StudyUiState> = _uiState.asStateFlow()
@@ -60,6 +63,7 @@ class StudyViewModel(
     }
 
     private suspend fun load() {
+        sessionStartMillis = now()
         val settings = settingsRepository.settings.first()
         scheduling = SchedulingService(settings.fsrsParameters())
         val all = when {
@@ -87,6 +91,7 @@ class StudyViewModel(
             remaining = queue.size,
             ratingIntervals = intervalsFor(first),
             finished = queue.isEmpty(),
+            durationMillis = if (queue.isEmpty()) now() - sessionStartMillis else 0,
         )
         logManager.track(Event.ReviewSessionStart(deckId, folderId))
     }
@@ -122,6 +127,7 @@ class StudyViewModel(
             ratingCounts = counts,
             ratingIntervals = intervalsFor(next),
             finished = next == null,
+            durationMillis = if (next == null) now() - sessionStartMillis else prev.durationMillis,
         )
         logManager.track(Event.CardRated(rating))
         if (next == null) logManager.track(Event.ReviewSessionComplete(prev.completed + 1))
