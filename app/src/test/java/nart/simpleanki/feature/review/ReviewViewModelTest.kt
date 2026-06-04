@@ -52,7 +52,7 @@ class ReviewViewModelTest {
         cardRepo.upsert(card("orig", "A", reverse = false))
         cardRepo.upsert(card("rev", "A", reverse = true))                  // excluded: OriginalsOnly
         cardRepo.upsert(card("mem", "A", memorized = true))                // excluded: memorized
-        cardRepo.upsert(card("gone", "A", deleted = true))                 // excluded: deleted
+        cardRepo.upsert(card("gone", "A", deleted = true))                 // excluded: deleted (filtered at the DAO layer)
 
         val vm = ReviewViewModel("A", null, cardRepo, deckRepo, now = { now })
         backgroundScope.launch { vm.uiState.collect {} }

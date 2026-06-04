@@ -67,7 +67,7 @@ class ReviewViewModel(
 
     private sealed interface Event : LoggableEvent {
         data class ReviewStart(val deckId: String?, val folderId: String?, val count: Int) : Event {
-            override val eventName = "review_session_start"
+            override val eventName = "cram_session_start"
             override val params get() = buildMap<String, Any?> {
                 deckId?.let { put("deck_id", it) }
                 folderId?.let { put("folder_id", it) }
