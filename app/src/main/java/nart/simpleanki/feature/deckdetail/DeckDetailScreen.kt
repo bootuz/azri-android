@@ -54,6 +54,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -194,18 +196,22 @@ fun DeckDetailContent(
                         Stat(state.newCount.toString(), "New")
                     }
                 }
-                Button(
-                    onClick = onStudy,
-                    enabled = state.total > 0,
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Filled.School, contentDescription = null)
-                    Text(
-                        if (state.dueCount > 0) "Study ${state.dueCount} due" else "Study",
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
+                val studyable = state.newCount + state.dueCount
+                when {
+                    studyable > 0 -> Button(
+                        onClick = onStudy,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Filled.School, contentDescription = null)
+                        Text(
+                            if (state.dueCount > 0) "Study ${state.dueCount} due" else "Study",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                    state.total > 0 -> AllCaughtUp(cards = state.cards, now = now)
+                    else -> Unit // empty deck: the list body below shows "No cards yet."
                 }
             }
 
@@ -269,6 +275,36 @@ fun DeckDetailContent(
                     }
                 }
             }
+        }
+    }
+}
+
+/** Encouraging state shown when a deck has cards but nothing is new or due to study. */
+@Composable
+private fun AllCaughtUp(cards: List<Card>, now: Long) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text("🎉", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "You're all caught up!",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "Nothing to review in this deck right now.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        nextReviewLabel(cards, now)?.let { label ->
+            Text(
+                "Next review $label",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -394,6 +430,26 @@ private fun DeckDetailEmptyPreview() {
         DeckDetailContent(
             state = DeckDetailUiState(deckId = "d1", deckName = "New deck"),
             onQueryChange = {}, onBack = {}, onStudy = {}, onAddCard = {}, onEditCard = {}, onSettings = {},
+        )
+    }
+}
+
+@Preview(name = "Deck detail · caught up", showBackground = true)
+@Composable
+private fun DeckDetailCaughtUpPreview() {
+    val now = 1_000_000_000_000L
+    AzriTheme {
+        DeckDetailContent(
+            state = DeckDetailUiState(
+                deckId = "d1", deckName = "Spanish 101",
+                cards = listOf(
+                    previewCard("1", "hola", "hello", CardState.Review, fsrsDue = now + 2 * 86_400_000L),
+                    previewCard("2", "gracias", "thank you", CardState.Review, fsrsDue = now + 5 * 86_400_000L),
+                ),
+                dueCount = 0, newCount = 0,
+            ),
+            onQueryChange = {}, onBack = {}, onStudy = {}, onAddCard = {}, onEditCard = {}, onSettings = {},
+            now = now,
         )
     }
 }
