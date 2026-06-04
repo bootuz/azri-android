@@ -31,12 +31,17 @@ class DeckDetailStatsTest {
         assertNull(nextReviewLabel(listOf(card("1", CardState.Review, now - 1_000L)), now))
     }
 
+    @Test fun exactlyAtNow_isNull() {
+        assertNull(nextReviewLabel(listOf(card("1", CardState.Review, now)), now))
+    }
+
     @Test fun picksSoonestFutureReview_ignoringNewAndPastDue() {
         val cards = listOf(
-            card("1", CardState.Review, now + 3 * day),     // +3d
-            card("2", CardState.Learning, now + 1 * day),   // +1d (soonest future review)
-            card("3", CardState.New, now + 1_000L),         // New -> ignored
-            card("4", CardState.Review, now - 5_000L),      // past due -> ignored
+            card("1", CardState.Review, now + 3 * day),       // +3d
+            card("2", CardState.Learning, now + 2 * day),     // +2d
+            card("3", CardState.New, now + 1_000L),           // New -> ignored
+            card("4", CardState.Review, now - 5_000L),        // past due -> ignored
+            card("5", CardState.Relearning, now + 1 * day),   // +1d Relearning (soonest, must be included)
         )
         assertEquals("in ${IntervalFormatter.format(day)}", nextReviewLabel(cards, now))
     }
