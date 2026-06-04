@@ -3,12 +3,21 @@ package nart.simpleanki.di
 import androidx.room.Room
 import nart.simpleanki.R
 import com.google.firebase.Firebase
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.crashlytics.crashlytics
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
+import nart.simpleanki.BuildConfig
+import nart.simpleanki.core.analytics.FirebaseAnalyticsService
+import nart.simpleanki.core.analytics.FirebaseCrashlyticsService
+import nart.simpleanki.core.analytics.LogManager
+import nart.simpleanki.core.analytics.LogcatService
 import nart.simpleanki.auth.AuthRepository
 import java.io.File
 import nart.simpleanki.core.data.media.FirebaseMediaRepository
@@ -73,6 +82,22 @@ val appModule = module {
     single<FirebaseAuth> { Firebase.auth }
     single<FirebaseFirestore> { Firebase.firestore }
     single<FirebaseStorage> { Firebase.storage }
+    single<FirebaseAnalytics> { Firebase.analytics }
+    single<FirebaseCrashlytics> { Firebase.crashlytics }
+    single {
+        val analytics: FirebaseAnalytics = get()
+        val crashlytics: FirebaseCrashlytics = get()
+        // Keep dev traffic out of production dashboards; Logcat still shows everything locally.
+        analytics.setAnalyticsCollectionEnabled(!BuildConfig.DEBUG)
+        crashlytics.isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG
+        LogManager(
+            listOf(
+                LogcatService(),
+                FirebaseAnalyticsService(analytics),
+                FirebaseCrashlyticsService(crashlytics),
+            ),
+        )
+    }
     single<MediaUploader> { FirebaseMediaRepository(get(), get()) }
     single { LocalMediaStore(File(androidContext().filesDir, "media")) }
     single { MediaManager(get(), get()) }
