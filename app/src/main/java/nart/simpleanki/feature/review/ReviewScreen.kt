@@ -25,6 +25,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,12 +86,18 @@ fun ReviewContent(state: ReviewUiState, onDone: () -> Unit) {
                     var revealed by remember(pagerState.currentPage) { mutableStateOf(false) }
                     var showHint by remember { mutableStateOf(true) }
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                        FlipCard(
-                            card = state.cards[page],
-                            revealed = page == pagerState.currentPage && revealed,
-                            onFlip = { revealed = true; showHint = false },
-                            modifier = Modifier.fillMaxSize().padding(20.dp),
-                        )
+                        val card = state.cards[page]
+                        key(card.id) {
+                            FlipCard(
+                                card = card,
+                                revealed = page == pagerState.currentPage && revealed,
+                                onFlip = {
+                                    revealed = true
+                                    showHint = false
+                                },
+                                modifier = Modifier.fillMaxSize().padding(20.dp),
+                            )
+                        }
                     }
                     if (showHint) {
                         Row(
