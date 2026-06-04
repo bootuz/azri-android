@@ -103,16 +103,17 @@ private fun CardFace(
     audioName: String? = null,
     audioPath: String? = null,
 ) {
-    // Center the content when it fits; scroll when it overflows (heightIn(min = maxHeight)
-    // forces the column to at least fill the card so Arrangement.Center works, but lets it
-    // grow past the viewport for long text). Mirrors iOS's ScrollView { ... }.minHeight.
-    BoxWithConstraints(modifier.fillMaxSize()) {
+    // Center the content when it fits the card; when it overflows, the column grows past the
+    // viewport and verticalScroll lets the user scroll (centering then naturally yields no extra
+    // space). heightIn(min = maxHeight) is what makes the "center when short" case work. Mirrors
+    // iOS's ScrollView { ... }.frame(minHeight: proxy.size.height).
+    BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 24.dp)) {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
                 .heightIn(min = maxHeight)
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
