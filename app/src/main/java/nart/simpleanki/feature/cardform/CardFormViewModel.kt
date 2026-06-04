@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import nart.simpleanki.core.analytics.LoggableEvent
 import nart.simpleanki.core.analytics.LogManager
+import nart.simpleanki.core.analytics.LoggableEvent
 import nart.simpleanki.core.data.media.MediaManager
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.domain.model.Card
@@ -27,7 +27,7 @@ data class CardFormUiState(
     val uploadingAudio: Boolean = false,
     /** Increments on each successful new-card save; drives the "Card saved" toast (re-triggerable). */
     val savedTick: Int = 0,
-    /** Set once after editing an existing card, signalling the screen to close. */
+    /** Set once after editing an existing card, signaling the screen to close. */
     val finished: Boolean = false,
 ) {
     val canSave: Boolean
@@ -70,17 +70,32 @@ class CardFormViewModel(
         }
     }
 
-    fun onFrontChange(value: String) { _uiState.value = _uiState.value.copy(front = value) }
-    fun onBackChange(value: String) { _uiState.value = _uiState.value.copy(back = value) }
-    fun onToggleReverse(value: Boolean) { _uiState.value = _uiState.value.copy(createReverse = value) }
-    fun onRemoveImage() { _uiState.value = _uiState.value.copy(imageName = null, imagePath = null) }
-    fun onRemoveAudio() { _uiState.value = _uiState.value.copy(audioName = null, audioPath = null) }
+    fun onFrontChange(value: String) {
+        _uiState.value = _uiState.value.copy(front = value)
+    }
+
+    fun onBackChange(value: String) {
+        _uiState.value = _uiState.value.copy(back = value)
+    }
+
+    fun onToggleReverse(value: Boolean) {
+        _uiState.value = _uiState.value.copy(createReverse = value)
+    }
+
+    fun onRemoveImage() {
+        _uiState.value = _uiState.value.copy(imageName = null, imagePath = null)
+    }
+
+    fun onRemoveAudio() {
+        _uiState.value = _uiState.value.copy(audioName = null, audioPath = null)
+    }
 
     fun onImagePicked(bytes: ByteArray) {
         _uiState.value = _uiState.value.copy(uploadingImage = true)
         viewModelScope.launch {
             val name = mediaManager.saveImage(bytes)
-            _uiState.value = _uiState.value.copy(imageName = name, imagePath = null, uploadingImage = false)
+            _uiState.value =
+                _uiState.value.copy(imageName = name, imagePath = null, uploadingImage = false)
         }
     }
 
@@ -88,7 +103,8 @@ class CardFormViewModel(
         _uiState.value = _uiState.value.copy(uploadingAudio = true)
         viewModelScope.launch {
             val name = mediaManager.saveAudio(bytes)
-            _uiState.value = _uiState.value.copy(audioName = name, audioPath = null, uploadingAudio = false)
+            _uiState.value =
+                _uiState.value.copy(audioName = name, audioPath = null, uploadingAudio = false)
         }
     }
 
@@ -105,25 +121,47 @@ class CardFormViewModel(
                         audioName = state.audioName, audioPath = state.audioPath,
                     ),
                 )
-                logManager.track(Event.CardUpdated(state.imageName != null, state.audioName != null))
+                logManager.track(
+                    Event.CardUpdated(
+                        state.imageName != null,
+                        state.audioName != null
+                    )
+                )
                 // Editing targets one card: close the editor once saved.
                 _uiState.value = _uiState.value.copy(finished = true)
             } else {
                 val baseId = idGenerator()
                 cardRepository.upsert(
-                    newCard(baseId, state.front, state.back, isReverse = false,
+                    newCard(
+                        baseId, state.front, state.back, isReverse = false,
                         pairId = if (state.createReverse) baseId else null,
                         image = state.imageName, imagePath = state.imagePath,
-                        audioName = state.audioName, audioPath = state.audioPath),
+                        audioName = state.audioName, audioPath = state.audioPath
+                    ),
                 )
                 if (state.createReverse) {
                     // Reverse cards are intentionally audio-free (mirrors iOS).
                     cardRepository.upsert(
-                        newCard(idGenerator(), state.back, state.front, isReverse = true, pairId = baseId,
-                            image = null, imagePath = null, audioName = null, audioPath = null),
+                        newCard(
+                            idGenerator(),
+                            state.back,
+                            state.front,
+                            isReverse = true,
+                            pairId = baseId,
+                            image = null,
+                            imagePath = null,
+                            audioName = null,
+                            audioPath = null
+                        ),
                     )
                 }
-                logManager.track(Event.CardCreated(state.imageName != null, state.audioName != null, state.createReverse))
+                logManager.track(
+                    Event.CardCreated(
+                        state.imageName != null,
+                        state.audioName != null,
+                        state.createReverse
+                    )
+                )
                 // Keep the editor open for rapid entry: clear inputs and bump the toast counter.
                 _uiState.value = CardFormUiState(isEdit = false, savedTick = state.savedTick + 1)
             }
@@ -144,10 +182,17 @@ class CardFormViewModel(
     }
 
     private sealed interface Event : LoggableEvent {
-        data class CardCreated(val hasImage: Boolean, val hasAudio: Boolean, val reverse: Boolean) : Event {
+        data class CardCreated(val hasImage: Boolean, val hasAudio: Boolean, val reverse: Boolean) :
+            Event {
             override val eventName = "card_created"
-            override val params get() = mapOf("has_image" to hasImage, "has_audio" to hasAudio, "reverse" to reverse)
+            override val params
+                get() = mapOf(
+                    "has_image" to hasImage,
+                    "has_audio" to hasAudio,
+                    "reverse" to reverse
+                )
         }
+
         data class CardUpdated(val hasImage: Boolean, val hasAudio: Boolean) : Event {
             override val eventName = "card_updated"
             override val params get() = mapOf("has_image" to hasImage, "has_audio" to hasAudio)
