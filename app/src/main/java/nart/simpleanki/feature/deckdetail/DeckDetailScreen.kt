@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
@@ -24,7 +25,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
@@ -36,14 +38,21 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -108,22 +117,63 @@ fun DeckDetailContent(
     onDeleteCard: (Card) -> Unit = {},
     now: Long = System.currentTimeMillis(),
 ) {
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
+    LaunchedEffect(searchActive) { if (searchActive) searchFocus.requestFocus() }
+    // System back exits search mode first, instead of leaving the screen.
+    BackHandler(enabled = searchActive) { searchActive = false; onQueryChange("") }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(state.deckName.ifBlank { "Deck" }) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (searchActive) {
+                        IconButton(onClick = { searchActive = false; onQueryChange("") }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close search")
+                        }
+                    } else {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
+                title = {
+                    if (searchActive) {
+                        TextField(
+                            value = state.query,
+                            onValueChange = onQueryChange,
+                            placeholder = { Text("Search cards") },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                            ),
+                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
+                        )
+                    } else {
+                        Text(state.deckName.ifBlank { "Deck" })
                     }
                 },
                 actions = {
-                    IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Deck settings") }
-                    IconButton(onClick = onAddCard) { Icon(Icons.Default.Add, "Add card") }
+                    if (searchActive) {
+                        if (state.query.isNotEmpty()) {
+                            IconButton(onClick = { onQueryChange("") }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear search")
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search cards")
+                        }
+                        IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Deck settings") }
+                        IconButton(onClick = onAddCard) { Icon(Icons.Default.Add, "Add card") }
+                    }
                 },
             )
         },
@@ -134,15 +184,6 @@ fun DeckDetailContent(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedTextField(
-                    value = state.query,
-                    onValueChange = onQueryChange,
-                    placeholder = { Text("Search cards") },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.large,
-                    modifier = Modifier.fillMaxWidth(),
-                )
                 AzriCard(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 16.dp),
