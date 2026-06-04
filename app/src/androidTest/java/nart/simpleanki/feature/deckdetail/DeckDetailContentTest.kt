@@ -20,6 +20,11 @@ class DeckDetailContentTest {
         dateCreated = 0, lastModified = 0, fsrsDue = 0, fsrsState = CardState.New.value,
     )
 
+    private fun reviewCard(id: String, due: Long) = Card(
+        id = id, front = "f$id", back = "b$id", deckId = "d1",
+        dateCreated = 0, lastModified = 0, fsrsDue = due, fsrsState = CardState.Review.value,
+    )
+
     @Test
     fun emptyDeck_showsHint_noStudyFab() {
         composeRule.setContent {
@@ -30,6 +35,24 @@ class DeckDetailContentTest {
         }
         composeRule.onNodeWithText("Spanish").assertIsDisplayed()
         composeRule.onNodeWithText("No cards yet. Tap + to add one.").assertIsDisplayed()
+    }
+
+    @Test
+    fun caughtUp_showsMessage_andNoStudyButton() {
+        val now = 1_000_000_000_000L
+        composeRule.setContent {
+            DeckDetailContent(
+                state = DeckDetailUiState(
+                    deckId = "d1", deckName = "Spanish",
+                    cards = listOf(reviewCard("c1", due = now + 86_400_000L)),
+                    dueCount = 0, newCount = 0,
+                ),
+                onQueryChange = {}, onBack = {}, onStudy = {}, onAddCard = {}, onEditCard = {}, onSettings = {},
+                now = now,
+            )
+        }
+        composeRule.onNodeWithText("You're all caught up!").assertIsDisplayed()
+        composeRule.onNodeWithText("Study", substring = true).assertDoesNotExist()
     }
 
     @Test

@@ -65,7 +65,7 @@ class StudyContentTest {
                 onDone = {},
             )
         }
-        composeRule.onNodeWithText("Session complete").assertIsDisplayed()
-        composeRule.onNodeWithText("3 cards reviewed").assertIsDisplayed()
+        composeRule.onNodeWithText("Session Complete").assertIsDisplayed()
+        composeRule.onNodeWithText("Finish").assertIsDisplayed()
     }
 }

@@ -166,26 +166,6 @@ private fun RatingButton(label: String, interval: String?, color: Color, modifie
     }
 }
 
-@Composable
-private fun SessionSummary(state: StudyUiState, onDone: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text("Session complete", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(8.dp))
-        Text("${state.completed} cards reviewed", style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(16.dp))
-        Rating.entries.forEach { rating ->
-            val count = state.ratingCounts[rating] ?: 0
-            if (count > 0) Text("${rating.name}: $count")
-        }
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = onDone) { Text("Done") }
-    }
-}
-
 private val previewStudyCard = Card(
     id = "c1", front = "¿Cómo estás?", back = "How are you?", deckId = "d1",
     dateCreated = 0, lastModified = 0, fsrsDue = 0, fsrsState = CardState.New.value,
@@ -230,16 +210,3 @@ private fun StudyAnswerPreview() {
     }
 }
 
-@Preview(name = "Study · summary", showBackground = true)
-@Composable
-private fun StudySummaryPreview() {
-    AzriTheme {
-        StudyContent(
-            state = StudyUiState(
-                loading = false, finished = true, completed = 12,
-                ratingCounts = mapOf(Rating.Again to 2, Rating.Good to 8, Rating.Easy to 2),
-            ),
-            onReveal = {}, onRate = {}, onDone = {},
-        )
-    }
-}
