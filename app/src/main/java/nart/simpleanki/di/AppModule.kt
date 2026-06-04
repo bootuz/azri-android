@@ -30,6 +30,12 @@ import nart.simpleanki.core.billing.PlayBillingRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
 import nart.simpleanki.core.data.sync.RemoteSyncSource
 import nart.simpleanki.core.data.sync.SyncManager
+import nart.simpleanki.core.apkg.ApkgFormatDetector
+import nart.simpleanki.core.apkg.ApkgImportService
+import nart.simpleanki.core.apkg.ApkgMediaReader
+import nart.simpleanki.core.apkg.ApkgUnzipper
+import nart.simpleanki.core.apkg.DefaultApkgImportService
+import nart.simpleanki.feature.apkgimport.ApkgImportViewModel
 import nart.simpleanki.feature.cardform.CardFormViewModel
 import nart.simpleanki.feature.profile.ProfileViewModel
 import nart.simpleanki.feature.settings.SettingsViewModel
@@ -67,6 +73,18 @@ val appModule = module {
     single<MediaUploader> { FirebaseMediaRepository(get(), get()) }
     single { LocalMediaStore(File(androidContext().filesDir, "media")) }
     single { MediaManager(get(), get()) }
+    single<ApkgImportService> {
+        DefaultApkgImportService(
+            unzipper = ApkgUnzipper(),
+            detector = ApkgFormatDetector(),
+            mediaReader = ApkgMediaReader(),
+            media = get(),
+            deckRepository = get(),
+            cardRepository = get(),
+            appContext = androidContext(),
+        )
+    }
+    viewModel { (deckName: String) -> ApkgImportViewModel(service = get(), deckName = deckName) }
 
     // Auth
     single<AuthRepository> { FirebaseAuthRepository(get()) }

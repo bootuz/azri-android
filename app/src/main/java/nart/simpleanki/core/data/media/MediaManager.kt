@@ -17,6 +17,10 @@ class MediaManager(
     suspend fun saveImage(bytes: ByteArray): String = saveLocal(bytes, "jpg")
     suspend fun saveAudio(bytes: ByteArray): String = saveLocal(bytes, "m4a")
 
+    /** Import: persist [bytes] locally under the given [ext] (preserves the source format). */
+    suspend fun importImage(bytes: ByteArray, ext: String): String = saveLocal(bytes, ext.lowercase())
+    suspend fun importAudio(bytes: ByteArray, ext: String): String = saveLocal(bytes, ext.lowercase())
+
     private suspend fun saveLocal(bytes: ByteArray, ext: String): String {
         val name = local.newName(ext)
         local.save(name, bytes)
