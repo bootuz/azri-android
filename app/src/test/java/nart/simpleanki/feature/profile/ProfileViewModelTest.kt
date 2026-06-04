@@ -18,6 +18,7 @@ import nart.simpleanki.auth.FakeAuthRepository
 import nart.simpleanki.core.billing.Entitlement
 import nart.simpleanki.core.billing.FakeEntitlementRepository
 import nart.simpleanki.core.billing.PremiumTier
+import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.data.settings.ThemeMode
 import org.junit.After
@@ -88,5 +89,18 @@ class ProfileViewModelTest {
         runCurrent()
         vm.restorePurchases(); runCurrent()
         assertEquals(1, repo.restoreCount)
+    }
+
+    @Test
+    fun reflectsDailyGoal_fromSettings() = runTest {
+        val settings = FakeSettingsRepository(
+            AppSettings(dailyGoalEnabled = true, newCardsTarget = 10, reviewCardsTarget = 20),
+        )
+        val vm = ProfileViewModel(settings, auth(null), FakeEntitlementRepository())
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        assertTrue(vm.uiState.value.dailyGoalEnabled)
+        assertEquals(30, vm.uiState.value.dailyGoalTotal) // 10 new + 20 review
     }
 }
