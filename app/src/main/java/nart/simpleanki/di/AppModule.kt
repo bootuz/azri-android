@@ -62,6 +62,7 @@ import nart.simpleanki.feature.profile.ProfileViewModel
 import nart.simpleanki.feature.queue.DailyGoalViewModel
 import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.settings.SettingsViewModel
+import nart.simpleanki.feature.review.ReviewViewModel
 import nart.simpleanki.feature.study.StudyViewModel
 import nart.simpleanki.feature.sync.SyncViewModel
 import org.koin.android.ext.koin.androidContext
@@ -190,6 +191,16 @@ val appModule = module {
             cardRepository = get(),
             deckRepository = get(),
             settingsRepository = get(),
+            logManager = get(),
+        )
+    }
+    viewModel { params ->
+        val args = params.get<StudyArgs>()
+        ReviewViewModel(
+            deckId = args.deckId,
+            folderId = args.folderId,
+            cardRepository = get(),
+            deckRepository = get(),
             logManager = get(),
         )
     }

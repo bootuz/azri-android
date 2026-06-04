@@ -18,9 +18,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,6 +75,7 @@ fun DeckDetailScreen(
     deckId: String,
     onBack: () -> Unit,
     onStudy: () -> Unit,
+    onReview: () -> Unit,
     onAddCard: () -> Unit,
     onEditCard: (String) -> Unit,
     onSettings: () -> Unit,
@@ -87,6 +90,7 @@ fun DeckDetailScreen(
         onQueryChange = viewModel::onQueryChange,
         onBack = onBack,
         onStudy = onStudy,
+        onReview = onReview,
         onAddCard = onAddCard,
         onEditCard = onEditCard,
         onSettings = onSettings,
@@ -112,6 +116,7 @@ fun DeckDetailContent(
     onQueryChange: (String) -> Unit,
     onBack: () -> Unit,
     onStudy: () -> Unit,
+    onReview: () -> Unit = {},
     onAddCard: () -> Unit,
     onEditCard: (String) -> Unit,
     onSettings: () -> Unit,
@@ -212,6 +217,20 @@ fun DeckDetailContent(
                     }
                     state.total > 0 -> AllCaughtUp(cards = state.cards, now = now)
                     else -> Unit // empty deck: the list body below shows "No cards yet."
+                }
+                if (state.total > 0) {
+                    OutlinedButton(
+                        onClick = onReview,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Filled.Style, contentDescription = null)
+                        Text(
+                            "Review",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
                 }
             }
 
