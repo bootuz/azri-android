@@ -186,6 +186,30 @@ class StudyViewModelTest {
     }
 
     @Test
+    fun flipHint_showsUntilFirstReveal_thenStaysHiddenForSession() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        repo.upsert(newCard("c1"))
+        repo.upsert(newCard("c2"))
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
+        runCurrent()
+
+        // Hint visible at session start.
+        assertTrue(vm.uiState.value.showFlipHint)
+
+        // First flip hides the hint.
+        vm.onReveal()
+        assertTrue(vm.uiState.value.isRevealed)
+        assertFalse(vm.uiState.value.showFlipHint)
+
+        // Advancing to the next card keeps the hint hidden; new card is back on its front.
+        vm.onRate(Rating.Good)
+        runCurrent()
+        assertFalse(vm.uiState.value.showFlipHint)
+        assertFalse(vm.uiState.value.isRevealed)
+        assertEquals("c2", vm.uiState.value.current?.id)
+    }
+
+    @Test
     fun emptyDeck_finishesImmediately() = runTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), now = { now })
