@@ -8,6 +8,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import nart.simpleanki.core.analytics.FakeLogService
+import nart.simpleanki.core.analytics.LogManager
 import nart.simpleanki.core.data.media.FakeMediaUploader
 import nart.simpleanki.core.data.media.LocalMediaStore
 import nart.simpleanki.core.data.media.MediaManager
@@ -172,5 +174,31 @@ class CardFormViewModelTest {
         // Editing one card signals the screen to close (no reset / no toast loop).
         assertTrue(vm.uiState.value.finished)
         assertEquals(0, vm.uiState.value.savedTick)
+    }
+
+    @Test
+    fun save_newCard_tracksCardCreated() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        val log = FakeLogService()
+        val vm = CardFormViewModel("d1", repo, media(), now = { now }, logManager = LogManager(listOf(log)))
+        vm.onFrontChange("hello"); vm.onBackChange("hola")
+        vm.save(); runCurrent()
+        val e = log.events.first { it.eventName == "card_created" }
+        assertEquals(false, e.params["has_image"])
+        assertEquals(false, e.params["has_audio"])
+    }
+
+    @Test
+    fun save_existingCard_tracksCardUpdated() = runTest {
+        val repo = CardRepository(FakeCardDao(), now = { now })
+        repo.upsert(
+            Card(id = "c1", front = "a", back = "b", deckId = "d1",
+                dateCreated = now, lastModified = now, fsrsDue = now, fsrsState = CardState.New.value),
+        )
+        val log = FakeLogService()
+        val vm = CardFormViewModel("d1", repo, media(), editingCardId = "c1", now = { now }, logManager = LogManager(listOf(log)))
+        runCurrent()
+        vm.onFrontChange("a2"); vm.save(); runCurrent()
+        assertTrue(log.events.any { it.eventName == "card_updated" })
     }
 }
