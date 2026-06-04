@@ -31,7 +31,7 @@ data class StudyUiState(
     /** Next-due interval label per rating for the current card (e.g. Good -> "4d"), shown on the answer buttons. */
     val ratingIntervals: Map<Rating, String> = emptyMap(),
     val finished: Boolean = false,
-    /** Wall-clock millis from session start to finish; stamped once when the session finishes. */
+    /** Wall-clock millis from session start to finish; 0 until the session finishes, then stamped once. */
     val durationMillis: Long = 0,
 )
 
@@ -112,7 +112,8 @@ class StudyViewModel(
 
     fun onRate(rating: Rating) {
         val card = _uiState.value.current ?: return
-        val result = scheduling.schedule(card, rating, now())
+        val ratedAt = now()
+        val result = scheduling.schedule(card, rating, ratedAt)
         viewModelScope.launch { cardRepository.save(result.card) }
 
         queue.removeFirstOrNull()
@@ -127,7 +128,7 @@ class StudyViewModel(
             ratingCounts = counts,
             ratingIntervals = intervalsFor(next),
             finished = next == null,
-            durationMillis = if (next == null) now() - sessionStartMillis else prev.durationMillis,
+            durationMillis = if (next == null) ratedAt - sessionStartMillis else prev.durationMillis,
         )
         logManager.track(Event.CardRated(rating))
         if (next == null) logManager.track(Event.ReviewSessionComplete(prev.completed + 1))
