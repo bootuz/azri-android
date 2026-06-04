@@ -1,6 +1,7 @@
 package nart.simpleanki.ui.navigation
 
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -22,18 +23,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Style
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -46,6 +50,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import nart.simpleanki.feature.apkgimport.ApkgImportScreen
 import nart.simpleanki.feature.cardform.CardFormScreen
+import nart.simpleanki.feature.csvimport.CsvImportScreen
 import nart.simpleanki.feature.deckdetail.DeckDetailScreen
 import nart.simpleanki.feature.decksettings.DeckEditScreen
 import nart.simpleanki.feature.folderdetail.FolderDetailScreen
@@ -72,9 +77,20 @@ fun AzriNavHost() {
     val showBottomBar = currentRoute == QUEUE || currentRoute == LIBRARY || currentRoute == PROFILE
     // The paywall is a modal sheet overlaying any screen (not a nav route).
     var showPaywall by remember { mutableStateOf(false) }
-    var importUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+    var apkgImport by remember { mutableStateOf<ImportTarget?>(null) }
+    var csvImport by remember { mutableStateOf<ImportTarget?>(null) }
+    var unsupportedImport by remember { mutableStateOf(false) }
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) importUri = uri
+        if (uri == null) return@rememberLauncherForActivityResult
+        val name = displayName(context.contentResolver, uri).orEmpty()
+        val ext = name.substringAfterLast('.', "").lowercase()
+        val base = name.substringBeforeLast('.', name)
+        when (ext) {
+            "apkg" -> apkgImport = ImportTarget(uri, base.ifBlank { "Imported deck" })
+            "csv", "tsv", "txt" -> csvImport = ImportTarget(uri, base.ifBlank { "Imported cards" })
+            else -> unsupportedImport = true
+        }
     }
 
     Scaffold(
@@ -271,10 +287,30 @@ fun AzriNavHost() {
         PaywallSheet(onDismiss = { showPaywall = false })
     }
 
-    importUri?.let { uri ->
-        ApkgImportScreen(uri = uri, deckName = "Imported deck", onClose = { importUri = null })
+    apkgImport?.let { t ->
+        ApkgImportScreen(uri = t.uri, deckName = t.deckName, onClose = { apkgImport = null })
+    }
+    csvImport?.let { t ->
+        CsvImportScreen(uri = t.uri, deckName = t.deckName, onClose = { csvImport = null })
+    }
+    if (unsupportedImport) {
+        AlertDialog(
+            onDismissRequest = { unsupportedImport = false },
+            confirmButton = { TextButton(onClick = { unsupportedImport = false }) { Text("OK") } },
+            title = { Text("Unsupported file") },
+            text = { Text("Pick a .apkg, .csv, .tsv, or .txt file to import.") },
+        )
     }
 }
+
+/** A picked import file routed to a wizard: the source [uri] and the deck name derived from the filename. */
+private data class ImportTarget(val uri: Uri, val deckName: String)
+
+/** SAF content:// URIs have no path extension; recover the real filename from the provider. */
+private fun displayName(resolver: android.content.ContentResolver, uri: Uri): String? =
+    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) c.getString(0) else null
+    }
 
 /** Switches between bottom-bar tabs, preserving each tab's state and avoiding a back-stack pile-up. */
 private fun NavController.switchTab(route: String) {

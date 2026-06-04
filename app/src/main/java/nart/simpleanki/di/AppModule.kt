@@ -35,7 +35,10 @@ import nart.simpleanki.core.apkg.ApkgImportService
 import nart.simpleanki.core.apkg.ApkgMediaReader
 import nart.simpleanki.core.apkg.ApkgUnzipper
 import nart.simpleanki.core.apkg.DefaultApkgImportService
+import nart.simpleanki.core.csv.CsvImportService
+import nart.simpleanki.core.csv.DefaultCsvImportService
 import nart.simpleanki.feature.apkgimport.ApkgImportViewModel
+import nart.simpleanki.feature.csvimport.CsvImportViewModel
 import nart.simpleanki.feature.cardform.CardFormViewModel
 import nart.simpleanki.feature.profile.ProfileViewModel
 import nart.simpleanki.feature.settings.SettingsViewModel
@@ -85,6 +88,14 @@ val appModule = module {
         )
     }
     viewModel { (deckName: String) -> ApkgImportViewModel(service = get(), deckName = deckName) }
+    single<CsvImportService> {
+        DefaultCsvImportService(
+            deckRepository = get(),
+            cardRepository = get(),
+            appContext = androidContext(),
+        )
+    }
+    viewModel { (deckName: String) -> CsvImportViewModel(service = get(), deckName = deckName) }
 
     // Auth
     single<AuthRepository> { FirebaseAuthRepository(get()) }
