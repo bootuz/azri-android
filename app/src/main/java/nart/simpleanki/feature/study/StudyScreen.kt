@@ -1,5 +1,9 @@
 package nart.simpleanki.feature.study
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -106,36 +110,47 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
             )
         }
         Spacer(Modifier.height(16.dp))
-        if (!state.isRevealed) {
-            if (state.showFlipHint) {
-                Row(
-                    Modifier.fillMaxWidth().height(60.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Outlined.TouchApp,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Tap to flip",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        // Fixed-height slot so the FlipCard above never shifts; the hint cross-fades and the
+        // rating row slides up from the bottom edge on reveal.
+        // Column is required here so AnimatedVisibility resolves to ColumnScope extension.
+        Column(Modifier.fillMaxWidth().height(60.dp)) {
+            AnimatedVisibility(
+                visible = !state.isRevealed,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                if (state.showFlipHint) {
+                    Row(
+                        Modifier.fillMaxWidth().height(60.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.TouchApp,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Tap to flip",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-            } else {
-                // Keep the layout stable once the hint is gone.
-                Spacer(Modifier.height(60.dp))
             }
-        } else {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // iOS rating colors (SwiftUI system): again=pink, hard=orange, good=indigo, easy=mint.
-                RatingButton("Again", state.ratingIntervals[Rating.Again], Color(0xFFFF2D55), Modifier.weight(1f)) { onRate(Rating.Again) }
-                RatingButton("Hard", state.ratingIntervals[Rating.Hard], Color(0xFFFF9500), Modifier.weight(1f)) { onRate(Rating.Hard) }
-                RatingButton("Good", state.ratingIntervals[Rating.Good], Color(0xFF5856D6), Modifier.weight(1f)) { onRate(Rating.Good) }
-                RatingButton("Easy", state.ratingIntervals[Rating.Easy], Color(0xFF00C7BE), Modifier.weight(1f)) { onRate(Rating.Easy) }
+            AnimatedVisibility(
+                visible = state.isRevealed,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = fadeOut(),
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // iOS rating colors (SwiftUI system): again=pink, hard=orange, good=indigo, easy=mint.
+                    RatingButton("Again", state.ratingIntervals[Rating.Again], Color(0xFFFF2D55), Modifier.weight(1f)) { onRate(Rating.Again) }
+                    RatingButton("Hard", state.ratingIntervals[Rating.Hard], Color(0xFFFF9500), Modifier.weight(1f)) { onRate(Rating.Hard) }
+                    RatingButton("Good", state.ratingIntervals[Rating.Good], Color(0xFF5856D6), Modifier.weight(1f)) { onRate(Rating.Good) }
+                    RatingButton("Easy", state.ratingIntervals[Rating.Easy], Color(0xFF00C7BE), Modifier.weight(1f)) { onRate(Rating.Easy) }
+                }
             }
         }
     }
