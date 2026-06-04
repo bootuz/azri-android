@@ -51,7 +51,11 @@ fun AzriRoot(
             AzriNavHost()
         }
         else -> {
-            LaunchedEffect(Unit) { logManager.clearUser() }
+            // Only clear once auth has actually resolved to signed-out/error — not during the
+            // initial Loading flash, which would emit a spurious clear on every cold start.
+            if (s !is AuthUiState.Loading) {
+                LaunchedEffect(Unit) { logManager.clearUser() }
+            }
             SignInScreen(
                 onGoogleClick = {
                     scope.launch {
