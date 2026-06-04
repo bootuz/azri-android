@@ -102,7 +102,7 @@ fun SessionSummary(state: StudyUiState, onDone: () -> Unit) {
             durationLabel = formattedDuration(state.durationMillis),
         )
 
-        if (state.completed > 0) {
+        if (state.ratingCounts.values.any { it > 0 }) {
             Spacer(Modifier.height(32.dp))
             RatingDistributionBar(state.ratingCounts)
         }
@@ -164,7 +164,10 @@ private fun RatingDistributionBar(ratingCounts: Map<Rating, Int>) {
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Rating.entries.forEach { rating ->
-                LegendItem(rating.name, ratingCounts[rating] ?: 0, RatingColors.getValue(rating))
+                val count = ratingCounts[rating] ?: 0
+                if (count > 0) {
+                    LegendItem(rating.name, count, RatingColors.getValue(rating))
+                }
             }
         }
     }
