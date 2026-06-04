@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -87,6 +88,33 @@ class LibraryAndDeckDetailViewModelTest {
         vm.restoreCard(toDelete)
         runCurrent()
         assertEquals(setOf("c1", "c2"), vm.uiState.value.cards.map { it.id }.toSet()) // undo brings it back
+    }
+
+    @Test
+    fun deckDetail_dueCountUpdatesLive_whenACardBecomesDue() = runTest {
+        // Override the @Before Main dispatcher so the VM shares THIS test's scheduler (so the
+        // ticker's delay is advanced by advanceTimeBy below).
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val base = 1_700_000_000_000L
+        val clock = { base + testScheduler.currentTime }
+        val cardRepo = CardRepository(FakeCardDao(), now = { base })
+        // A review card due 60s from now — not due yet.
+        cardRepo.upsert(
+            Card(
+                id = "c1", front = "Q", back = "A", deckId = "d1",
+                dateCreated = base, lastModified = base,
+                fsrsDue = base + 60_000L, fsrsState = CardState.Review.value,
+            ),
+        )
+
+        val vm = DeckDetailViewModel("d1", cardRepo, now = clock)
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        assertEquals("not due yet", 0, vm.uiState.value.dueCount)
+
+        advanceTimeBy(61_000L)   // cross the due moment
+        runCurrent()
+        assertEquals("became due", 1, vm.uiState.value.dueCount)
     }
 
     @Test

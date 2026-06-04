@@ -12,6 +12,7 @@ import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
+import nart.simpleanki.core.domain.fsrs.withDueTicks
 
 data class DeckDetailUiState(
     val deckId: String,
@@ -50,11 +51,10 @@ class DeckDetailViewModel(
 
     val uiState: StateFlow<DeckDetailUiState> =
         combine(
-            cardRepository.observeCards(deckId),
+            cardRepository.observeCards(deckId).withDueTicks(now),
             queryFlow,
             deckNameFlow,
-        ) { cards, query, name ->
-            val nowMillis = now()
+        ) { (cards, nowMillis), query, name ->
             DeckDetailUiState(
                 deckId = deckId,
                 deckName = name,
