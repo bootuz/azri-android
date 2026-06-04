@@ -17,8 +17,7 @@ class FirebaseAnalyticsService(private val analytics: FirebaseAnalytics) : LogSe
     override fun track(event: LoggableEvent) {
         if (event.type == LogType.Info) return
         val (name, params) = cleanAnalyticsParams(event.eventName, event.params)
-        val bundle = params.toBundle()
-        analytics.logEvent(name, if (params.isEmpty()) null else bundle)
+        analytics.logEvent(name, if (params.isEmpty()) null else params.toBundle())
     }
 
     override fun trackScreen(name: String) {
