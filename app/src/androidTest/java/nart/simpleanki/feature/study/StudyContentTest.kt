@@ -23,7 +23,7 @@ class StudyContentTest {
     )
 
     @Test
-    fun front_showsQuestion_andRevealButton() {
+    fun front_showsQuestion_andFlipsOnTap() {
         var revealed = false
         composeRule.setContent {
             StudyContent(
@@ -33,8 +33,8 @@ class StudyContentTest {
                 onDone = {},
             )
         }
-        composeRule.onNodeWithText("hola").assertIsDisplayed()
-        composeRule.onNodeWithText("Show answer").assertIsDisplayed().performClick()
+        // The card flips on tap (no "Show answer" button) — tapping the question reveals the answer.
+        composeRule.onNodeWithText("hola").assertIsDisplayed().performClick()
         assertTrue(revealed)
     }
 
