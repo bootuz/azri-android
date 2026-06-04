@@ -4,12 +4,16 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -99,26 +103,36 @@ private fun CardFace(
     audioName: String? = null,
     audioPath: String? = null,
 ) {
-    Column(
-        modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = 1.sp,
-        )
-        Spacer(Modifier.height(12.dp))
-        imageName?.let { name ->
-            MediaImage(name, imagePath, Modifier.fillMaxWidth().height(160.dp))
-            Spacer(Modifier.height(16.dp))
-        }
-        Text(text, style = textStyle, color = textColor, textAlign = TextAlign.Center)
-        audioName?.let { name ->
+    // Center the content when it fits the card; when it overflows, the column grows past the
+    // viewport and verticalScroll lets the user scroll (centering then naturally yields no extra
+    // space). heightIn(min = maxHeight) is what makes the "center when short" case work. Mirrors
+    // iOS's ScrollView { ... }.frame(minHeight: proxy.size.height).
+    BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .fillMaxWidth()
+                .padding(vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 1.sp,
+            )
             Spacer(Modifier.height(12.dp))
-            AudioPlayButton(name, audioPath)
+            imageName?.let { name ->
+                MediaImage(name, imagePath, Modifier.fillMaxWidth().height(160.dp))
+                Spacer(Modifier.height(16.dp))
+            }
+            Text(text, style = textStyle, color = textColor, textAlign = TextAlign.Center)
+            audioName?.let { name ->
+                Spacer(Modifier.height(12.dp))
+                AudioPlayButton(name, audioPath)
+            }
         }
     }
 }
@@ -146,6 +160,28 @@ private fun FlipCardBackPreview() {
         FlipCard(
             previewFlipCard, revealed = true, onFlip = {},
             modifier = Modifier.fillMaxWidth().height(400.dp).padding(20.dp),
+        )
+    }
+}
+
+private val previewLongCard = Card(
+    id = "c2",
+    front = "Explain the difference between the present perfect and the simple past tense, " +
+        "with at least three examples of each, and describe when a learner should prefer one " +
+        "over the other in everyday conversation. Then summarize the key rule in one sentence.",
+    back = "The present perfect links a past action to the present; the simple past describes a " +
+        "finished action at a definite time.",
+    deckId = "d1",
+    dateCreated = 0, lastModified = 0, fsrsDue = 0, fsrsState = CardState.New.value,
+)
+
+@Preview(name = "FlipCard · long text", showBackground = true)
+@Composable
+private fun FlipCardLongTextPreview() {
+    AzriTheme {
+        FlipCard(
+            previewLongCard, revealed = false, onFlip = {},
+            modifier = Modifier.fillMaxWidth().height(300.dp).padding(20.dp),
         )
     }
 }
