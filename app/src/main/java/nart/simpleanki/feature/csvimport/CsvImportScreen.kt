@@ -136,6 +136,22 @@ private fun ColumnDropdown(label: String, headers: List<String>, selected: Int, 
 
 @Composable
 private fun PreviewStep(state: CsvImportUiState, vm: CsvImportViewModel, onClose: () -> Unit) {
+    if (state.previewCards.isEmpty()) {
+        Column(
+            Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("No cards to import", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Every row was empty for the columns you picked. Close and try different columns.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
     val selectedCount = state.previewCards.count { it.selected }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("$selectedCount of ${state.previewCards.size} selected", style = MaterialTheme.typography.titleMedium)
