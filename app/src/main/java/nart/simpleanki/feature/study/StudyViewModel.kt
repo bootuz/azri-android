@@ -23,6 +23,8 @@ data class StudyUiState(
     val loading: Boolean = true,
     val current: Card? = null,
     val isRevealed: Boolean = false,
+    /** True until the first flip of the session; drives the "tap to flip" hint. Per-session only. */
+    val showFlipHint: Boolean = true,
     val completed: Int = 0,
     val remaining: Int = 0,
     val ratingCounts: Map<Rating, Int> = emptyMap(),
@@ -99,7 +101,7 @@ class StudyViewModel(
 
     fun onReveal() {
         if (_uiState.value.current != null) {
-            _uiState.value = _uiState.value.copy(isRevealed = true)
+            _uiState.value = _uiState.value.copy(isRevealed = true, showFlipHint = false)
         }
     }
 

@@ -9,16 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -26,10 +26,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import nart.simpleanki.core.domain.model.Card
@@ -95,42 +95,40 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
         Modifier.fillMaxSize().padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        nart.simpleanki.ui.components.AzriCard(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-        ) {
-            Column(
-                Modifier.fillMaxSize().padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                card.image?.let { name ->
-                    nart.simpleanki.ui.components.MediaImage(name, card.imagePath, Modifier.fillMaxWidth().height(160.dp))
-                    Spacer(Modifier.height(16.dp))
-                }
-                Text(card.front, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                card.audioName?.let { name ->
-                    nart.simpleanki.ui.components.AudioPlayButton(name, card.audioPath)
-                }
-                if (state.isRevealed) {
-                    Spacer(Modifier.height(16.dp))
-                    HorizontalDivider(Modifier.fillMaxWidth(0.5f), color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        card.back,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
+        // key(card.id) resets the flip animation per card, so the next card appears on its
+        // front instantly with no reverse-flip.
+        key(card.id) {
+            nart.simpleanki.ui.components.FlipCard(
+                card = card,
+                revealed = state.isRevealed,
+                onFlip = onReveal,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+            )
         }
         Spacer(Modifier.height(16.dp))
         if (!state.isRevealed) {
-            Button(
-                onClick = onReveal,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = MaterialTheme.shapes.large,
-            ) { Text("Show answer", style = MaterialTheme.typography.labelLarge) }
+            if (state.showFlipHint) {
+                Row(
+                    Modifier.fillMaxWidth().height(60.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.TouchApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Tap to flip",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                // Keep the layout stable once the hint is gone.
+                Spacer(Modifier.height(60.dp))
+            }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // iOS rating colors (SwiftUI system): again=pink, hard=orange, good=indigo, easy=mint.
@@ -193,12 +191,23 @@ private val previewStudyCard = Card(
     dateCreated = 0, lastModified = 0, fsrsDue = 0, fsrsState = CardState.New.value,
 )
 
-@Preview(name = "Study · question", showBackground = true)
+@Preview(name = "Study · question (hint)", showBackground = true)
 @Composable
 private fun StudyQuestionPreview() {
     AzriTheme {
         StudyContent(
-            state = StudyUiState(loading = false, current = previewStudyCard, isRevealed = false, remaining = 5),
+            state = StudyUiState(loading = false, current = previewStudyCard, isRevealed = false, showFlipHint = true, remaining = 5),
+            onReveal = {}, onRate = {}, onDone = {},
+        )
+    }
+}
+
+@Preview(name = "Study · question (no hint)", showBackground = true)
+@Composable
+private fun StudyQuestionNoHintPreview() {
+    AzriTheme {
+        StudyContent(
+            state = StudyUiState(loading = false, current = previewStudyCard, isRevealed = false, showFlipHint = false, remaining = 5),
             onReveal = {}, onRate = {}, onDone = {},
         )
     }
