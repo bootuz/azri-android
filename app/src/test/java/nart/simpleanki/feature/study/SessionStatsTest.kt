@@ -31,7 +31,9 @@ class SessionStatsTest {
         assertEquals("Outstanding session!", motivationalMessage(100))
         assertEquals("Outstanding session!", motivationalMessage(90))
         assertEquals("Great work, keep it up!", motivationalMessage(70))
+        assertEquals("Great work, keep it up!", motivationalMessage(89))
         assertEquals("Solid effort, you're improving!", motivationalMessage(50))
+        assertEquals("Solid effort, you're improving!", motivationalMessage(69))
         assertEquals("Every review makes you stronger!", motivationalMessage(49))
         assertEquals("Every review makes you stronger!", motivationalMessage(0))
     }
@@ -41,6 +43,7 @@ class SessionStatsTest {
         assertEquals("42s", formattedDuration(42_000))
         assertEquals("5m", formattedDuration(300_000))
         assertEquals("5m 12s", formattedDuration(312_000))
+        assertEquals("60m", formattedDuration(3_600_000))
     }
 
     @Test fun duration_negative_clampsToZero() {
