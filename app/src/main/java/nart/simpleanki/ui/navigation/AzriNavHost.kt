@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -79,12 +80,12 @@ fun AzriNavHost() {
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                // M3's default NavigationBar is 80dp; trim the content to 64dp but keep the
-                // gesture-nav inset below it so nothing sits under the system pill.
+                // Compact bar with labels: content trimmed to 56dp (under M3's default 80dp),
+                // with the gesture inset kept below so nothing sits under the system pill.
                 val gestureInset =
                     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 NavigationBar(
-                    modifier = Modifier.height(64.dp + gestureInset),
+                    modifier = Modifier.height(56.dp + gestureInset),
                     containerColor = MaterialTheme.colorScheme.background,
                 ) {
                     NavigationBarItem(
@@ -122,7 +123,11 @@ fun AzriNavHost() {
         NavHost(
             navController = nav,
             startDestination = QUEUE,
-            modifier = Modifier.padding(padding),
+            // Apply the outer Scaffold's insets AND consume them, so each screen's own Scaffold
+            // (its TopAppBar's status-bar inset, its content's nav-bar inset) doesn't reserve
+            // them a second time. Without consuming: the status bar gets reserved twice (titles
+            // pushed down) and a nav-bar-height gap appears above the bottom bar.
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             // Forward: incoming enters from the right (+30dp), outgoing exits left (−30dp).
             enterTransition = { slideInHorizontally(slideSpec) { slide } + fadeThroughIn },
             exitTransition = { slideOutHorizontally(slideSpec) { -slide } + fadeThroughOut },
