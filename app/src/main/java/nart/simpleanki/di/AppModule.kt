@@ -179,6 +179,7 @@ val appModule = module {
             cardRepository = get(),
             deckRepository = get(),
             settingsRepository = get(),
+            logManager = get(),
         )
     }
     viewModel { StudyQueueViewModel(cardRepository = get(), deckRepository = get(), folderRepository = get(), settingsRepository = get(), entitlementRepository = get()) }
