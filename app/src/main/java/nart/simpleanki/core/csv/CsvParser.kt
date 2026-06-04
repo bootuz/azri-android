@@ -28,7 +28,7 @@ object CsvParser {
     }
 
     fun parse(text: String, hasHeader: Boolean): ParsedCsv {
-        val clean = text.removePrefix("﻿")
+        val clean = text.removePrefix("\uFEFF")
         val firstLine = clean.lineSequence().firstOrNull { it.isNotBlank() } ?: ""
         val delimiter = detectDelimiter(firstLine)
 

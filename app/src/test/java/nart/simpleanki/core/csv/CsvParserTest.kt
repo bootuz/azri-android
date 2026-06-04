@@ -47,8 +47,8 @@ class CsvParserTest {
     }
 
     @Test fun stripsUtf8Bom() {
-        // ﻿ is the BOM; written as an escape (never a literal char) to keep the source clean.
-        val p = CsvParser.parse("﻿front,back\nhola,hello", hasHeader = true)
+        // The leading char is the BOM; written as an escape (never a literal char) to keep the source clean.
+        val p = CsvParser.parse("\uFEFFfront,back\nhola,hello", hasHeader = true)
         assertEquals("front", p.headers.first())
     }
 
