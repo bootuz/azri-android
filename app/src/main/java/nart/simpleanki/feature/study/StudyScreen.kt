@@ -110,46 +110,50 @@ private fun StudyCard(state: StudyUiState, onReveal: () -> Unit, onRate: (Rating
             )
         }
         Spacer(Modifier.height(16.dp))
-        // Fixed-height slot so the FlipCard above never shifts; the hint cross-fades and the
-        // rating row slides up from the bottom edge on reveal.
-        // Column is required here so AnimatedVisibility resolves to ColumnScope extension.
-        Column(Modifier.fillMaxWidth().height(60.dp)) {
-            AnimatedVisibility(
-                visible = !state.isRevealed,
-                enter = fadeIn(),
-                exit = fadeOut(),
-            ) {
-                if (state.showFlipHint) {
-                    Row(
-                        Modifier.fillMaxWidth().height(60.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Outlined.TouchApp,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "Tap to flip",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+        // Fixed-height slot so the FlipCard above never shifts. Two full-size Column layers inside
+        // a Box overlap (z-stack) so the rating row slides up OVER the cross-fading hint. (Each
+        // AnimatedVisibility needs a ColumnScope; this Compose version has no top-level overload.)
+        Box(Modifier.fillMaxWidth().height(60.dp)) {
+            Column(Modifier.fillMaxSize()) {
+                AnimatedVisibility(
+                    visible = !state.isRevealed,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    if (state.showFlipHint) {
+                        Row(
+                            Modifier.fillMaxWidth().height(60.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Outlined.TouchApp,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Tap to flip",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
-            AnimatedVisibility(
-                visible = state.isRevealed,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = fadeOut(),
-            ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // iOS rating colors (SwiftUI system): again=pink, hard=orange, good=indigo, easy=mint.
-                    RatingButton("Again", state.ratingIntervals[Rating.Again], Color(0xFFFF2D55), Modifier.weight(1f)) { onRate(Rating.Again) }
-                    RatingButton("Hard", state.ratingIntervals[Rating.Hard], Color(0xFFFF9500), Modifier.weight(1f)) { onRate(Rating.Hard) }
-                    RatingButton("Good", state.ratingIntervals[Rating.Good], Color(0xFF5856D6), Modifier.weight(1f)) { onRate(Rating.Good) }
-                    RatingButton("Easy", state.ratingIntervals[Rating.Easy], Color(0xFF00C7BE), Modifier.weight(1f)) { onRate(Rating.Easy) }
+            Column(Modifier.fillMaxSize()) {
+                AnimatedVisibility(
+                    visible = state.isRevealed,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // iOS rating colors (SwiftUI system): again=pink, hard=orange, good=indigo, easy=mint.
+                        RatingButton("Again", state.ratingIntervals[Rating.Again], Color(0xFFFF2D55), Modifier.weight(1f)) { onRate(Rating.Again) }
+                        RatingButton("Hard", state.ratingIntervals[Rating.Hard], Color(0xFFFF9500), Modifier.weight(1f)) { onRate(Rating.Hard) }
+                        RatingButton("Good", state.ratingIntervals[Rating.Good], Color(0xFF5856D6), Modifier.weight(1f)) { onRate(Rating.Good) }
+                        RatingButton("Easy", state.ratingIntervals[Rating.Easy], Color(0xFF00C7BE), Modifier.weight(1f)) { onRate(Rating.Easy) }
+                    }
                 }
             }
         }
