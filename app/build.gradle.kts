@@ -88,8 +88,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
 
     implementation(libs.material)
+    implementation(libs.zstd.jni)
 
     testImplementation(libs.junit)
+    testImplementation(libs.org.json)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)

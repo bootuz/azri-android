@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,11 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import nart.simpleanki.R
 import nart.simpleanki.core.domain.model.ColorOption
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
@@ -56,10 +55,11 @@ fun LibraryScreen(
     onOpenFolder: (String) -> Unit,
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
+    onImport: () -> Unit = {},
     viewModel: LibraryViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    LibraryContent(state, onOpenDeck, onOpenFolder, onNewDeck, onNewFolder)
+    LibraryContent(state, onOpenDeck, onOpenFolder, onNewDeck, onNewFolder, onImport = onImport)
 }
 
 /** Stateless library UI, decoupled from the ViewModel for testing. Decks and folders are split
@@ -72,16 +72,20 @@ fun LibraryContent(
     onOpenFolder: (String) -> Unit = {},
     onNewDeck: () -> Unit,
     onNewFolder: () -> Unit,
+    onImport: () -> Unit = {},
     initialTab: Int = 0,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
+                title = { Text("Library", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
                 actions = {
+                    IconButton(onClick = onImport) {
+                        Icon(Icons.Default.FileDownload, contentDescription = "Import deck")
+                    }
                     IconButton(onClick = onNewFolder) {
                         Icon(Icons.Default.CreateNewFolder, contentDescription = "New folder")
                     }
@@ -92,7 +96,9 @@ fun LibraryContent(
             )
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier
+            .fillMaxSize()
+            .padding(padding)) {
             var selectedTab by remember { mutableStateOf(initialTab) }
             PrimaryTabRow(
                 selectedTabIndex = selectedTab,
@@ -118,9 +124,17 @@ fun LibraryContent(
 }
 
 @Composable
-private fun DeckList(decks: List<Deck>, cardCounts: Map<String, Int>, onOpenDeck: (String) -> Unit) {
+private fun DeckList(
+    decks: List<Deck>,
+    cardCounts: Map<String, Int>,
+    onOpenDeck: (String) -> Unit
+) {
     if (decks.isEmpty()) {
-        EmptyState(Icons.Outlined.CollectionsBookmark, "No decks yet", "Tap + to create your first deck.")
+        EmptyState(
+            Icons.Outlined.CollectionsBookmark,
+            "No decks yet",
+            "Tap + to create your first deck."
+        )
         return
     }
     LazyColumn(
@@ -129,7 +143,10 @@ private fun DeckList(decks: List<Deck>, cardCounts: Map<String, Int>, onOpenDeck
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(decks, key = { it.id }) { deck ->
-            DeckRow(deck = deck, cardCount = cardCounts[deck.id] ?: 0, onClick = { onOpenDeck(deck.id) })
+            DeckRow(
+                deck = deck,
+                cardCount = cardCounts[deck.id] ?: 0,
+                onClick = { onOpenDeck(deck.id) })
         }
     }
 }
@@ -137,7 +154,11 @@ private fun DeckList(decks: List<Deck>, cardCounts: Map<String, Int>, onOpenDeck
 @Composable
 private fun FolderList(folders: List<Folder>, onOpenFolder: (String) -> Unit) {
     if (folders.isEmpty()) {
-        EmptyState(Icons.Outlined.Folder, "No folders yet", "Tap the folder icon above to create one.")
+        EmptyState(
+            Icons.Outlined.Folder,
+            "No folders yet",
+            "Tap the folder icon above to create one."
+        )
         return
     }
     LazyColumn(
@@ -156,12 +177,18 @@ private fun FolderRow(folder: Folder, onClick: () -> Unit) {
     AzriCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ColorAccentIcon(tint = MaterialTheme.colorScheme.onSurfaceVariant) {
-                if (folder.emoji != null) Text(folder.emoji) else Icon(Icons.Outlined.Folder, null, Modifier.size(18.dp))
+                if (folder.emoji != null) Text(folder.emoji) else Icon(
+                    Icons.Outlined.Folder,
+                    null,
+                    Modifier.size(18.dp)
+                )
             }
             Text(
                 folder.name,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(start = 12.dp).weight(1f),
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .weight(1f),
             )
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -182,7 +209,11 @@ private fun EmptyState(icon: ImageVector, title: String, subtitle: String) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(48.dp),
             )
-            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 12.dp)
+            )
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodyMedium,
@@ -194,8 +225,20 @@ private fun EmptyState(icon: ImageVector, title: String, subtitle: String) {
 }
 
 private val sampleDecks = listOf(
-    Deck(id = "d1", name = "Spanish 101", color = ColorOption.Indigo, dateCreated = 0, lastModified = 0),
-    Deck(id = "d2", name = "Biology terms", color = ColorOption.Green, dateCreated = 0, lastModified = 0),
+    Deck(
+        id = "d1",
+        name = "Spanish 101",
+        color = ColorOption.Indigo,
+        dateCreated = 0,
+        lastModified = 0
+    ),
+    Deck(
+        id = "d2",
+        name = "Biology terms",
+        color = ColorOption.Green,
+        dateCreated = 0,
+        lastModified = 0
+    ),
     Deck(id = "d3", name = "Kanji", color = ColorOption.Red, dateCreated = 0, lastModified = 0),
 )
 
@@ -205,7 +248,14 @@ private fun LibraryPreview() {
     AzriTheme {
         LibraryContent(
             state = LibraryUiState(
-                folders = listOf(Folder(id = "f1", name = "Languages", emoji = "🌍", lastModified = 0)),
+                folders = listOf(
+                    Folder(
+                        id = "f1",
+                        name = "Languages",
+                        emoji = "🌍",
+                        lastModified = 0
+                    )
+                ),
                 decksWithoutFolder = sampleDecks,
                 allDecks = sampleDecks,
                 cardCounts = mapOf("d1" to 42, "d2" to 1, "d3" to 0),
@@ -241,12 +291,20 @@ private fun LibraryEmptyPreview() {
     }
 }
 
-@Preview(name = "Library · dark", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Preview(
+    name = "Library · dark",
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
 private fun LibraryDarkPreview() {
     AzriTheme(darkTheme = true) {
         LibraryContent(
-            state = LibraryUiState(decksWithoutFolder = sampleDecks, allDecks = sampleDecks, cardCounts = mapOf("d1" to 42)),
+            state = LibraryUiState(
+                decksWithoutFolder = sampleDecks,
+                allDecks = sampleDecks,
+                cardCounts = mapOf("d1" to 42)
+            ),
             onOpenDeck = {}, onNewDeck = {}, onNewFolder = {},
         )
     }
