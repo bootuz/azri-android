@@ -1,6 +1,8 @@
 package nart.simpleanki.auth
 
 import app.cash.turbine.test
+import nart.simpleanki.core.analytics.FakeLogService
+import nart.simpleanki.core.analytics.LogManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -80,5 +82,30 @@ class AuthViewModelTest {
         val vm = AuthViewModel(fake)
         vm.onSignOut()
         assertEquals(1, fake.signOutCalls)
+    }
+
+    @Test
+    fun guestSignIn_tracksContinueAsGuest() = runTest {
+        val log = FakeLogService()
+        val vm = AuthViewModel(FakeAuthRepository(), LogManager(listOf(log)))
+        vm.onContinueAsGuest()
+        assertTrue(log.events.any { it.eventName == "continue_as_guest" })
+    }
+
+    @Test
+    fun signOut_tracksSignOut() = runTest {
+        val log = FakeLogService()
+        val vm = AuthViewModel(FakeAuthRepository(), LogManager(listOf(log)))
+        vm.onSignOut()
+        assertTrue(log.events.any { it.eventName == "sign_out" })
+    }
+
+    @Test
+    fun googleSignInError_tracksWarning() = runTest {
+        val log = FakeLogService()
+        val vm = AuthViewModel(FakeAuthRepository(), LogManager(listOf(log)))
+        vm.onGoogleSignInError("cancelled")
+        val e = log.events.first { it.eventName == "sign_in_failed" }
+        assertEquals("cancelled", e.params["reason"])
     }
 }

@@ -127,7 +127,7 @@ val appModule = module {
     // Web client ID (OAuth client_type 3) is generated from each developer's own
     // google-services.json by the google-services plugin — never hard-coded.
     single { GoogleSignInClient(serverClientId = androidContext().getString(R.string.default_web_client_id)) }
-    viewModel { AuthViewModel(get()) }
+    viewModel { AuthViewModel(get(), get()) }
 
     // Local persistence (Room)
     single {
