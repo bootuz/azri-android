@@ -52,7 +52,7 @@ class DeckDetailContentTest {
             )
         }
         composeRule.onNodeWithText("You're all caught up!").assertIsDisplayed()
-        composeRule.onNodeWithText("Study").assertDoesNotExist()
+        composeRule.onNodeWithText("Study", substring = true).assertDoesNotExist()
     }
 
     @Test
