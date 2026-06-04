@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -66,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import nart.simpleanki.core.billing.PurchaseResult
 import nart.simpleanki.core.data.settings.ThemeMode
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
+import nart.simpleanki.feature.queue.DailyGoalEditorSheet
 import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -84,6 +86,7 @@ fun ProfileScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var showDailyGoalSheet by remember { mutableStateOf(false) }
 
     fun openUrl(url: String) =
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
@@ -92,6 +95,7 @@ fun ProfileScreen(
         state = state,
         onOpenFsrsSettings = onOpenFsrsSettings,
         onOpenNotifications = onOpenNotifications,
+        onOpenDailyGoal = { showDailyGoalSheet = true },
         onOpenPaywall = onOpenPaywall,
         onRestorePurchases = {
             viewModel.restorePurchases { result ->
@@ -114,6 +118,10 @@ fun ProfileScreen(
         onTerms = { openUrl(TERMS_URL) },
         onPrivacy = { openUrl(PRIVACY_URL) },
     )
+
+    if (showDailyGoalSheet) {
+        DailyGoalEditorSheet(onDismiss = { showDailyGoalSheet = false })
+    }
 }
 
 /** Stateless profile UI, decoupled from the ViewModel for testing. Link actions are callbacks. */
@@ -124,6 +132,7 @@ fun ProfileContent(
     onOpenFsrsSettings: () -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
     onOpenNotifications: () -> Unit = {},
+    onOpenDailyGoal: () -> Unit = {},
     onOpenPaywall: () -> Unit = {},
     onRestorePurchases: () -> Unit = {},
     onSignOut: () -> Unit,
@@ -218,6 +227,15 @@ fun ProfileContent(
                 leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                 modifier = Modifier.clickable(onClick = onOpenFsrsSettings),
+            )
+            ListItem(
+                headlineContent = { Text("Daily goal") },
+                supportingContent = {
+                    Text(if (state.dailyGoalEnabled) "${state.dailyGoalTotal} cards/day" else "Off")
+                },
+                leadingContent = { Icon(Icons.Default.Flag, contentDescription = null) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.clickable(onClick = onOpenDailyGoal),
             )
             ListItem(
                 headlineContent = { Text("Notifications") },
@@ -370,6 +388,21 @@ private fun ProfileGuestPreview() {
     AzriTheme(darkTheme = true) {
         ProfileContent(
             state = ProfileUiState(email = null, isAnonymous = true, themeMode = ThemeMode.Dark),
+            onOpenFsrsSettings = {}, onThemeChange = {}, onSignOut = {}, onDeleteAccount = {},
+        )
+    }
+}
+
+@Preview(name = "Profile · daily goal", showBackground = true)
+@Composable
+private fun ProfileDailyGoalPreview() {
+    AzriTheme {
+        ProfileContent(
+            state = ProfileUiState(
+                email = "grace@example.com", isAnonymous = false,
+                preset = FsrsPreset.Optimal, themeMode = ThemeMode.System,
+                dailyGoalEnabled = true, dailyGoalTotal = 30,
+            ),
             onOpenFsrsSettings = {}, onThemeChange = {}, onSignOut = {}, onDeleteAccount = {},
         )
     }

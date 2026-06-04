@@ -67,4 +67,18 @@ class ProfileContentTest {
         composeRule.onNodeWithText("Delete").performClick()
         assertTrue(deleted)
     }
+
+    @Test
+    fun dailyGoalRow_opensEditor() {
+        var opened = false
+        composeRule.setContent {
+            ProfileContent(
+                state = state(),
+                onOpenFsrsSettings = {}, onThemeChange = {}, onSignOut = {}, onDeleteAccount = {},
+                onOpenDailyGoal = { opened = true },
+            )
+        }
+        composeRule.onNodeWithText("Daily goal").assertIsDisplayed().performClick()
+        assertTrue(opened)
+    }
 }

@@ -12,6 +12,7 @@ import nart.simpleanki.core.billing.EntitlementRepository
 import nart.simpleanki.core.billing.PurchaseResult
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.ThemeMode
+import nart.simpleanki.core.data.settings.dailyGoalTotal
 import nart.simpleanki.core.domain.fsrs.FsrsPreset
 
 data class ProfileUiState(
@@ -20,6 +21,8 @@ data class ProfileUiState(
     val preset: FsrsPreset = FsrsPreset.Optimal,
     val themeMode: ThemeMode = ThemeMode.System,
     val isPremium: Boolean = false,
+    val dailyGoalEnabled: Boolean = false,
+    val dailyGoalTotal: Int = 0,
 )
 
 /** The Profile tab: account info, appearance, and the entry point to spaced-repetition settings. */
@@ -37,6 +40,8 @@ class ProfileViewModel(
                 preset = settings.preset,
                 themeMode = settings.themeMode,
                 isPremium = entitlement.isPremium,
+                dailyGoalEnabled = settings.dailyGoalEnabled,
+                dailyGoalTotal = settings.dailyGoalTotal,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileUiState())
 
