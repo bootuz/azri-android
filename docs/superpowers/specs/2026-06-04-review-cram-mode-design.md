@@ -87,8 +87,10 @@ On `init` it `launch { load() }`:
   .map { it.id }.toSet()`; cards = `cardRepository.observeAllCards().first().filter { it.deckId in
   deckIds }`; pool = `buildReviewQueue(cards, ReviewCardFilter.All, shuffleSeed = now())`
   (always shuffled).
-- Sets `ReviewUiState(loading = false, cards = pool)`. Logs a `review_session_start`
-  event (`{deck_id|folder_id, count}`) via `logManager`, mirroring iOS analytics.
+- Sets `ReviewUiState(loading = false, cards = pool)`. Logs a `cram_session_start`
+  event (`{deck_id|folder_id, count}`) via `logManager`, mirroring iOS analytics. (Named
+  `cram_session_start`, not `review_session_start`, to avoid colliding with the FSRS study
+  session's existing `review_session_start` event in `StudyViewModel`.)
 
 The pool is an immutable snapshot (`.first()`), like the study session — it does not live-update.
 
