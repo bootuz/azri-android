@@ -73,6 +73,7 @@ import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.settings.SettingsViewModel
 import nart.simpleanki.feature.review.ReviewViewModel
 import nart.simpleanki.feature.study.StudyViewModel
+import nart.simpleanki.feature.typepractice.TypePracticeViewModel
 import nart.simpleanki.feature.sync.SyncViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
@@ -224,6 +225,17 @@ val appModule = module {
             folderId = args.folderId,
             cardRepository = get(),
             deckRepository = get(),
+            logManager = get(),
+        )
+    }
+    viewModel { params ->
+        val args = params.get<StudyArgs>()
+        // Type Practice is deck-level only (v1) — args.folderId is intentionally unused.
+        TypePracticeViewModel(
+            deckId = args.deckId,
+            cardRepository = get(),
+            deckRepository = get(),
+            typingLogRepository = get(),
             logManager = get(),
         )
     }
