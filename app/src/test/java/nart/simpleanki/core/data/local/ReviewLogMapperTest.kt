@@ -23,4 +23,18 @@ class ReviewLogMapperTest {
         val back = entity.toDomain()
         assertEquals(log.copy(), back)   // all fields preserved
     }
+
+    @Test
+    fun roundTrip_preservesNulls() {
+        val log = ReviewLog(
+            rating = Rating.Again, state = null, due = null,
+            stability = null, difficulty = null,
+            elapsedDays = 0.0, lastElapsedDays = 0.0, scheduledDays = 0.0,
+            review = 1_700_000_000_000L, id = "l2", cardId = "c2",
+        )
+        val back = log.toEntity(dirty = false).toDomain()
+        assertEquals(log.copy(), back)
+        assertEquals(null, back.state)
+        assertEquals(null, back.due)
+    }
 }
