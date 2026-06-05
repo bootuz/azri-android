@@ -227,3 +227,40 @@ data class ReviewLogDto(
         )
     }
 }
+
+// MARK: - Streak state (single doc per user: users/{uid}/streakState/current)
+
+data class StreakStateDto(
+    @DocumentId var id: String? = "current",
+    @get:PropertyName("freeze_tokens") @set:PropertyName("freeze_tokens") var freezeTokens: Int = 0,
+    @get:PropertyName("frozen_days") @set:PropertyName("frozen_days") var frozenDays: List<Long> = emptyList(),
+    @get:PropertyName("freezes_awarded_for_run") @set:PropertyName("freezes_awarded_for_run") var freezesAwardedForRun: Int = 0,
+    @get:PropertyName("last_reconciled_day") @set:PropertyName("last_reconciled_day") var lastReconciledDay: Long = 0,
+    @get:PropertyName("last_repair_day") @set:PropertyName("last_repair_day") var lastRepairDay: Long = 0,
+    @get:PropertyName("last_modified") @set:PropertyName("last_modified") var lastModified: Timestamp = Timestamp(Date(0)),
+) {
+    fun lastModifiedMillis(): Long = lastModified.toMillis()
+
+    fun toEntity(dirty: Boolean) = nart.simpleanki.core.data.local.StreakStateEntity(
+        id = "current",
+        freezeTokens = freezeTokens,
+        frozenDays = frozenDays.sorted().joinToString(","),
+        freezesAwardedForRun = freezesAwardedForRun,
+        lastReconciledDay = lastReconciledDay,
+        lastRepairDay = lastRepairDay,
+        lastModified = lastModified.toMillis(),
+        dirty = dirty,
+    )
+
+    companion object {
+        fun fromEntity(e: nart.simpleanki.core.data.local.StreakStateEntity) = StreakStateDto(
+            id = "current",
+            freezeTokens = e.freezeTokens,
+            frozenDays = e.frozenDays.split(",").filter { it.isNotBlank() }.map { it.toLong() },
+            freezesAwardedForRun = e.freezesAwardedForRun,
+            lastReconciledDay = e.lastReconciledDay,
+            lastRepairDay = e.lastRepairDay,
+            lastModified = e.lastModified.toTimestamp(),
+        )
+    }
+}
