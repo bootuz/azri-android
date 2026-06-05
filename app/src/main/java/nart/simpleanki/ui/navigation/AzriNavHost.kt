@@ -70,6 +70,7 @@ import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
 import nart.simpleanki.feature.review.ReviewScreen
 import nart.simpleanki.feature.study.StudyScreen
+import nart.simpleanki.feature.typepractice.TypePracticeScreen
 import org.koin.compose.koinInject
 
 private const val QUEUE = "queue"
@@ -251,6 +252,7 @@ fun AzriNavHost() {
                     onBack = { nav.popBackStack() },
                     onStudy = { nav.navigate("study/$deckId") },
                     onReview = { nav.navigate("review/$deckId") },
+                    onTypePractice = { nav.navigate("typePractice/$deckId") },
                     onAddCard = { nav.navigate("cardForm/$deckId") },
                     onEditCard = { cardId -> nav.navigate("cardForm/$deckId/$cardId") },
                     onSettings = { nav.navigate("deckEdit/$deckId") },
@@ -273,6 +275,12 @@ fun AzriNavHost() {
             }
             composable("review/{deckId}") { entry ->
                 ReviewScreen(
+                    deckId = entry.arguments?.getString("deckId").orEmpty(),
+                    onDone = { nav.popBackStack() },
+                )
+            }
+            composable("typePractice/{deckId}") { entry ->
+                TypePracticeScreen(
                     deckId = entry.arguments?.getString("deckId").orEmpty(),
                     onDone = { nav.popBackStack() },
                 )

@@ -6,13 +6,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
+import nart.simpleanki.core.data.repository.TypingMasteryProvider
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.fsrs.withDueTicks
+import nart.simpleanki.core.domain.typing.DeckMastery
 
 data class DeckDetailUiState(
     val deckId: String,
@@ -21,6 +24,7 @@ data class DeckDetailUiState(
     val query: String = "",
     val dueCount: Int = 0,
     val newCount: Int = 0,
+    val mastery: DeckMastery = DeckMastery(0, 0),
 ) {
     val total: Int get() = cards.size
 
@@ -35,11 +39,16 @@ class DeckDetailViewModel(
     private val deckId: String,
     private val cardRepository: CardRepository,
     deckRepository: DeckRepository? = null,
+    typingMasteryProvider: TypingMasteryProvider? = null,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
 
     private val queryFlow = MutableStateFlow("")
     private val deckNameFlow = MutableStateFlow("")
+
+    // TypingMasteryProvider observes the deck's cards independently (a 2nd cold Room flow) so it stays
+    // reusable; a momentary cards/mastery skew during a write is benign for this soft progress ring.
+    private val masteryFlow = typingMasteryProvider?.observeDeckMastery(deckId) ?: flowOf(DeckMastery(0, 0))
 
     init {
         if (deckRepository != null) {
@@ -54,7 +63,8 @@ class DeckDetailViewModel(
             cardRepository.observeCards(deckId).withDueTicks(now),
             queryFlow,
             deckNameFlow,
-        ) { (cards, nowMillis), query, name ->
+            masteryFlow,
+        ) { (cards, nowMillis), query, name, mastery ->
             DeckDetailUiState(
                 deckId = deckId,
                 deckName = name,
@@ -62,6 +72,7 @@ class DeckDetailViewModel(
                 query = query,
                 newCount = cards.count { it.fsrsState == CardState.New.value },
                 dueCount = cards.count { it.fsrsState != CardState.New.value && it.fsrsDue <= nowMillis },
+                mastery = mastery,
             )
         }.stateIn(
             scope = viewModelScope,

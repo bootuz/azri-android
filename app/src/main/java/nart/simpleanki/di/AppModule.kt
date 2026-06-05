@@ -192,7 +192,8 @@ val appModule = module {
         DeckDetailViewModel(
             deckId = params.get(),
             cardRepository = get(),
-            deckRepository = get()
+            deckRepository = get(),
+            typingMasteryProvider = get(),
         )
     }
     viewModel { params ->
