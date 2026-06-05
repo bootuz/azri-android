@@ -17,8 +17,10 @@ import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.data.repository.FakeReviewLogDao
+import nart.simpleanki.core.data.repository.FakeStreakStateDao
 import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.repository.StreakProvider
+import nart.simpleanki.core.data.repository.StreakStateRepository
 import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.fsrs.QueueSortOrder
@@ -54,7 +56,7 @@ class StudyViewModelTest {
         repo.upsert(newCard("c1", deckId = "d1"))
         repo.upsert(newCard("c2", deckId = "d2"))
         // null deckId = global queue: cards from every deck are included.
-        val vm = StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
         assertEquals(2, vm.uiState.value.remaining)
     }
@@ -68,7 +70,7 @@ class StudyViewModelTest {
         cardRepo.upsert(newCard("c1", deckId = "d1")) // inside folder f1
         cardRepo.upsert(newCard("c2", deckId = "d2")) // outside f1
 
-        val vm = StudyViewModel(null, "f1", cardRepo, deckRepo, FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel(null, "f1", cardRepo, deckRepo, FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
 
         assertEquals(1, vm.uiState.value.remaining)
@@ -80,7 +82,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
 
         val s = vm.uiState.value
@@ -98,7 +100,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
 
         vm.onRate(Rating.Good)
@@ -113,7 +115,7 @@ class StudyViewModelTest {
         val repo = CardRepository(dao, now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
 
         vm.onReveal()
@@ -138,7 +140,7 @@ class StudyViewModelTest {
     fun ratingAllCards_finishesSession() = runTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
 
         vm.onRate(Rating.Easy)
@@ -161,7 +163,7 @@ class StudyViewModelTest {
         repo.upsert(reviewCard("easy", 2.0))
         repo.upsert(reviewCard("hard", 9.0))
         val settings = FakeSettingsRepository(AppSettings(queueSortOrder = QueueSortOrder.Difficulty))
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), settings, ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), settings, ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
         assertEquals("hard", vm.uiState.value.current?.id) // hardest card first
     }
@@ -171,7 +173,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         val log = FakeLogService()
-        StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, logManager = LogManager(listOf(log)))
+        StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()), logManager = LogManager(listOf(log)))
         runCurrent()
         assertTrue(log.events.any { it.eventName == "review_session_start" })
     }
@@ -181,7 +183,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         val log = FakeLogService()
-        val vm = StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, logManager = LogManager(listOf(log)))
+        val vm = StudyViewModel(null, null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()), logManager = LogManager(listOf(log)))
         runCurrent()
         vm.onRate(Rating.Good)
         runCurrent()
@@ -197,7 +199,7 @@ class StudyViewModelTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
         repo.upsert(newCard("c1"))
         repo.upsert(newCard("c2"))
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
 
         // Hint visible at session start.
@@ -219,7 +221,7 @@ class StudyViewModelTest {
     @Test
     fun emptyDeck_finishesImmediately() = runTest {
         val repo = CardRepository(FakeCardDao(), now = { now })
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { now }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
         assertTrue(vm.uiState.value.finished)
         assertNull(vm.uiState.value.current)
@@ -230,7 +232,7 @@ class StudyViewModelTest {
         var clock = now
         val repo = CardRepository(FakeCardDao(), now = { clock })
         repo.upsert(newCard("c1"))
-        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { clock }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { clock })
+        val vm = StudyViewModel("d1", null, repo, DeckRepository(FakeDeckDao(), now = { clock }), FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { clock }, streakStateRepository = StreakStateRepository(FakeStreakStateDao()))
         runCurrent()
         // Session started at `now`; advance the clock 3s, then rate the only card to finish.
         clock = now + 3_000
@@ -251,6 +253,7 @@ class StudyViewModelTest {
         val vm = StudyViewModel(
             "d1", null, cardRepo, DeckRepository(FakeDeckDao(), now = { now }),
             FakeSettingsRepository(), logRepo, now = { now },
+            streakStateRepository = StreakStateRepository(FakeStreakStateDao()),
         )
         runCurrent()
 
@@ -272,6 +275,7 @@ class StudyViewModelTest {
         val vm = StudyViewModel(
             "d1", null, cardRepo, DeckRepository(FakeDeckDao(), now = { now }),
             FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now },
+            streakStateRepository = StreakStateRepository(FakeStreakStateDao()),
         )
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
@@ -290,11 +294,12 @@ class StudyViewModelTest {
         val logDao = FakeReviewLogDao()
         // Only yesterday logged; no cards to study today.
         logDao.insertAll(listOf(ReviewLogEntity("y", "c1", 3, 2, 0, 1.0, 5.0, 0.0, 0.0, 0.0, now - day, false)))
-        val streak = StreakProvider(ReviewLogRepository(logDao), now = { now }, timeZone = TimeZone.getTimeZone("UTC"))
+        val streak = StreakProvider(ReviewLogRepository(logDao), StreakStateRepository(FakeStreakStateDao()), now = { now }, timeZone = TimeZone.getTimeZone("UTC"))
 
         val vm = StudyViewModel(
             "d1", null, CardRepository(FakeCardDao(), now = { now }), DeckRepository(FakeDeckDao(), now = { now }),
-            FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakProvider = streak,
+            FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now },
+            streakStateRepository = StreakStateRepository(FakeStreakStateDao()), streakProvider = streak,
         )
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()

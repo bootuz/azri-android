@@ -16,9 +16,11 @@ import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.data.repository.FakeFolderDao
 import nart.simpleanki.core.data.repository.FakeReviewLogDao
+import nart.simpleanki.core.data.repository.FakeStreakStateDao
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.repository.StreakProvider
+import nart.simpleanki.core.data.repository.StreakStateRepository
 import java.util.TimeZone
 import nart.simpleanki.core.billing.Entitlement
 import nart.simpleanki.core.billing.FakeEntitlementRepository
@@ -56,7 +58,7 @@ class StudyQueueViewModelTest {
         dateCreated = now, lastModified = now, fsrsDue = now, fsrsState = CardState.New.value,
     )
 
-    private fun emptyStreak() = StreakProvider(ReviewLogRepository(FakeReviewLogDao()))
+    private fun emptyStreak() = StreakProvider(ReviewLogRepository(FakeReviewLogDao()), StreakStateRepository(FakeStreakStateDao()))
 
     @Test
     fun aggregatesAcrossDecks_andBreaksDownPerDeck() = runTest {
@@ -291,7 +293,7 @@ class StudyQueueViewModelTest {
             ReviewLogEntity("a", "c1", 3, 2, 0, 1.0, 5.0, 0.0, 0.0, 0.0, now, false),
             ReviewLogEntity("b", "c1", 3, 2, 0, 1.0, 5.0, 0.0, 0.0, 0.0, now - day, false),
         ))
-        val streak = StreakProvider(ReviewLogRepository(logDao), now = { now }, timeZone = TimeZone.getTimeZone("UTC"))
+        val streak = StreakProvider(ReviewLogRepository(logDao), StreakStateRepository(FakeStreakStateDao()), now = { now }, timeZone = TimeZone.getTimeZone("UTC"))
 
         val vm = StudyQueueViewModel(
             CardRepository(FakeCardDao(), now = { now }),

@@ -13,6 +13,7 @@ import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.repository.StreakProvider
+import nart.simpleanki.core.data.repository.StreakStateRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.fsrsParameters
 import nart.simpleanki.core.domain.fsrs.IntervalFormatter
@@ -54,7 +55,8 @@ class StudyViewModel(
     private val settingsRepository: SettingsRepository,
     private val reviewLogRepository: ReviewLogRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
-    private val streakProvider: StreakProvider = StreakProvider(reviewLogRepository, now),
+    private val streakStateRepository: StreakStateRepository,
+    private val streakProvider: StreakProvider = StreakProvider(reviewLogRepository, streakStateRepository, now),
     private val logManager: LogManager = LogManager(emptyList()),
 ) : ViewModel() {
 

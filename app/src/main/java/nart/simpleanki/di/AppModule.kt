@@ -44,6 +44,7 @@ import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.repository.StreakProvider
+import nart.simpleanki.core.data.repository.StreakStateManager
 import nart.simpleanki.core.data.repository.StreakStateRepository
 import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
@@ -152,8 +153,9 @@ val appModule = module {
     single { DeckRepository(get()) }
     single { CardRepository(get()) }
     single { ReviewLogRepository(get()) }
-    single { StreakProvider(get()) }
     single { StreakStateRepository(get()) }
+    single { StreakProvider(get(), get()) }
+    single { StreakStateManager(get(), get()) }
 
     // Sync
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
@@ -203,6 +205,7 @@ val appModule = module {
             deckRepository = get(),
             settingsRepository = get(),
             reviewLogRepository = get(),
+            streakStateRepository = get(),
             streakProvider = get(),
             logManager = get(),
         )
