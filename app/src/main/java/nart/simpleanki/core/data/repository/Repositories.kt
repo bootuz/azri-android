@@ -6,11 +6,14 @@ import kotlinx.coroutines.flow.map
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
+import nart.simpleanki.core.data.local.dao.ReviewLogDao
 import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.local.toEntity
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
+import nart.simpleanki.core.domain.model.ReviewLog
+import java.util.UUID
 
 /**
  * Repositories: Room is the source of truth. Local writes bump [Folder.lastModified]
@@ -108,4 +111,17 @@ class CardRepository(
             .map { it.copy(isDeleted = true, lastModified = t, dirty = true) }
         if (deleted.isNotEmpty()) dao.upsertAll(deleted)
     }
+}
+
+/** Immutable, append-only store of FSRS review events (the streak/stats data source). */
+class ReviewLogRepository(
+    private val dao: ReviewLogDao,
+    private val newId: () -> String = { UUID.randomUUID().toString() },
+) {
+    /** Appends one review event: assigns a fresh id + the card id, marked dirty for the next sync. */
+    suspend fun append(cardId: String, log: ReviewLog) {
+        dao.insertAll(listOf(log.copy(id = newId(), cardId = cardId).toEntity(dirty = true)))
+    }
+
+    fun observeLogs(): Flow<List<ReviewLog>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
 }

@@ -6,9 +6,11 @@ import kotlinx.coroutines.flow.map
 import nart.simpleanki.core.data.local.CardEntity
 import nart.simpleanki.core.data.local.DeckEntity
 import nart.simpleanki.core.data.local.FolderEntity
+import nart.simpleanki.core.data.local.ReviewLogEntity
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
+import nart.simpleanki.core.data.local.dao.ReviewLogDao
 
 /** In-memory fakes implementing the Room DAO interfaces for pure-JVM repository tests. */
 
@@ -61,4 +63,19 @@ class FakeCardDao : CardDao {
     override suspend fun clearDirty(id: String, lastModified: Long) {
         store.value[id]?.let { if (it.lastModified == lastModified) upsertAll(listOf(it.copy(dirty = false))) }
     }
+}
+
+class FakeReviewLogDao : ReviewLogDao {
+    private val store = MutableStateFlow<Map<String, ReviewLogEntity>>(emptyMap())
+    // IGNORE semantics: keep the existing row when an id is already present.
+    override suspend fun insertAll(logs: List<ReviewLogEntity>) {
+        store.value = store.value.toMutableMap().apply { logs.forEach { putIfAbsent(it.id, it) } }
+    }
+    override suspend fun getDirty(): List<ReviewLogEntity> = store.value.values.filter { it.dirty }
+    override suspend fun clearDirty(id: String) {
+        store.value[id]?.let { store.value = store.value.toMutableMap().apply { put(id, it.copy(dirty = false)) } }
+    }
+    override suspend fun getAllIds(): List<String> = store.value.keys.toList()
+    override fun observeAll(): Flow<List<ReviewLogEntity>> =
+        store.map { m -> m.values.sortedBy { it.review } }
 }

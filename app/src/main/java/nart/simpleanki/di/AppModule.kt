@@ -41,6 +41,7 @@ import nart.simpleanki.core.data.media.MediaUploader
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
+import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
@@ -146,6 +147,7 @@ val appModule = module {
     single { FolderRepository(get()) }
     single { DeckRepository(get()) }
     single { CardRepository(get()) }
+    single { ReviewLogRepository(get()) }
 
     // Sync
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
