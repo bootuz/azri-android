@@ -2,6 +2,7 @@ package nart.simpleanki.feature.queue
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.stateIn
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
+import nart.simpleanki.core.data.repository.StreakProvider
 import nart.simpleanki.core.billing.EntitlementRepository
 import nart.simpleanki.core.billing.Entitlements
 import nart.simpleanki.core.data.settings.SettingsRepository
@@ -68,6 +70,8 @@ data class StudyQueueUiState(
     val dailyGoalEnabled: Boolean = false,
     val goalTotal: Int = 0,
     val studiedToday: Int = 0,
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0,
     val sortOrder: QueueSortOrder = QueueSortOrder.DueDate,
     /**
      * Whether the user owns any (non-deleted) card at all — a *lifetime* signal, not a "today"
@@ -93,10 +97,11 @@ class StudyQueueViewModel(
     folderRepository: FolderRepository,
     private val settingsRepository: SettingsRepository,
     private val entitlementRepository: EntitlementRepository,
+    private val streakProvider: StreakProvider,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
 
-    val uiState: StateFlow<StudyQueueUiState> =
+    private val baseState: Flow<StudyQueueUiState> =
         combine(
             cardRepository.observeAllCards().withDueTicks(now),
             deckRepository.observeDecks(),
@@ -176,6 +181,11 @@ class StudyQueueViewModel(
                     hasAnyCards = hasAnyCards,
                 ),
             )
+        }
+
+    val uiState: StateFlow<StudyQueueUiState> =
+        combine(baseState, streakProvider.observeStreak()) { base, streak ->
+            base.copy(currentStreak = streak.current, longestStreak = streak.longest)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

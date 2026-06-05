@@ -218,7 +218,8 @@ val appModule = module {
             deckRepository = get(),
             folderRepository = get(),
             settingsRepository = get(),
-            entitlementRepository = get()
+            entitlementRepository = get(),
+            streakProvider = get()
         )
     }
     viewModel { DailyGoalViewModel(settingsRepository = get()) }
