@@ -233,5 +233,8 @@ class SyncManagerTest {
         sync.sync("u1")
 
         assertEquals(setOf("l1", "l2"), logDao.getAllIds().toSet())
+        // Prove SyncManager's own filter (not just the DAO's IGNORE) skipped the duplicate l1:
+        // only the seed l1 and the synced l2 were ever forwarded to insertAll — not l1 twice.
+        assertEquals(listOf("l1", "l2"), logDao.inserted.map { it.id })
     }
 }

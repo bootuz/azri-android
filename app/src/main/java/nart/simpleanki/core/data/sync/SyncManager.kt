@@ -18,6 +18,9 @@ import nart.simpleanki.core.data.media.MediaManager
  *  2. pull — fetch remote docs and apply any that are newer than the local copy
  *     (last-write-wins by `lastModified`). Soft-deletes (`isDeleted`) propagate
  *     because a deleted remote doc simply overwrites the local row.
+ *
+ * Review logs are the exception: immutable append-only events, unioned by id on pull
+ * (never overwritten, no last-write-wins).
  */
 class SyncManager(
     private val folderDao: FolderDao,

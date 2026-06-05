@@ -67,8 +67,12 @@ class FakeCardDao : CardDao {
 
 class FakeReviewLogDao : ReviewLogDao {
     private val store = MutableStateFlow<Map<String, ReviewLogEntity>>(emptyMap())
+    /** Every entity passed to [insertAll], in call order — lets tests assert what the caller
+     *  forwarded (e.g. SyncManager's union filter), independent of the putIfAbsent dedup below. */
+    val inserted = mutableListOf<ReviewLogEntity>()
     // IGNORE semantics: keep the existing row when an id is already present.
     override suspend fun insertAll(logs: List<ReviewLogEntity>) {
+        inserted += logs
         store.value = store.value.toMutableMap().apply { logs.forEach { putIfAbsent(it.id, it) } }
     }
     override suspend fun getDirty(): List<ReviewLogEntity> = store.value.values.filter { it.dirty }
