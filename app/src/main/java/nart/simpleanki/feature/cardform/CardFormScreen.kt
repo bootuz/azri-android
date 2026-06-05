@@ -356,6 +356,25 @@ fun CardFormContent(
                     }
                 }
             }
+            // Reverse-card hint: shown while the bottom-bar reverse toggle is on (new cards only).
+            if (state.createReverse && !state.isEdit) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        Icons.Default.SwapHoriz,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        "A reverse card (Back → Front) will also be created.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
 
         }
     }
