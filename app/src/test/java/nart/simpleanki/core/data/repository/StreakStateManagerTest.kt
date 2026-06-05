@@ -5,6 +5,7 @@ import nart.simpleanki.core.data.local.ReviewLogEntity
 import nart.simpleanki.core.domain.streak.StreakState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.TimeZone
 
@@ -39,5 +40,17 @@ class StreakStateManagerTest {
         assertNotNull(mgr.repairOffer())
         mgr.repair()
         assertEquals(setOf(6L), stateRepo.get().frozenDays)
+    }
+
+    @Test
+    fun repairOffer_includeToday_offersEvenWhenTodayLogNotYetLanded() = runTest {
+        // logs on civil days 1..5, gap at 6, today = 7, but NO log for day 7 yet.
+        val logDao = FakeReviewLogDao()
+        logDao.insertAll((1L..5L).map { log(it) })
+        val stateRepo = StreakStateRepository(FakeStreakStateDao(), now = { 0L })
+        stateRepo.update(StreakState(lastReconciledDay = 7))
+        val mgr = StreakStateManager(stateRepo, ReviewLogRepository(logDao), now = { dayMillis(7) }, timeZone = utc)
+        assertNull(mgr.repairOffer())                       // today not in logs → no offer
+        assertNotNull(mgr.repairOffer(includeToday = true)) // forcing today → offered
     }
 }

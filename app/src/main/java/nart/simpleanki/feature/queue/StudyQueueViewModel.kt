@@ -3,6 +3,7 @@ package nart.simpleanki.feature.queue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -11,6 +12,8 @@ import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
 import nart.simpleanki.core.data.repository.StreakProvider
+import nart.simpleanki.core.data.repository.StreakStateManager
+import nart.simpleanki.core.data.repository.StreakStateRepository
 import nart.simpleanki.core.billing.EntitlementRepository
 import nart.simpleanki.core.billing.Entitlements
 import nart.simpleanki.core.data.settings.SettingsRepository
@@ -18,6 +21,7 @@ import nart.simpleanki.core.data.settings.dailyGoalTotal
 import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
 import nart.simpleanki.core.domain.fsrs.withDueTicks
+import nart.simpleanki.core.domain.streak.RepairOffer
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import java.util.Calendar
@@ -72,6 +76,8 @@ data class StudyQueueUiState(
     val studiedToday: Int = 0,
     val currentStreak: Int = 0,
     val longestStreak: Int = 0,
+    val freezeCount: Int = 0,
+    val repairOffer: RepairOffer? = null,
     val sortOrder: QueueSortOrder = QueueSortOrder.DueDate,
     /**
      * Whether the user owns any (non-deleted) card at all — a *lifetime* signal, not a "today"
@@ -98,8 +104,19 @@ class StudyQueueViewModel(
     private val settingsRepository: SettingsRepository,
     private val entitlementRepository: EntitlementRepository,
     private val streakProvider: StreakProvider,
+    private val streakStateRepository: StreakStateRepository,
+    private val streakStateManager: StreakStateManager,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : ViewModel() {
+
+    private val _repairOffer = MutableStateFlow<RepairOffer?>(null)
+
+    init {
+        viewModelScope.launch {
+            streakStateManager.reconcile()
+            _repairOffer.value = streakStateManager.repairOffer()
+        }
+    }
 
     private val baseState: Flow<StudyQueueUiState> =
         combine(
@@ -184,8 +201,18 @@ class StudyQueueViewModel(
         }
 
     val uiState: StateFlow<StudyQueueUiState> =
-        combine(baseState, streakProvider.observeStreak()) { base, streak ->
-            base.copy(currentStreak = streak.current, longestStreak = streak.longest)
+        combine(
+            baseState,
+            streakProvider.observeStreak(),
+            streakStateRepository.observe(),
+            _repairOffer,
+        ) { base, streak, streakState, repair ->
+            base.copy(
+                currentStreak = streak.current,
+                longestStreak = streak.longest,
+                freezeCount = streakState.freezeTokens,
+                repairOffer = repair,
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -193,6 +220,12 @@ class StudyQueueViewModel(
         )
 
     fun dismissPremiumNudge() = viewModelScope.launch { settingsRepository.setPremiumNudgeDismissed(true) }
+
+    fun repairStreak() = viewModelScope.launch {
+        // Clear the offer first so the combine never emits a healed streak alongside a stale offer.
+        _repairOffer.value = null
+        streakStateManager.repair()
+    }
 
     /** Persist the chosen order; selecting Shuffle also rolls a new seed (so re-tapping reshuffles). */
     fun setSortOrder(order: QueueSortOrder) = viewModelScope.launch {

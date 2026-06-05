@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -57,9 +58,12 @@ private val RatingColors = mapOf(
     Rating.Easy to Color(0xFF00C7BE),
 )
 
-/** Study "session complete" summary — mirrors iOS SessionSummaryView (with streak badge). */
+/**
+ * Study "session complete" summary — mirrors iOS SessionSummaryView. Shows the streak badge, the
+ * remaining freeze-token count, and a repair offer (with a Repair button) when one is available.
+ */
 @Composable
-fun SessionSummary(state: StudyUiState, onDone: () -> Unit) {
+fun SessionSummary(state: StudyUiState, onDone: () -> Unit, onRepair: () -> Unit = {}) {
     val accuracy = sessionAccuracy(state.ratingCounts)
     val haptics = LocalHapticFeedback.current
     var appeared by remember { mutableStateOf(false) }
@@ -110,6 +114,27 @@ fun SessionSummary(state: StudyUiState, onDone: () -> Unit) {
         if (state.currentStreak > 0) {
             Spacer(Modifier.height(24.dp))
             StreakBadge(current = state.currentStreak, longest = state.longestStreak)
+        }
+
+        if (state.freezeCount > 0) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "❄️ ${state.freezeCount} freeze${if (state.freezeCount == 1) "" else "s"} remaining",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (state.repairOffer != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Streak broken — repair to restore your ${state.repairOffer.restoredStreak}-day streak",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onRepair) { Text("Repair") }
         }
 
         Spacer(Modifier.weight(1f))

@@ -13,8 +13,10 @@ import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.repository.StreakProvider
+import nart.simpleanki.core.data.repository.StreakStateManager
 import nart.simpleanki.core.data.repository.StreakStateRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
+import nart.simpleanki.core.domain.streak.RepairOffer
 import nart.simpleanki.core.data.settings.fsrsParameters
 import nart.simpleanki.core.domain.fsrs.IntervalFormatter
 import nart.simpleanki.core.domain.fsrs.SchedulingService
@@ -38,6 +40,8 @@ data class StudyUiState(
     val durationMillis: Long = 0,
     val currentStreak: Int = 0,
     val longestStreak: Int = 0,
+    val freezeCount: Int = 0,
+    val repairOffer: RepairOffer? = null,
 )
 
 /**
@@ -56,6 +60,7 @@ class StudyViewModel(
     private val reviewLogRepository: ReviewLogRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
     private val streakStateRepository: StreakStateRepository,
+    private val streakStateManager: StreakStateManager = StreakStateManager(streakStateRepository, reviewLogRepository, now),
     private val streakProvider: StreakProvider = StreakProvider(reviewLogRepository, streakStateRepository, now),
     private val logManager: LogManager = LogManager(emptyList()),
 ) : ViewModel() {
@@ -114,8 +119,18 @@ class StudyViewModel(
     }
 
     private fun refreshSummaryStreak(includingToday: Boolean) = viewModelScope.launch {
+        if (includingToday) streakStateManager.reconcile()
         val s = if (includingToday) streakProvider.streakIncludingToday() else streakProvider.observeStreak().first()
-        _uiState.value = _uiState.value.copy(currentStreak = s.current, longestStreak = s.longest)
+        val freeze = streakStateRepository.get().freezeTokens
+        val repair = if (includingToday) streakStateManager.repairOffer(includeToday = true) else null
+        _uiState.value = _uiState.value.copy(
+            currentStreak = s.current, longestStreak = s.longest, freezeCount = freeze, repairOffer = repair,
+        )
+    }
+
+    fun repairStreak() = viewModelScope.launch {
+        streakStateManager.repair()
+        refreshSummaryStreak(includingToday = true)
     }
 
     fun onReveal() {

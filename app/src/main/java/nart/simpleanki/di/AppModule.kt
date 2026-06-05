@@ -206,6 +206,7 @@ val appModule = module {
             settingsRepository = get(),
             reviewLogRepository = get(),
             streakStateRepository = get(),
+            streakStateManager = get(),
             streakProvider = get(),
             logManager = get(),
         )
@@ -227,7 +228,9 @@ val appModule = module {
             folderRepository = get(),
             settingsRepository = get(),
             entitlementRepository = get(),
-            streakProvider = get()
+            streakProvider = get(),
+            streakStateRepository = get(),
+            streakStateManager = get(),
         )
     }
     viewModel { DailyGoalViewModel(settingsRepository = get()) }

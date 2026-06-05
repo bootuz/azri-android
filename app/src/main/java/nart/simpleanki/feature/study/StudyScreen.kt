@@ -57,6 +57,7 @@ fun StudyScreen(
         onReveal = viewModel::onReveal,
         onRate = viewModel::onRate,
         onDone = onDone,
+        onRepair = viewModel::repairStreak,
     )
 }
 
@@ -68,6 +69,7 @@ fun StudyContent(
     onReveal: () -> Unit,
     onRate: (Rating) -> Unit,
     onDone: () -> Unit,
+    onRepair: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -85,7 +87,7 @@ fun StudyContent(
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             when {
                 state.loading -> CircularProgressIndicator()
-                state.finished -> SessionSummary(state, onDone)
+                state.finished -> SessionSummary(state, onDone, onRepair)
                 else -> StudyCard(state, onReveal, onRate)
             }
         }

@@ -30,10 +30,16 @@ class StreakStateManager(
      * Whether a free repair is available for yesterday's gap. Assumes [reconcile] has already run for
      * today, so any auto-freeze that would already cover yesterday is reflected in the persisted state
      * before eligibility is judged.
+     *
+     * [includeToday] forces today into the day set — for the post-session summary, so the offer is
+     * correct even though the per-rating review-log append is fire-and-forget and may not have landed
+     * in the logs yet.
      */
-    suspend fun repairOffer(): RepairOffer? {
+    suspend fun repairOffer(includeToday: Boolean = false): RepairOffer? {
         val today = localEpochDay(now(), timeZone)
-        return StreakReconciler.repairEligibility(reviewDays(), streakStateRepository.get(), today)
+        val days = reviewDays()
+        val effective = if (includeToday) days + today else days
+        return StreakReconciler.repairEligibility(effective, streakStateRepository.get(), today)
     }
 
     /**

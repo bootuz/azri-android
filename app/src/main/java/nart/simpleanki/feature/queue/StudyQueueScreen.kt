@@ -103,6 +103,7 @@ fun StudyQueueScreen(
         onAddCards = onAddCards,
         onOpenPaywall = onOpenPaywall,
         onDismissNudge = viewModel::dismissPremiumNudge,
+        onRepair = viewModel::repairStreak,
     )
     if (showGoalSheet) {
         DailyGoalEditorSheet(onDismiss = { showGoalSheet = false })
@@ -123,12 +124,27 @@ fun StudyQueueContent(
     onAddCards: () -> Unit = {},
     onOpenPaywall: () -> Unit = {},
     onDismissNudge: () -> Unit = {},
+    onRepair: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Today", fontWeight = FontWeight.Bold) },
                 actions = {
+                    if (state.freezeCount > 0) {
+                        Row(
+                            modifier = Modifier.padding(end = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text("❄️", fontSize = 18.sp)
+                            Text(
+                                state.freezeCount.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
                     if (state.currentStreak > 0) {
                         Row(
                             modifier = Modifier.padding(end = 12.dp),
@@ -172,6 +188,9 @@ fun StudyQueueContent(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
+            if (state.repairOffer != null) {
+                item { StreakRepairBanner(restoredStreak = state.repairOffer.restoredStreak, onRepair = onRepair) }
+            }
             if (state.showPremiumNudge) {
                 item { PremiumNudgeCard(onClick = onOpenPaywall, onDismiss = onDismissNudge) }
             }
@@ -219,6 +238,29 @@ private fun PremiumNudgeCard(onClick: () -> Unit, onDismiss: () -> Unit) {
             IconButton(onClick = onDismiss) {
                 Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+    }
+}
+
+@Composable
+private fun StreakRepairBanner(restoredStreak: Int, onRepair: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Streak broken", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "Repair to restore your $restoredStreak-day streak",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            OutlinedButton(onClick = onRepair) { Text("Repair") }
         }
     }
 }
