@@ -3,9 +3,11 @@ package nart.simpleanki.core.data.sync
 import nart.simpleanki.core.data.firestore.CardDto
 import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
+import nart.simpleanki.core.data.firestore.ReviewLogDto
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
+import nart.simpleanki.core.data.local.dao.ReviewLogDao
 import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.local.toEntity
 import nart.simpleanki.core.data.media.MediaManager
@@ -21,6 +23,7 @@ class SyncManager(
     private val folderDao: FolderDao,
     private val deckDao: DeckDao,
     private val cardDao: CardDao,
+    private val reviewLogDao: ReviewLogDao,
     private val remote: RemoteSyncSource,
     private val media: MediaManager,
 ) {
@@ -61,6 +64,11 @@ class SyncManager(
                 }
             }
         }
+        // Review logs are immutable, append-only events: push any dirty rows, then clear the flag.
+        reviewLogDao.getDirty().takeIf { it.isNotEmpty() }?.let { rows ->
+            remote.pushReviewLogs(uid, rows.map { ReviewLogDto.fromDomain(it.toDomain()) })
+            rows.forEach { reviewLogDao.clearDirty(it.id) }
+        }
     }
 
     private suspend fun pull(uid: String) {
@@ -90,6 +98,13 @@ class SyncManager(
                 media.prefetch(domain.audioName, domain.audioPath)
             }
         }
+        // Review logs: union by id (immutable, so no last-write-wins) — insert only the ids we lack.
+        val localLogIds = reviewLogDao.getAllIds().toSet()
+        remote.fetchReviewLogs(uid)
+            .filter { it.id.isNotEmpty() && it.id !in localLogIds }
+            .map { it.toDomain().toEntity(dirty = false) }
+            .takeIf { it.isNotEmpty() }
+            ?.let { reviewLogDao.insertAll(it) }
     }
 
     companion object {

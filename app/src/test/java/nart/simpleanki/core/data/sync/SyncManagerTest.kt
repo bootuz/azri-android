@@ -6,14 +6,17 @@ import kotlinx.coroutines.test.runTest
 import nart.simpleanki.core.data.firestore.CardDto
 import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
+import nart.simpleanki.core.data.firestore.ReviewLogDto
 import nart.simpleanki.core.data.local.CardEntity
 import nart.simpleanki.core.data.local.FolderEntity
 import nart.simpleanki.core.data.media.FakeMediaUploader
 import nart.simpleanki.core.data.media.LocalMediaStore
 import nart.simpleanki.core.data.media.MediaManager
+import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.data.repository.FakeFolderDao
+import nart.simpleanki.core.data.repository.FakeReviewLogDao
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -30,15 +33,19 @@ class SyncManagerTest {
         var folders: MutableList<FolderDto> = mutableListOf(),
         var decks: MutableList<DeckDto> = mutableListOf(),
         var cards: MutableList<CardDto> = mutableListOf(),
+        var reviewLogs: MutableList<ReviewLogDto> = mutableListOf(),
     ) : RemoteSyncSource {
         val pushedFolders = mutableListOf<FolderDto>()
         val pushedCards = mutableListOf<CardDto>()
+        val pushedReviewLogs = mutableListOf<ReviewLogDto>()
         override suspend fun fetchFolders(uid: String) = folders
         override suspend fun pushFolders(uid: String, dtos: List<FolderDto>) { pushedFolders += dtos }
         override suspend fun fetchDecks(uid: String) = decks
         override suspend fun pushDecks(uid: String, dtos: List<DeckDto>) {}
         override suspend fun fetchCards(uid: String) = cards
         override suspend fun pushCards(uid: String, dtos: List<CardDto>) { pushedCards += dtos }
+        override suspend fun fetchReviewLogs(uid: String) = reviewLogs
+        override suspend fun pushReviewLogs(uid: String, dtos: List<ReviewLogDto>) { pushedReviewLogs += dtos }
     }
 
     private fun ts(millis: Long) = Timestamp(Date(millis))
@@ -47,6 +54,11 @@ class SyncManagerTest {
 
     private fun media(uploader: FakeMediaUploader = FakeMediaUploader()) =
         Pair(MediaManager(LocalMediaStore(tmp.newFolder(), Dispatchers.Unconfined), uploader), uploader)
+
+    private fun reviewLogEntity(id: String, dirty: Boolean) = nart.simpleanki.core.data.local.ReviewLogEntity(
+        id = id, cardId = "c1", rating = 3, state = 2, due = 0, stability = 1.0, difficulty = 5.0,
+        elapsedDays = 0.0, lastElapsedDays = 0.0, scheduledDays = 0.0, review = 1_000, dirty = dirty,
+    )
 
     private fun cardEntity(
         id: String, image: String? = null, imagePath: String? = null,
@@ -75,7 +87,7 @@ class SyncManagerTest {
         folderDao.upsertAll(listOf(FolderEntity(id = "f1", name = "A", lastModified = 5, dirty = true)))
         val remote = FakeRemote()
         val (m, _) = media()
-        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), remote, m)
+        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), remote, m)
 
         sync.sync("u1")
 
@@ -100,7 +112,7 @@ class SyncManagerTest {
             )
         )
         val (m, _) = media()
-        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), remote, m)
+        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), remote, m)
 
         sync.sync("u1")
 
@@ -119,7 +131,7 @@ class SyncManagerTest {
             )
         )
         val (m, _) = media()
-        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), remote, m)
+        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), remote, m)
 
         sync.sync("u1")
 
@@ -134,7 +146,7 @@ class SyncManagerTest {
         val name = m.saveImage(byteArrayOf(1, 2, 3))
         cardDao.upsertAll(listOf(cardEntity(id = "c1", image = name, imagePath = null, dirty = true)))
         val remote = FakeRemote()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), remote, m)
 
         sync.sync("u1")
 
@@ -149,7 +161,7 @@ class SyncManagerTest {
         val cardDao = FakeCardDao()
         val (m, up) = media()
         cardDao.upsertAll(listOf(cardEntity(id = "c1", image = null, imagePath = null, dirty = true)))
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeRemote(), m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeRemote(), m)
 
         sync.sync("u1")
 
@@ -168,7 +180,7 @@ class SyncManagerTest {
                 CardDto(id = "c1", image = "pic.jpg", imagePath = "users/u/images/pic.jpg", lastModified = ts(100)),
             ),
         )
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), remote, m)
 
         sync.sync("u1")
 
@@ -184,12 +196,42 @@ class SyncManagerTest {
         val name = m.saveImage(byteArrayOf(1, 2, 3))
         cardDao.upsertAll(listOf(cardEntity(id = "c1", image = name, imagePath = null, dirty = true)))
         val remote = FakeRemote()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), remote, m)
 
         sync.sync("u1")
 
         assertTrue(cardDao.getById("c1")!!.dirty)        // stays dirty for retry
         assertNull(cardDao.getById("c1")!!.imagePath)    // no cloud path persisted
         assertTrue(remote.pushedCards.none { it.id == "c1" })  // not pushed this cycle
+    }
+
+    @Test
+    fun reviewLogs_pushDirty_thenClearDirty() = runTest {
+        val logDao = FakeReviewLogDao()
+        logDao.insertAll(listOf(reviewLogEntity("l1", dirty = true)))
+        val remote = FakeRemote()
+        val (m, _) = media()
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), logDao, remote, m)
+
+        sync.sync("u1")
+
+        assertEquals(listOf("l1"), remote.pushedReviewLogs.map { it.id })
+        assertTrue(logDao.getDirty().isEmpty())
+    }
+
+    @Test
+    fun reviewLogs_pullUnionsRemote_andSkipsExisting() = runTest {
+        val logDao = FakeReviewLogDao()
+        logDao.insertAll(listOf(reviewLogEntity("l1", dirty = false)))
+        val remote = FakeRemote(reviewLogs = mutableListOf(
+            ReviewLogDto.fromDomain(reviewLogEntity("l1", dirty = false).toDomain()),
+            ReviewLogDto.fromDomain(reviewLogEntity("l2", dirty = false).toDomain()),
+        ))
+        val (m, _) = media()
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), logDao, remote, m)
+
+        sync.sync("u1")
+
+        assertEquals(setOf("l1", "l2"), logDao.getAllIds().toSet())
     }
 }
