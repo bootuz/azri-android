@@ -8,12 +8,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -28,17 +27,18 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -47,7 +47,6 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -65,6 +64,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -149,7 +150,7 @@ fun CardFormScreen(
 }
 
 /** Stateless card-form UI, decoupled from the ViewModel for testing. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardFormContent(
     state: CardFormUiState,
@@ -194,8 +195,66 @@ fun CardFormContent(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+            )
+        },
+        bottomBar = {
+            BottomAppBar(
+                // imePadding() is on the bar (not the Scaffold/content) so it rises above the keyboard;
+                // edge-to-edge is enabled in MainActivity. Scaffold then pads content by the bar's height.
+                modifier = Modifier.imePadding(),
                 actions = {
-                    TextButton(onClick = onSave, enabled = state.canSave) { Text("Save") }
+                    if (state.imageName == null) {
+                        IconButton(onClick = onAddImage, enabled = !state.uploadingImage) {
+                            if (state.uploadingImage) {
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Image, contentDescription = "Add image")
+                            }
+                        }
+                    }
+                    if (state.audioName == null) {
+                        IconButton(onClick = onToggleRecording, enabled = !state.uploadingAudio) {
+                            when {
+                                state.uploadingAudio ->
+                                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                isRecording ->
+                                    Icon(Icons.Default.Stop, contentDescription = "Stop recording", tint = MaterialTheme.colorScheme.error)
+                                else ->
+                                    Icon(Icons.Default.Mic, contentDescription = "Record audio")
+                            }
+                        }
+                    }
+                    if (!state.isEdit) {
+                        IconToggleButton(
+                            checked = state.createReverse,
+                            onCheckedChange = onToggleReverse,
+                        ) {
+                            Icon(
+                                if (state.createReverse) Icons.Default.Check else Icons.Default.SwapHoriz,
+                                contentDescription = "Also create reverse card",
+                            )
+                        }
+                    }
+                },
+                floatingActionButton = {
+                    // M3 FABs have no `enabled` flag: show disabled via muted colors + a gated click.
+                    val saveEnabled = state.canSave
+                    FloatingActionButton(
+                        onClick = { if (saveEnabled) onSave() },
+                        modifier = if (saveEnabled) Modifier else Modifier.semantics { disabled() },
+                        containerColor = if (saveEnabled) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        contentColor = if (saveEnabled) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        },
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = "Save")
+                    }
                 },
             )
         },
@@ -298,58 +357,6 @@ fun CardFormContent(
                 }
             }
 
-            // Attachment actions (Material chips)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (state.imageName == null) {
-                    AssistChip(
-                        onClick = onAddImage,
-                        enabled = !state.uploadingImage,
-                        leadingIcon = {
-                            if (state.uploadingImage) {
-                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Default.Image, contentDescription = null, Modifier.height(18.dp))
-                            }
-                        },
-                        label = { Text(if (state.uploadingImage) "Saving…" else "Add image") },
-                    )
-                }
-                if (state.audioName == null) {
-                    AssistChip(
-                        onClick = onToggleRecording,
-                        enabled = !state.uploadingAudio,
-                        leadingIcon = {
-                            when {
-                                state.uploadingAudio -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                                isRecording -> Icon(Icons.Default.Stop, contentDescription = null, Modifier.height(18.dp), tint = MaterialTheme.colorScheme.error)
-                                else -> Icon(Icons.Default.Mic, contentDescription = null, Modifier.height(18.dp))
-                            }
-                        },
-                        label = {
-                            Text(
-                                when {
-                                    state.uploadingAudio -> "Saving…"
-                                    isRecording -> "Stop recording"
-                                    else -> "Record audio"
-                                },
-                            )
-                        },
-                    )
-                }
-            }
-
-            if (!state.isEdit) {
-                FilterChip(
-                    selected = state.createReverse,
-                    onClick = { onToggleReverse(!state.createReverse) },
-                    label = { Text("Also create reverse card") },
-                    leadingIcon = if (state.createReverse) {
-                        { Icon(Icons.Default.Check, contentDescription = null, Modifier.height(18.dp)) }
-                    } else {
-                        { Icon(Icons.Default.SwapHoriz, contentDescription = null, Modifier.height(18.dp)) }
-                    },
-                )
-            }
         }
     }
 }
@@ -408,6 +415,23 @@ private fun CardFormPickDeckSelectedPreview() {
                 front = "bonjour", back = "hello",
                 pickDeck = true, selectedDeckId = "d2",
                 decks = listOf(DeckOption("d1", "French"), DeckOption("d2", "Spanish")),
+            ),
+            isRecording = false,
+            onFrontChange = {}, onBackChange = {}, onSelectDeck = {}, onToggleReverse = {},
+            onAddImage = {}, onRemoveImage = {}, onToggleRecording = {}, onRemoveAudio = {},
+            onSave = {}, onBack = {},
+        )
+    }
+}
+
+@Preview(name = "Card form · with attachments", showBackground = true)
+@Composable
+private fun CardFormWithAttachmentsPreview() {
+    AzriTheme {
+        CardFormContent(
+            state = CardFormUiState(
+                front = "dog", back = "perro",
+                imageName = "img.jpg", audioName = "audio.m4a",
             ),
             isRecording = false,
             onFrontChange = {}, onBackChange = {}, onSelectDeck = {}, onToggleReverse = {},
