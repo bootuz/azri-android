@@ -8,11 +8,13 @@ import nart.simpleanki.core.data.local.DeckEntity
 import nart.simpleanki.core.data.local.FolderEntity
 import nart.simpleanki.core.data.local.ReviewLogEntity
 import nart.simpleanki.core.data.local.StreakStateEntity
+import nart.simpleanki.core.data.local.TypingLogEntity
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
 import nart.simpleanki.core.data.local.dao.StreakStateDao
+import nart.simpleanki.core.data.local.dao.TypingLogDao
 
 /** In-memory fakes implementing the Room DAO interfaces for pure-JVM repository tests. */
 
@@ -84,6 +86,26 @@ class FakeReviewLogDao : ReviewLogDao {
     override suspend fun getAllIds(): List<String> = store.value.keys.toList()
     override fun observeAll(): Flow<List<ReviewLogEntity>> =
         store.map { m -> m.values.sortedBy { it.review } }
+}
+
+class FakeTypingLogDao : TypingLogDao {
+    private val store = MutableStateFlow<Map<String, TypingLogEntity>>(emptyMap())
+    /** Every entity passed to [insertAll], in call order — lets tests assert what the caller
+     *  forwarded (e.g. SyncManager's union filter), independent of the putIfAbsent dedup below. */
+    val inserted = mutableListOf<TypingLogEntity>()
+    override suspend fun insertAll(logs: List<TypingLogEntity>) {
+        inserted += logs
+        store.value = store.value.toMutableMap().apply { logs.forEach { putIfAbsent(it.id, it) } }
+    }
+    override suspend fun getDirty(): List<TypingLogEntity> = store.value.values.filter { it.dirty }
+    override suspend fun clearDirty(id: String) {
+        store.value[id]?.let { store.value = store.value.toMutableMap().apply { put(id, it.copy(dirty = false)) } }
+    }
+    override suspend fun getAllIds(): List<String> = store.value.keys.toList()
+    override fun observeAll(): Flow<List<TypingLogEntity>> =
+        store.map { m -> m.values.sortedBy { it.timestamp } }
+    override fun observeForDeck(deckId: String): Flow<List<TypingLogEntity>> =
+        store.map { m -> m.values.filter { it.deckId == deckId }.sortedBy { it.timestamp } }
 }
 
 class FakeStreakStateDao : StreakStateDao {

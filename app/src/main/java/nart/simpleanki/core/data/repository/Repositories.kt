@@ -8,12 +8,14 @@ import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
 import nart.simpleanki.core.data.local.dao.StreakStateDao
+import nart.simpleanki.core.data.local.dao.TypingLogDao
 import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.local.toEntity
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.core.domain.model.ReviewLog
+import nart.simpleanki.core.domain.model.TypingLog
 import nart.simpleanki.core.domain.streak.StreakState
 import java.util.UUID
 
@@ -126,6 +128,22 @@ class ReviewLogRepository(
     }
 
     fun observeLogs(): Flow<List<ReviewLog>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+}
+
+/** Immutable, append-only store of Type-Practice first-attempt outcomes (decoupled from FSRS). */
+class TypingLogRepository(
+    private val dao: TypingLogDao,
+    private val newId: () -> String = { UUID.randomUUID().toString() },
+) {
+    /** Appends one typing outcome, assigning a fresh id when none is set; marked dirty for sync. */
+    suspend fun append(log: TypingLog) {
+        dao.insertAll(listOf(log.copy(id = log.id.ifEmpty { newId() }).toEntity(dirty = true)))
+    }
+
+    fun observeLogs(): Flow<List<TypingLog>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    fun observeLogsForDeck(deckId: String): Flow<List<TypingLog>> =
+        dao.observeForDeck(deckId).map { rows -> rows.map { it.toDomain() } }
 }
 
 class StreakStateRepository(

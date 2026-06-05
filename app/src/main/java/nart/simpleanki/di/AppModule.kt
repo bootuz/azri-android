@@ -47,6 +47,8 @@ import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.repository.StreakProvider
 import nart.simpleanki.core.data.repository.StreakStateManager
 import nart.simpleanki.core.data.repository.StreakStateRepository
+import nart.simpleanki.core.data.repository.TypingLogRepository
+import nart.simpleanki.core.data.repository.TypingMasteryProvider
 import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
@@ -155,6 +157,8 @@ val appModule = module {
     single { DeckRepository(get()) }
     single { CardRepository(get()) }
     single { ReviewLogRepository(get()) }
+    single { TypingLogRepository(get()) }
+    single { TypingMasteryProvider(get(), get()) }
     single { StreakStateRepository(get()) }
     single { StreakProvider(get(), get()) }
     single { StreakStateManager(get(), get()) }
