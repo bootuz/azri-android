@@ -5,6 +5,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.flow.first
 import nart.simpleanki.core.data.repository.CardRepository
+import nart.simpleanki.core.data.repository.StreakProvider
+import nart.simpleanki.core.data.repository.StreakStateRepository
 import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.domain.fsrs.StudyQueueBuilder
@@ -26,6 +28,8 @@ class ReminderWorker(
     private val cardRepository: CardRepository by inject()
     private val notifier: Notifier by inject()
     private val scheduler: ReminderScheduler by inject()
+    private val streakProvider: StreakProvider by inject()
+    private val streakStateRepository: StreakStateRepository by inject()
 
     override suspend fun doWork(): Result {
         val type = inputData.getString(REMINDER_TYPE_KEY)
@@ -40,8 +44,11 @@ class ReminderWorker(
         val cards = cardRepository.observeAllCards().first().filter { !it.isDeleted }
         val studiedToday = cards.count { (it.fsrsLastReview ?: 0L) >= startOfDay(now) }
         val readyCount = StudyQueueBuilder.buildStudyQueue(cards, now, Int.MAX_VALUE, Int.MAX_VALUE).size
+        val currentStreak = streakProvider.observeStreak().first().current
+        val freezeTokens = streakStateRepository.observe().first().freezeTokens
 
-        reminderContent(type, settings, studiedToday, readyCount)?.let { notifier.post(type, it) }
+        reminderContent(type, settings, studiedToday, readyCount, currentStreak, freezeTokens)
+            ?.let { notifier.post(type, it) }
 
         scheduler.schedule(type, hour, minute) // chain tomorrow
         return Result.success()
@@ -52,6 +59,7 @@ class ReminderWorker(
     private fun AppSettings.scheduleFor(type: ReminderType): Schedule = when (type) {
         ReminderType.Study -> Schedule(studyReminderEnabled, studyReminderHour, studyReminderMinute)
         ReminderType.Goal -> Schedule(goalReminderEnabled, goalReminderHour, goalReminderMinute)
+        ReminderType.StreakSaver -> Schedule(enabled = true, STREAK_SAVER_HOUR, STREAK_SAVER_MINUTE)
     }
 
     private fun startOfDay(nowMillis: Long): Long = Calendar.getInstance().apply {

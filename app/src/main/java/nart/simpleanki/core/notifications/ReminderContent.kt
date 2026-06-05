@@ -7,7 +7,12 @@ import nart.simpleanki.core.data.settings.dailyGoalTotal
 enum class ReminderType(val key: String) {
     Study("reminder_study"),
     Goal("reminder_goal"),
+    StreakSaver("reminder_streak_saver"),
 }
+
+/** The streak-saver is automatic (no setting): a fixed evening time. */
+const val STREAK_SAVER_HOUR = 20
+const val STREAK_SAVER_MINUTE = 0
 
 /** What a reminder should display when it fires. */
 data class NotificationContent(val title: String, val body: String)
@@ -26,6 +31,8 @@ fun reminderContent(
     settings: AppSettings,
     studiedToday: Int,
     readyCount: Int,
+    currentStreak: Int = 0,
+    freezeTokens: Int = 0,
 ): NotificationContent? = when (type) {
     ReminderType.Study -> {
         if (readyCount <= 0) null
@@ -41,6 +48,15 @@ fun reminderContent(
         else NotificationContent(
             title = "Daily goal",
             body = "You're $remaining ${cards(remaining)} short of today's goal. A few minutes gets you there.",
+        )
+    }
+
+    ReminderType.StreakSaver -> {
+        // Fire only when a streak exists, today hasn't been studied yet, and no freeze can save it.
+        if (currentStreak <= 0 || studiedToday > 0 || freezeTokens > 0) null
+        else NotificationContent(
+            title = "Keep your streak alive",
+            body = "Your $currentStreak-day streak ends at midnight — a quick review saves it.",
         )
     }
 }
