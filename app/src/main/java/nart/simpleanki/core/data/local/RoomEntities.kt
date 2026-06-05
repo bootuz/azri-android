@@ -70,3 +70,22 @@ data class CardEntity(
     val isReverse: Boolean = false,
     val dirty: Boolean = false,
 )
+
+@Entity(
+    tableName = "review_logs",
+    indices = [Index("cardId"), Index("review")],
+)
+data class ReviewLogEntity(
+    @PrimaryKey val id: String,
+    val cardId: String,
+    val rating: Int,
+    val state: Int?,
+    val due: Long?,
+    val stability: Double?,
+    val difficulty: Double?,
+    val elapsedDays: Double,
+    val lastElapsedDays: Double,
+    val scheduledDays: Double,
+    val review: Long,
+    val dirty: Boolean = true,
+)

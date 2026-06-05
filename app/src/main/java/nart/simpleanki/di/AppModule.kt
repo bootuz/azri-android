@@ -33,6 +33,7 @@ import nart.simpleanki.core.billing.PlayBillingRepository
 import nart.simpleanki.core.csv.CsvImportService
 import nart.simpleanki.core.csv.DefaultCsvImportService
 import nart.simpleanki.core.data.local.AzriDatabase
+import nart.simpleanki.core.data.local.MIGRATION_1_2
 import nart.simpleanki.core.data.media.FirebaseMediaRepository
 import nart.simpleanki.core.data.media.LocalMediaStore
 import nart.simpleanki.core.data.media.MediaManager
@@ -132,12 +133,14 @@ val appModule = module {
     // Local persistence (Room)
     single {
         Room.databaseBuilder(androidContext(), AzriDatabase::class.java, "azri.db")
+            .addMigrations(MIGRATION_1_2)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
     single { get<AzriDatabase>().folderDao() }
     single { get<AzriDatabase>().deckDao() }
     single { get<AzriDatabase>().cardDao() }
+    single { get<AzriDatabase>().reviewLogDao() }
 
     // Repositories
     single { FolderRepository(get()) }

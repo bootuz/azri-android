@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import nart.simpleanki.core.data.local.CardEntity
 import nart.simpleanki.core.data.local.DeckEntity
 import nart.simpleanki.core.data.local.FolderEntity
+import nart.simpleanki.core.data.local.ReviewLogEntity
 
 @Dao
 interface FolderDao {
@@ -76,4 +77,23 @@ interface CardDao {
 
     @Query("UPDATE cards SET dirty = 0 WHERE id = :id AND lastModified = :lastModified")
     suspend fun clearDirty(id: String, lastModified: Long)
+}
+
+@Dao
+interface ReviewLogDao {
+    // IGNORE makes both append (fresh UUID) and pull (union) idempotent: an existing id is a no-op.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(logs: List<ReviewLogEntity>)
+
+    @Query("SELECT * FROM review_logs WHERE dirty = 1")
+    suspend fun getDirty(): List<ReviewLogEntity>
+
+    @Query("UPDATE review_logs SET dirty = 0 WHERE id = :id")
+    suspend fun clearDirty(id: String)
+
+    @Query("SELECT id FROM review_logs")
+    suspend fun getAllIds(): List<String>
+
+    @Query("SELECT * FROM review_logs ORDER BY review")
+    fun observeAll(): Flow<List<ReviewLogEntity>>
 }
