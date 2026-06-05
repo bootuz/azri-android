@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.sync.SyncWorker
+import nart.simpleanki.core.notifications.STREAK_SAVER_HOUR
+import nart.simpleanki.core.notifications.STREAK_SAVER_MINUTE
 import nart.simpleanki.core.notifications.ReminderScheduler
 import nart.simpleanki.core.notifications.ReminderType
 import nart.simpleanki.di.appModule
@@ -41,6 +43,8 @@ class AzriApplication : Application() {
             if (settings.goalReminderEnabled) {
                 scheduler.schedule(ReminderType.Goal, settings.goalReminderHour, settings.goalReminderMinute)
             }
+            // The streak-saver is automatic (no toggle): always armed at the fixed evening time.
+            scheduler.schedule(ReminderType.StreakSaver, STREAK_SAVER_HOUR, STREAK_SAVER_MINUTE)
         }
     }
 }
