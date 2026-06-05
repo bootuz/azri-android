@@ -9,6 +9,7 @@ import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.core.domain.model.Rating
 import nart.simpleanki.core.domain.model.ReviewCardFilter
 import nart.simpleanki.core.domain.model.ReviewLog
+import nart.simpleanki.core.domain.model.TypingLog
 
 /** Room entity <-> domain mappers. */
 
@@ -131,4 +132,12 @@ fun ReviewLog.toEntity(dirty: Boolean = true): ReviewLogEntity = ReviewLogEntity
     scheduledDays = scheduledDays,
     review = review,
     dirty = dirty,
+)
+
+fun TypingLogEntity.toDomain(): TypingLog = TypingLog(
+    id = id, cardId = cardId, deckId = deckId, correct = correct, typedText = typedText, timestamp = timestamp,
+)
+
+fun TypingLog.toEntity(dirty: Boolean = true): TypingLogEntity = TypingLogEntity(
+    id = id, cardId = cardId, deckId = deckId, correct = correct, typedText = typedText, timestamp = timestamp, dirty = dirty,
 )

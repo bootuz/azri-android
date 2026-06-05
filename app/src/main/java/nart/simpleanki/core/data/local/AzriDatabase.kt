@@ -9,10 +9,11 @@ import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
 import nart.simpleanki.core.data.local.dao.StreakStateDao
+import nart.simpleanki.core.data.local.dao.TypingLogDao
 
 @Database(
-    entities = [CardEntity::class, DeckEntity::class, FolderEntity::class, ReviewLogEntity::class, StreakStateEntity::class],
-    version = 3,
+    entities = [CardEntity::class, DeckEntity::class, FolderEntity::class, ReviewLogEntity::class, StreakStateEntity::class, TypingLogEntity::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class AzriDatabase : RoomDatabase() {
@@ -21,6 +22,7 @@ abstract class AzriDatabase : RoomDatabase() {
     abstract fun folderDao(): FolderDao
     abstract fun reviewLogDao(): ReviewLogDao
     abstract fun streakStateDao(): StreakStateDao
+    abstract fun typingLogDao(): TypingLogDao
 }
 
 /**
@@ -52,5 +54,18 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
                 "`lastRepairDay` INTEGER NOT NULL, `lastModified` INTEGER NOT NULL, " +
                 "`dirty` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         )
+    }
+}
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `typing_logs` (" +
+                "`id` TEXT NOT NULL, `cardId` TEXT NOT NULL, `deckId` TEXT NOT NULL, " +
+                "`correct` INTEGER NOT NULL, `typedText` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, " +
+                "`dirty` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_typing_logs_cardId` ON `typing_logs` (`cardId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_typing_logs_deckId` ON `typing_logs` (`deckId`)")
     }
 }

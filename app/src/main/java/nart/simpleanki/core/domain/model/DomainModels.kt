@@ -20,6 +20,16 @@ data class ReviewLog(
     val cardId: String = "",
 )
 
+/** One Type-Practice first-attempt outcome for a card (append-only; decoupled from FSRS). */
+data class TypingLog(
+    val id: String = "",
+    val cardId: String = "",
+    val deckId: String = "",
+    val correct: Boolean,
+    val typedText: String,
+    val timestamp: Long,
+)
+
 data class Card(
     val id: String,
     val front: String,
