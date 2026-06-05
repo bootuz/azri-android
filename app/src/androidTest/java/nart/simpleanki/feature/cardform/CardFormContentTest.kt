@@ -2,6 +2,7 @@ package nart.simpleanki.feature.cardform
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import org.junit.Assert.assertEquals
@@ -14,7 +15,7 @@ class CardFormContentTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun newCard_showsReverseChip_andEditsInvokeCallbacks() {
+    fun newCard_showsReverseToggle_andEditsInvokeCallbacks() {
         var front = ""
         composeRule.setContent {
             CardFormContent(
@@ -33,8 +34,8 @@ class CardFormContentTest {
             )
         }
         composeRule.onNodeWithText("New card").assertIsDisplayed()
-        composeRule.onNodeWithText("Also create reverse card").assertExists() // FilterChip, new cards only
-        composeRule.onNodeWithText("Add image").assertExists()
+        composeRule.onNodeWithContentDescription("Also create reverse card").assertExists() // toggle, new cards only
+        composeRule.onNodeWithContentDescription("Add image").assertExists()
         composeRule.onNodeWithText("Front").performTextInput("hola")
         assertEquals("hola", front)
     }
@@ -58,6 +59,50 @@ class CardFormContentTest {
             )
         }
         composeRule.onNodeWithText("Edit card").assertIsDisplayed()
-        composeRule.onNodeWithText("Also create reverse card").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Also create reverse card").assertDoesNotExist()
+    }
+
+    @Test
+    fun newCard_reverseOn_showsHint() {
+        composeRule.setContent {
+            CardFormContent(
+                state = CardFormUiState(isEdit = false, createReverse = true),
+                onFrontChange = {},
+                onBackChange = {},
+                onSelectDeck = {},
+                isRecording = false,
+                onToggleReverse = {},
+                onAddImage = {},
+                onRemoveImage = {},
+                onToggleRecording = {},
+                onRemoveAudio = {},
+                onSave = {},
+                onBack = {},
+            )
+        }
+        composeRule.onNodeWithText("A reverse card (Back → Front) will also be created.")
+            .assertExists()
+    }
+
+    @Test
+    fun newCard_reverseOff_hidesHint() {
+        composeRule.setContent {
+            CardFormContent(
+                state = CardFormUiState(isEdit = false, createReverse = false),
+                onFrontChange = {},
+                onBackChange = {},
+                onSelectDeck = {},
+                isRecording = false,
+                onToggleReverse = {},
+                onAddImage = {},
+                onRemoveImage = {},
+                onToggleRecording = {},
+                onRemoveAudio = {},
+                onSave = {},
+                onBack = {},
+            )
+        }
+        composeRule.onNodeWithText("A reverse card (Back → Front) will also be created.")
+            .assertDoesNotExist()
     }
 }
