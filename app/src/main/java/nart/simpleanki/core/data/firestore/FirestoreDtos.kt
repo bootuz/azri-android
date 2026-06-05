@@ -11,6 +11,7 @@ import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.core.domain.model.Rating
 import nart.simpleanki.core.domain.model.ReviewCardFilter
 import nart.simpleanki.core.domain.model.ReviewLog
+import nart.simpleanki.core.domain.model.TypingLog
 import java.util.Date
 
 /**
@@ -261,6 +262,37 @@ data class StreakStateDto(
             lastReconciledDay = e.lastReconciledDay,
             lastRepairDay = e.lastRepairDay,
             lastModified = e.lastModified.toTimestamp(),
+        )
+    }
+}
+
+// MARK: - Typing log (stored flat under users/{uid}/typingLogs)
+
+data class TypingLogDto(
+    var id: String = "",
+    @get:PropertyName("card_id") @set:PropertyName("card_id") var cardId: String = "",
+    @get:PropertyName("deck_id") @set:PropertyName("deck_id") var deckId: String = "",
+    var correct: Boolean = false,
+    @get:PropertyName("typed_text") @set:PropertyName("typed_text") var typedText: String = "",
+    var timestamp: Timestamp = Timestamp(Date(0)),
+) {
+    fun toDomain(): TypingLog = TypingLog(
+        id = id,
+        cardId = cardId,
+        deckId = deckId,
+        correct = correct,
+        typedText = typedText,
+        timestamp = timestamp.toMillis(),
+    )
+
+    companion object {
+        fun fromDomain(t: TypingLog): TypingLogDto = TypingLogDto(
+            id = t.id,
+            cardId = t.cardId,
+            deckId = t.deckId,
+            correct = t.correct,
+            typedText = t.typedText,
+            timestamp = t.timestamp.toTimestamp(),
         )
     }
 }
