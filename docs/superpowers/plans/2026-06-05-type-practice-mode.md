@@ -704,7 +704,7 @@ class TypePracticeSessionTest {
         assertTrue(s.isFinished)
         assertEquals(2, rec.entries.size)                         // exactly one log per card
         assertEquals(50, s.report().firstTryAccuracy)             // c1 wrong, c2 right
-        assertEquals(0, s.report().bestCombo)                     // wrong reset the combo before any run
+        assertEquals(1, s.report().bestCombo)                     // c2 was a clean first-try correct -> longest run is 1
     }
 
     @Test fun override_marksCorrect_clears_andCountsNewlyMastered() {
