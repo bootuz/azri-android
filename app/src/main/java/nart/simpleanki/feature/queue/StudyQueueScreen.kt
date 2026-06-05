@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import nart.simpleanki.core.domain.fsrs.QueueSortOrder
 import nart.simpleanki.core.domain.model.ColorOption
 import nart.simpleanki.ui.components.AzriCard
@@ -124,6 +125,22 @@ fun StudyQueueContent(
         topBar = {
             TopAppBar(
                 title = { Text("Today", fontWeight = FontWeight.Bold) },
+                actions = {
+                    if (state.currentStreak > 0) {
+                        Row(
+                            modifier = Modifier.padding(end = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text("🔥", fontSize = 18.sp)
+                            Text(
+                                state.currentStreak.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
@@ -653,6 +670,7 @@ private fun StudyQueuePreview() {
                     QueueCardItem("c2", "mitochondria", "Biology", null),
                 ),
                 goalTotal = 30, studiedToday = 7,
+                currentStreak = 7,
             ),
             onStudyAll = {},
         )

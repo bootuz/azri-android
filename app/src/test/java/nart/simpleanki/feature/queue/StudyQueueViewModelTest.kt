@@ -9,12 +9,17 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import nart.simpleanki.core.data.local.ReviewLogEntity
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.data.repository.FakeFolderDao
+import nart.simpleanki.core.data.repository.FakeReviewLogDao
 import nart.simpleanki.core.data.repository.FolderRepository
+import nart.simpleanki.core.data.repository.ReviewLogRepository
+import nart.simpleanki.core.data.repository.StreakProvider
+import java.util.TimeZone
 import nart.simpleanki.core.billing.Entitlement
 import nart.simpleanki.core.billing.FakeEntitlementRepository
 import nart.simpleanki.core.billing.PremiumTier
@@ -51,6 +56,8 @@ class StudyQueueViewModelTest {
         dateCreated = now, lastModified = now, fsrsDue = now, fsrsState = CardState.New.value,
     )
 
+    private fun emptyStreak() = StreakProvider(ReviewLogRepository(FakeReviewLogDao()))
+
     @Test
     fun aggregatesAcrossDecks_andBreaksDownPerDeck() = runTest {
         val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
@@ -60,7 +67,7 @@ class StudyQueueViewModelTest {
         cardRepo.upsert(review("a1", "A")); cardRepo.upsert(review("a2", "A")); cardRepo.upsert(newCard("a3", "A"))
         cardRepo.upsert(review("b1", "B"))
 
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -94,7 +101,7 @@ class StudyQueueViewModelTest {
 
         val vm = StudyQueueViewModel(
             cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }),
-            FakeSettingsRepository(), FakeEntitlementRepository(), now = clock,
+            FakeSettingsRepository(), FakeEntitlementRepository(), emptyStreak(), now = clock,
         )
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
@@ -116,7 +123,7 @@ class StudyQueueViewModelTest {
         // A review card whose due date is in the future — not ready today.
         cardRepo.upsert(review("a1", "A").copy(fsrsDue = now + 86_400_000L))
 
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -130,7 +137,7 @@ class StudyQueueViewModelTest {
     fun hasAnyCards_isFalseForNewUser_andTrueOnceACardExists() = runTest {
         val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
         val cardRepo = CardRepository(FakeCardDao(), now = { now })
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
         // Brand-new user: no cards at all.
@@ -155,7 +162,7 @@ class StudyQueueViewModelTest {
         cardRepo.upsert(review("a3", "A").copy(fsrsDue = now + 86_400_000L, fsrsLastReview = now - 2 * 86_400_000L))
 
         val settings = FakeSettingsRepository(AppSettings(dailyGoalEnabled = true, newCardsTarget = 1, reviewCardsTarget = 1)) // goal total = 2
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, FakeEntitlementRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, FakeEntitlementRepository(), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -176,7 +183,7 @@ class StudyQueueViewModelTest {
         val settings = FakeSettingsRepository(
             AppSettings(dailyGoalEnabled = false, newCardsTarget = 1, reviewCardsTarget = 0),
         )
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, FakeEntitlementRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, FakeEntitlementRepository(), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -192,7 +199,7 @@ class StudyQueueViewModelTest {
         deckRepo.upsert(Deck(id = "A", name = "Spanish", folderId = "f1", dateCreated = now, lastModified = now))
         cardRepo.upsert(review("a1", "A").copy(front = "hola"))
 
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, folderRepo, FakeSettingsRepository(), FakeEntitlementRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, folderRepo, FakeSettingsRepository(), FakeEntitlementRepository(), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -218,7 +225,7 @@ class StudyQueueViewModelTest {
         cardRepo.upsert(review("hard", "A").copy(fsrsDifficulty = 9.0))
 
         val settings = FakeSettingsRepository(AppSettings(queueSortOrder = QueueSortOrder.Difficulty))
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, FakeEntitlementRepository(), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), settings, FakeEntitlementRepository(), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
@@ -234,13 +241,13 @@ class StudyQueueViewModelTest {
         cardRepo.upsert(review("a1", "A"))
 
         val free = FakeEntitlementRepository(Entitlement(PremiumTier.None))
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), free, now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), free, emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
         assertTrue(vm.uiState.value.showPremiumNudge)
 
         val premium = FakeEntitlementRepository(Entitlement(PremiumTier.Annual))
-        val vm2 = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), premium, now = { now })
+        val vm2 = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), premium, emptyStreak(), now = { now })
         backgroundScope.launch { vm2.uiState.collect {} }
         runCurrent()
         assertFalse(vm2.uiState.value.showPremiumNudge)
@@ -252,7 +259,7 @@ class StudyQueueViewModelTest {
         val cardRepo = CardRepository(FakeCardDao(), now = { now })
         deckRepo.upsert(Deck(id = "A", name = "Alpha", dateCreated = now, lastModified = now))
         cardRepo.upsert(review("a1", "A"))
-        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(Entitlement(PremiumTier.None)), now = { now })
+        val vm = StudyQueueViewModel(cardRepo, deckRepo, FolderRepository(FakeFolderDao(), now = { now }), FakeSettingsRepository(), FakeEntitlementRepository(Entitlement(PremiumTier.None)), emptyStreak(), now = { now })
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
         assertTrue(vm.uiState.value.showPremiumNudge)
@@ -267,12 +274,34 @@ class StudyQueueViewModelTest {
             CardRepository(FakeCardDao(), now = { now }),
             DeckRepository(FakeDeckDao(), now = { now }),
             FolderRepository(FakeFolderDao(), now = { now }),
-            settings, FakeEntitlementRepository(), now = { now },
+            settings, FakeEntitlementRepository(), emptyStreak(), now = { now },
         )
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
 
         vm.setSortOrder(QueueSortOrder.Shuffle); runCurrent()
         assertEquals(QueueSortOrder.Shuffle, vm.uiState.value.sortOrder)
+    }
+
+    @Test
+    fun currentStreak_reflectsConsecutiveReviewDays() = runTest {
+        val day = 86_400_000L
+        val logDao = FakeReviewLogDao()
+        logDao.insertAll(listOf(
+            ReviewLogEntity("a", "c1", 3, 2, 0, 1.0, 5.0, 0.0, 0.0, 0.0, now, false),
+            ReviewLogEntity("b", "c1", 3, 2, 0, 1.0, 5.0, 0.0, 0.0, 0.0, now - day, false),
+        ))
+        val streak = StreakProvider(ReviewLogRepository(logDao), now = { now }, timeZone = TimeZone.getTimeZone("UTC"))
+
+        val vm = StudyQueueViewModel(
+            CardRepository(FakeCardDao(), now = { now }),
+            DeckRepository(FakeDeckDao(), now = { now }),
+            FolderRepository(FakeFolderDao(), now = { now }),
+            FakeSettingsRepository(), FakeEntitlementRepository(), streak, now = { now },
+        )
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        assertEquals(2, vm.uiState.value.currentStreak)
     }
 }
