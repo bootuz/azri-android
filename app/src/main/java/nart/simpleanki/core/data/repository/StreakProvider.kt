@@ -1,0 +1,35 @@
+package nart.simpleanki.core.data.repository
+
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import nart.simpleanki.core.domain.streak.Streak
+import nart.simpleanki.core.domain.streak.StreakCalculator
+import nart.simpleanki.core.domain.streak.localEpochDay
+import java.util.TimeZone
+
+/** Derives the study [Streak] from the review logs. Stateless — pure derivation, nothing stored. */
+class StreakProvider(
+    private val reviewLogRepository: ReviewLogRepository,
+    private val now: () -> Long = { System.currentTimeMillis() },
+    private val timeZone: TimeZone = TimeZone.getDefault(),
+) {
+    /** Live streak for the home header — reacts to new review logs. */
+    fun observeStreak(): Flow<Streak> =
+        reviewLogRepository.observeLogs().map { logs ->
+            val days = logs.mapTo(mutableSetOf()) { localEpochDay(it.review, timeZone) }
+            StreakCalculator.compute(days, localEpochDay(now(), timeZone))
+        }
+
+    /**
+     * Streak treating today as studied — for the post-session summary, so it's correct even though
+     * the per-rating log append is fire-and-forget and may not have landed yet.
+     */
+    suspend fun streakIncludingToday(): Streak {
+        val today = localEpochDay(now(), timeZone)
+        val days = reviewLogRepository.observeLogs().first()
+            .mapTo(mutableSetOf()) { localEpochDay(it.review, timeZone) }
+            .apply { add(today) }
+        return StreakCalculator.compute(days, today)
+    }
+}
