@@ -9,6 +9,7 @@ import nart.simpleanki.core.data.local.CardEntity
 import nart.simpleanki.core.data.local.DeckEntity
 import nart.simpleanki.core.data.local.FolderEntity
 import nart.simpleanki.core.data.local.ReviewLogEntity
+import nart.simpleanki.core.data.local.StreakStateEntity
 
 @Dao
 interface FolderDao {
@@ -96,4 +97,22 @@ interface ReviewLogDao {
 
     @Query("SELECT * FROM review_logs ORDER BY review")
     fun observeAll(): Flow<List<ReviewLogEntity>>
+}
+
+@Dao
+interface StreakStateDao {
+    @Query("SELECT * FROM streak_state WHERE id = 'current'")
+    fun observe(): Flow<StreakStateEntity?>
+
+    @Query("SELECT * FROM streak_state WHERE id = 'current'")
+    suspend fun get(): StreakStateEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: StreakStateEntity)
+
+    @Query("SELECT * FROM streak_state WHERE dirty = 1")
+    suspend fun getDirty(): StreakStateEntity?
+
+    @Query("UPDATE streak_state SET dirty = 0 WHERE id = 'current' AND lastModified = :lastModified")
+    suspend fun clearDirty(lastModified: Long)
 }

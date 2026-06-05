@@ -7,10 +7,12 @@ import nart.simpleanki.core.data.local.CardEntity
 import nart.simpleanki.core.data.local.DeckEntity
 import nart.simpleanki.core.data.local.FolderEntity
 import nart.simpleanki.core.data.local.ReviewLogEntity
+import nart.simpleanki.core.data.local.StreakStateEntity
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
+import nart.simpleanki.core.data.local.dao.StreakStateDao
 
 /** In-memory fakes implementing the Room DAO interfaces for pure-JVM repository tests. */
 
@@ -82,4 +84,15 @@ class FakeReviewLogDao : ReviewLogDao {
     override suspend fun getAllIds(): List<String> = store.value.keys.toList()
     override fun observeAll(): Flow<List<ReviewLogEntity>> =
         store.map { m -> m.values.sortedBy { it.review } }
+}
+
+class FakeStreakStateDao : StreakStateDao {
+    private val store = MutableStateFlow<StreakStateEntity?>(null)
+    override fun observe(): Flow<StreakStateEntity?> = store
+    override suspend fun get(): StreakStateEntity? = store.value
+    override suspend fun upsert(entity: StreakStateEntity) { store.value = entity }
+    override suspend fun getDirty(): StreakStateEntity? = store.value?.takeIf { it.dirty }
+    override suspend fun clearDirty(lastModified: Long) {
+        store.value?.let { if (it.lastModified == lastModified) store.value = it.copy(dirty = false) }
+    }
 }

@@ -6,6 +6,7 @@ import nart.simpleanki.core.data.firestore.CardDto
 import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
 import nart.simpleanki.core.data.firestore.ReviewLogDto
+import nart.simpleanki.core.data.firestore.StreakStateDto
 
 /**
  * Firestore-backed [RemoteSyncSource]. Collections mirror the iOS layout exactly:
@@ -41,6 +42,13 @@ class FirestoreSyncService(
 
     override suspend fun pushReviewLogs(uid: String, dtos: List<ReviewLogDto>) =
         push(uid, "reviewLogs", dtos) { it.id }
+
+    override suspend fun fetchStreakState(uid: String): StreakStateDto? =
+        col(uid, "streakState").document("current").get().await().toObject(StreakStateDto::class.java)
+
+    override suspend fun pushStreakState(uid: String, dto: StreakStateDto) {
+        col(uid, "streakState").document("current").set(dto).await()
+    }
 
     private suspend fun <T : Any> push(uid: String, name: String, dtos: List<T>, id: (T) -> String?) {
         if (dtos.isEmpty()) return

@@ -8,10 +8,11 @@ import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
+import nart.simpleanki.core.data.local.dao.StreakStateDao
 
 @Database(
-    entities = [CardEntity::class, DeckEntity::class, FolderEntity::class, ReviewLogEntity::class],
-    version = 2,
+    entities = [CardEntity::class, DeckEntity::class, FolderEntity::class, ReviewLogEntity::class, StreakStateEntity::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class AzriDatabase : RoomDatabase() {
@@ -19,6 +20,7 @@ abstract class AzriDatabase : RoomDatabase() {
     abstract fun deckDao(): DeckDao
     abstract fun folderDao(): FolderDao
     abstract fun reviewLogDao(): ReviewLogDao
+    abstract fun streakStateDao(): StreakStateDao
 }
 
 /**
@@ -38,5 +40,17 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_review_logs_cardId` ON `review_logs` (`cardId`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_review_logs_review` ON `review_logs` (`review`)")
+    }
+}
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `streak_state` (" +
+                "`id` TEXT NOT NULL, `freezeTokens` INTEGER NOT NULL, `frozenDays` TEXT NOT NULL, " +
+                "`freezesAwardedForRun` INTEGER NOT NULL, `lastReconciledDay` INTEGER NOT NULL, " +
+                "`lastRepairDay` INTEGER NOT NULL, `lastModified` INTEGER NOT NULL, " +
+                "`dirty` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
     }
 }

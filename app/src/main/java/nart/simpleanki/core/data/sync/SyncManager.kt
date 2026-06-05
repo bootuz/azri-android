@@ -4,10 +4,12 @@ import nart.simpleanki.core.data.firestore.CardDto
 import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
 import nart.simpleanki.core.data.firestore.ReviewLogDto
+import nart.simpleanki.core.data.firestore.StreakStateDto
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
+import nart.simpleanki.core.data.local.dao.StreakStateDao
 import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.local.toEntity
 import nart.simpleanki.core.data.media.MediaManager
@@ -27,6 +29,7 @@ class SyncManager(
     private val deckDao: DeckDao,
     private val cardDao: CardDao,
     private val reviewLogDao: ReviewLogDao,
+    private val streakStateDao: StreakStateDao,
     private val remote: RemoteSyncSource,
     private val media: MediaManager,
 ) {
@@ -72,6 +75,10 @@ class SyncManager(
             remote.pushReviewLogs(uid, rows.map { ReviewLogDto.fromDomain(it.toDomain()) })
             rows.forEach { reviewLogDao.clearDirty(it.id) }
         }
+        streakStateDao.getDirty()?.let { row ->
+            remote.pushStreakState(uid, StreakStateDto.fromEntity(row))
+            streakStateDao.clearDirty(row.lastModified)
+        }
     }
 
     private suspend fun pull(uid: String) {
@@ -108,6 +115,11 @@ class SyncManager(
             .map { it.toDomain().toEntity(dirty = false) }
             .takeIf { it.isNotEmpty() }
             ?.let { reviewLogDao.insertAll(it) }
+        remote.fetchStreakState(uid)?.let { dto ->
+            if (shouldApplyRemote(streakStateDao.get()?.lastModified, dto.lastModifiedMillis())) {
+                streakStateDao.upsert(dto.toEntity(dirty = false))
+            }
+        }
     }
 
     companion object {

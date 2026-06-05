@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import nart.simpleanki.core.data.local.ReviewLogEntity
 import nart.simpleanki.core.domain.streak.Streak
+import nart.simpleanki.core.domain.streak.StreakState
+import nart.simpleanki.core.domain.streak.localEpochDay
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.TimeZone
@@ -19,8 +21,19 @@ class StreakProviderTest {
         elapsedDays = 0.0, lastElapsedDays = 0.0, scheduledDays = 0.0, review = reviewMillis, dirty = false,
     )
 
-    private fun provider(dao: FakeReviewLogDao) =
-        StreakProvider(ReviewLogRepository(dao), now = { today }, timeZone = utc)
+    private fun provider(dao: FakeReviewLogDao, stateDao: FakeStreakStateDao = FakeStreakStateDao()) =
+        StreakProvider(ReviewLogRepository(dao), StreakStateRepository(stateDao), now = { today }, timeZone = utc)
+
+    @Test
+    fun frozenDay_fillsGap_soStreakSurvives() = runTest {
+        val dao = FakeReviewLogDao()
+        dao.insertAll(listOf(logEntity("a", today), logEntity("c", today - 2 * day))) // gap at yesterday
+        val stateDao = FakeStreakStateDao()
+        StreakStateRepository(stateDao, now = { today }).update(
+            StreakState(frozenDays = setOf(localEpochDay(today - day, utc))),
+        )
+        assertEquals(3, provider(dao, stateDao).observeStreak().first().current)
+    }
 
     @Test
     fun observeStreak_countsConsecutiveDaysEndingToday() = runTest {
