@@ -99,7 +99,7 @@ class StudyViewModel(
             finished = queue.isEmpty(),
             durationMillis = if (queue.isEmpty()) now() - sessionStartMillis else 0,
         )
-        if (queue.isEmpty()) refreshSummaryStreak()
+        if (queue.isEmpty()) refreshSummaryStreak(includingToday = false)
         logManager.track(Event.ReviewSessionStart(deckId, folderId))
     }
 
@@ -111,8 +111,8 @@ class StudyViewModel(
             .mapValues { (_, dueMillis) -> IntervalFormatter.format(dueMillis - nowMillis) }
     }
 
-    private fun refreshSummaryStreak() = viewModelScope.launch {
-        val s = streakProvider.streakIncludingToday()
+    private fun refreshSummaryStreak(includingToday: Boolean) = viewModelScope.launch {
+        val s = if (includingToday) streakProvider.streakIncludingToday() else streakProvider.observeStreak().first()
         _uiState.value = _uiState.value.copy(currentStreak = s.current, longestStreak = s.longest)
     }
 
@@ -143,7 +143,7 @@ class StudyViewModel(
             finished = next == null,
             durationMillis = if (next == null) ratedAt - sessionStartMillis else prev.durationMillis,
         )
-        if (next == null) refreshSummaryStreak()
+        if (next == null) refreshSummaryStreak(includingToday = true)
         logManager.track(Event.CardRated(rating))
         if (next == null) logManager.track(Event.ReviewSessionComplete(prev.completed + 1))
     }

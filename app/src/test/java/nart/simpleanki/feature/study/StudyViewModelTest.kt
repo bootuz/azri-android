@@ -11,12 +11,14 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import nart.simpleanki.core.analytics.FakeLogService
 import nart.simpleanki.core.analytics.LogManager
+import nart.simpleanki.core.data.local.ReviewLogEntity
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
 import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.data.repository.FakeReviewLogDao
 import nart.simpleanki.core.data.repository.ReviewLogRepository
+import nart.simpleanki.core.data.repository.StreakProvider
 import nart.simpleanki.core.data.settings.AppSettings
 import nart.simpleanki.core.data.settings.FakeSettingsRepository
 import nart.simpleanki.core.domain.fsrs.QueueSortOrder
@@ -25,6 +27,7 @@ import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Rating
 import org.junit.After
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -279,5 +282,24 @@ class StudyViewModelTest {
 
         assertTrue(vm.uiState.value.finished)
         assertEquals(1, vm.uiState.value.currentStreak)
+    }
+
+    @Test
+    fun emptyQueue_doesNotFabricateTodayInStreak() = runTest {
+        val day = 86_400_000L
+        val logDao = FakeReviewLogDao()
+        // Only yesterday logged; no cards to study today.
+        logDao.insertAll(listOf(ReviewLogEntity("y", "c1", 3, 2, 0, 1.0, 5.0, 0.0, 0.0, 0.0, now - day, false)))
+        val streak = StreakProvider(ReviewLogRepository(logDao), now = { now }, timeZone = TimeZone.getTimeZone("UTC"))
+
+        val vm = StudyViewModel(
+            "d1", null, CardRepository(FakeCardDao(), now = { now }), DeckRepository(FakeDeckDao(), now = { now }),
+            FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now }, streakProvider = streak,
+        )
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        assertTrue(vm.uiState.value.finished)           // empty queue -> finished immediately
+        assertEquals(1, vm.uiState.value.currentStreak) // yesterday alive = 1, NOT 2 (today must NOT be forced)
     }
 }
