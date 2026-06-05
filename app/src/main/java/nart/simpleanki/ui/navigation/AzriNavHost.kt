@@ -64,6 +64,7 @@ import nart.simpleanki.feature.paywall.PaywallSheet
 import nart.simpleanki.feature.profile.ProfileScreen
 import nart.simpleanki.feature.queue.StudyQueueScreen
 import nart.simpleanki.feature.settings.SettingsScreen
+import nart.simpleanki.feature.review.ReviewScreen
 import nart.simpleanki.feature.study.StudyScreen
 import org.koin.compose.koinInject
 
@@ -211,6 +212,7 @@ fun AzriNavHost() {
                     folderId = folderId,
                     onBack = { nav.popBackStack() },
                     onOpenDeck = { nav.navigate("deck/$it") },
+                    onReview = { nav.navigate("reviewFolder/$folderId") },
                     onNewDeck = { nav.navigate("deckEditInFolder/$folderId") },
                     onEditFolder = { nav.navigate("folderEdit/$folderId") },
                 )
@@ -227,6 +229,7 @@ fun AzriNavHost() {
                     deckId = deckId,
                     onBack = { nav.popBackStack() },
                     onStudy = { nav.navigate("study/$deckId") },
+                    onReview = { nav.navigate("review/$deckId") },
                     onAddCard = { nav.navigate("cardForm/$deckId") },
                     onEditCard = { cardId -> nav.navigate("cardForm/$deckId/$cardId") },
                     onSettings = { nav.navigate("deckEdit/$deckId") },
@@ -242,6 +245,19 @@ fun AzriNavHost() {
             }
             composable("studyFolder/{folderId}") { entry ->
                 StudyScreen(
+                    deckId = null,
+                    folderId = entry.arguments?.getString("folderId").orEmpty(),
+                    onDone = { nav.popBackStack() },
+                )
+            }
+            composable("review/{deckId}") { entry ->
+                ReviewScreen(
+                    deckId = entry.arguments?.getString("deckId").orEmpty(),
+                    onDone = { nav.popBackStack() },
+                )
+            }
+            composable("reviewFolder/{folderId}") { entry ->
+                ReviewScreen(
                     deckId = null,
                     folderId = entry.arguments?.getString("folderId").orEmpty(),
                     onDone = { nav.popBackStack() },

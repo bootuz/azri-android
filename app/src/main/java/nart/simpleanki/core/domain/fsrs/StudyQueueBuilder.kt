@@ -55,7 +55,7 @@ object StudyQueueBuilder {
         filter: ReviewCardFilter,
         shuffleSeed: Long? = null,
     ): List<Card> {
-        val filtered = cards.filter { !it.isDeleted }.filter { card ->
+        val filtered = cards.filter { !it.isDeleted && !it.memorized }.filter { card ->
             when (filter) {
                 ReviewCardFilter.All -> true
                 ReviewCardFilter.OriginalsOnly -> !card.isReverse

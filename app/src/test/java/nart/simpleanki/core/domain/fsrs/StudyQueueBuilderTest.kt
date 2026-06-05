@@ -70,6 +70,19 @@ class StudyQueueBuilderTest {
     }
 
     @Test
+    fun reviewQueue_excludesMemorizedAndDeleted() {
+        val cards = listOf(
+            card("keep"),
+            card("mem").copy(memorized = true),
+            card("gone", deleted = true),
+        )
+        assertEquals(
+            listOf("keep"),
+            StudyQueueBuilder.buildReviewQueue(cards, ReviewCardFilter.All).map { it.id },
+        )
+    }
+
+    @Test
     fun shuffleSeed_isDeterministic() {
         val cards = (1..8).map { card("c$it", state = CardState.Review.value, due = now - it * day) }
         val a = StudyQueueBuilder.buildStudyQueue(cards, now, 0, 10, shuffleSeed = 42)

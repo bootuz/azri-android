@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,6 +42,7 @@ fun FolderDetailScreen(
     folderId: String,
     onBack: () -> Unit,
     onOpenDeck: (String) -> Unit,
+    onReview: () -> Unit,
     onNewDeck: () -> Unit,
     onEditFolder: () -> Unit,
     viewModel: FolderDetailViewModel = koinViewModel { parametersOf(folderId) },
@@ -50,6 +52,7 @@ fun FolderDetailScreen(
         state = state,
         onBack = onBack,
         onOpenDeck = onOpenDeck,
+        onReview = onReview,
         onNewDeck = onNewDeck,
         onEditFolder = onEditFolder,
     )
@@ -62,6 +65,7 @@ fun FolderDetailContent(
     state: FolderDetailUiState,
     onBack: () -> Unit,
     onOpenDeck: (String) -> Unit,
+    onReview: () -> Unit = {},
     onNewDeck: () -> Unit,
     onEditFolder: () -> Unit,
 ) {
@@ -78,6 +82,7 @@ fun FolderDetailContent(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onReview) { Icon(Icons.Filled.Style, "Review folder") }
                     IconButton(onClick = onEditFolder) { Icon(Icons.Default.Edit, "Edit folder") }
                     IconButton(onClick = onNewDeck) { Icon(Icons.Default.Add, "New deck in folder") }
                 },
