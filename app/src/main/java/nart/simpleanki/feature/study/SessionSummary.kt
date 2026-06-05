@@ -57,7 +57,7 @@ private val RatingColors = mapOf(
     Rating.Easy to Color(0xFF00C7BE),
 )
 
-/** Study "session complete" summary — mirrors iOS SessionSummaryView (streak omitted). */
+/** Study "session complete" summary — mirrors iOS SessionSummaryView (with streak badge). */
 @Composable
 fun SessionSummary(state: StudyUiState, onDone: () -> Unit) {
     val accuracy = sessionAccuracy(state.ratingCounts)
@@ -107,6 +107,11 @@ fun SessionSummary(state: StudyUiState, onDone: () -> Unit) {
             RatingDistributionBar(state.ratingCounts)
         }
 
+        if (state.currentStreak > 0) {
+            Spacer(Modifier.height(24.dp))
+            StreakBadge(current = state.currentStreak, longest = state.longestStreak)
+        }
+
         Spacer(Modifier.weight(1f))
 
         Button(
@@ -129,6 +134,26 @@ private fun SessionStatsRow(reviewed: Int, accuracy: Int, durationLabel: String)
         StatItem(Icons.Outlined.TrackChanges, accuracyColor(accuracy), "$accuracy%", "Accuracy")
         VerticalDivider(Modifier.height(44.dp))
         StatItem(Icons.Outlined.Schedule, Color(0xFFFF9500), durationLabel, "Duration")
+    }
+}
+
+@Composable
+private fun StreakBadge(current: Int, longest: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "🔥 $current day${if (current == 1) "" else "s"} streak",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFFF9500),
+        )
+        if (longest > current) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Longest: $longest",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -198,6 +223,7 @@ private fun SessionSummaryGoodPreview() {
             state = StudyUiState(
                 loading = false, finished = true, completed = 25, durationMillis = 312_000,
                 ratingCounts = mapOf(Rating.Again to 4, Rating.Hard to 6, Rating.Good to 10, Rating.Easy to 5),
+                currentStreak = 7, longestStreak = 12,
             ),
             onDone = {},
         )
