@@ -179,6 +179,7 @@ fun AzriNavHost() {
                     onStudyDeck = { nav.navigate("study/$it") },
                     onStudyFolder = { nav.navigate("studyFolder/$it") },
                     onGoToLibrary = { nav.switchTab(LIBRARY) },
+                    onAddCards = { nav.navigate("cardForm") },
                     onOpenPaywall = { showPaywall = true },
                 )
             }
@@ -265,6 +266,13 @@ fun AzriNavHost() {
             }
             // The card editor stays open after a save (it shows its own "Card saved" toast and resets
             // its inputs for rapid entry); only the back arrow pops it. Editing a card closes itself.
+            composable("cardForm") {
+                CardFormScreen(
+                    deckId = null,
+                    cardId = null,
+                    onClose = { nav.popBackStack() },
+                )
+            }
             composable("cardForm/{deckId}") { entry ->
                 CardFormScreen(
                     deckId = entry.arguments?.getString("deckId").orEmpty(),
