@@ -7,12 +7,14 @@ import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
+import nart.simpleanki.core.data.local.dao.StreakStateDao
 import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.local.toEntity
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.Folder
 import nart.simpleanki.core.domain.model.ReviewLog
+import nart.simpleanki.core.domain.streak.StreakState
 import java.util.UUID
 
 /**
@@ -124,4 +126,18 @@ class ReviewLogRepository(
     }
 
     fun observeLogs(): Flow<List<ReviewLog>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+}
+
+class StreakStateRepository(
+    private val dao: StreakStateDao,
+    private val now: () -> Long = { System.currentTimeMillis() },
+) {
+    fun observe(): Flow<StreakState> =
+        dao.observe().map { it?.toDomain() ?: StreakState() }
+
+    suspend fun get(): StreakState = dao.get()?.toDomain() ?: StreakState()
+
+    suspend fun update(state: StreakState) {
+        dao.upsert(state.toEntity(lastModified = now(), dirty = true))
+    }
 }

@@ -89,3 +89,16 @@ data class ReviewLogEntity(
     val review: Long,
     val dirty: Boolean = true,
 )
+
+@Entity(tableName = "streak_state")
+data class StreakStateEntity(
+    @PrimaryKey val id: String = "current",
+    val freezeTokens: Int,
+    /** Civil-day indices covered by a freeze/repair, sorted, comma-separated (empty string = none). */
+    val frozenDays: String,
+    val freezesAwardedForRun: Int,
+    val lastReconciledDay: Long,
+    val lastRepairDay: Long,
+    val lastModified: Long,
+    val dirty: Boolean = true,
+)
