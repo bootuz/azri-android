@@ -74,7 +74,7 @@ import org.koin.dsl.module
 import java.io.File
 
 /** Injection args for screens that take optional ids (unambiguous vs. positional params). */
-data class CardFormArgs(val deckId: String, val cardId: String? = null)
+data class CardFormArgs(val deckId: String? = null, val cardId: String? = null)
 data class DeckEditArgs(val deckId: String? = null, val folderId: String? = null)
 data class FolderEditArgs(val folderId: String? = null)
 data class StudyArgs(val deckId: String? = null, val folderId: String? = null)
@@ -232,8 +232,9 @@ val appModule = module {
             deckId = a.deckId,
             cardRepository = get(),
             mediaManager = get(),
+            deckRepository = get(),
             editingCardId = a.cardId,
-            logManager = get()
+            logManager = get(),
         )
     }
     viewModel { params ->
