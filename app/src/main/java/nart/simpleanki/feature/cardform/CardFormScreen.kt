@@ -30,13 +30,17 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -56,6 +60,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -72,7 +78,7 @@ import org.koin.core.parameter.parametersOf
 
 @Composable
 fun CardFormScreen(
-    deckId: String,
+    deckId: String?,
     cardId: String?,
     onClose: () -> Unit,
     viewModel: CardFormViewModel = koinViewModel { parametersOf(CardFormArgs(deckId, cardId)) },
@@ -131,6 +137,7 @@ fun CardFormScreen(
         isRecording = isRecording,
         onFrontChange = viewModel::onFrontChange,
         onBackChange = viewModel::onBackChange,
+        onSelectDeck = viewModel::onSelectDeck,
         onToggleReverse = viewModel::onToggleReverse,
         onAddImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onRemoveImage = viewModel::onRemoveImage,
@@ -149,6 +156,7 @@ fun CardFormContent(
     isRecording: Boolean,
     onFrontChange: (String) -> Unit,
     onBackChange: (String) -> Unit,
+    onSelectDeck: (String) -> Unit,
     onToggleReverse: (Boolean) -> Unit,
     onAddImage: () -> Unit,
     onRemoveImage: () -> Unit,
@@ -158,6 +166,12 @@ fun CardFormContent(
     onBack: () -> Unit,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
+    val frontFocus = remember { FocusRequester() }
+    // Autofocus Front on open (and re-focus after each save) so the user can type immediately.
+    LaunchedEffect(Unit) { runCatching { frontFocus.requestFocus() } }
+    LaunchedEffect(state.savedTick) {
+        if (state.savedTick > 0) runCatching { frontFocus.requestFocus() }
+    }
     Scaffold(
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
@@ -194,6 +208,38 @@ fun CardFormContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            var deckMenuExpanded by remember { mutableStateOf(false) }
+            if (state.pickDeck) {
+                val selectedDeckName =
+                    state.decks.firstOrNull { it.id == state.selectedDeckId }?.name ?: ""
+                ExposedDropdownMenuBox(
+                    expanded = deckMenuExpanded,
+                    onExpandedChange = { deckMenuExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = selectedDeckName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Deck") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(deckMenuExpanded) },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = deckMenuExpanded,
+                        onDismissRequest = { deckMenuExpanded = false },
+                    ) {
+                        state.decks.forEach { deck ->
+                            DropdownMenuItem(
+                                text = { Text(deck.name) },
+                                onClick = { onSelectDeck(deck.id); deckMenuExpanded = false },
+                            )
+                        }
+                    }
+                }
+            }
             OutlinedTextField(
                 value = state.front,
                 onValueChange = onFrontChange,
@@ -201,7 +247,9 @@ fun CardFormContent(
                 placeholder = { Text("Question") },
                 minLines = 3,
                 shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(frontFocus),
             )
             OutlinedTextField(
                 value = state.back,
@@ -313,7 +361,7 @@ private fun CardFormNewPreview() {
         CardFormContent(
             state = CardFormUiState(front = "Bonjour", back = "Hello", createReverse = true),
             isRecording = false,
-            onFrontChange = {}, onBackChange = {}, onToggleReverse = {},
+            onFrontChange = {}, onBackChange = {}, onSelectDeck = {}, onToggleReverse = {},
             onAddImage = {}, onRemoveImage = {}, onToggleRecording = {}, onRemoveAudio = {},
             onSave = {}, onBack = {},
         )
@@ -327,7 +375,42 @@ private fun CardFormRecordingPreview() {
         CardFormContent(
             state = CardFormUiState(front = "cat", back = "gato", isEdit = true),
             isRecording = true,
-            onFrontChange = {}, onBackChange = {}, onToggleReverse = {},
+            onFrontChange = {}, onBackChange = {}, onSelectDeck = {}, onToggleReverse = {},
+            onAddImage = {}, onRemoveImage = {}, onToggleRecording = {}, onRemoveAudio = {},
+            onSave = {}, onBack = {},
+        )
+    }
+}
+
+@Preview(name = "Card form · pick deck (empty)", showBackground = true)
+@Composable
+private fun CardFormPickDeckPreview() {
+    AzriTheme {
+        CardFormContent(
+            state = CardFormUiState(
+                pickDeck = true,
+                decks = listOf(DeckOption("d1", "French"), DeckOption("d2", "Spanish")),
+            ),
+            isRecording = false,
+            onFrontChange = {}, onBackChange = {}, onSelectDeck = {}, onToggleReverse = {},
+            onAddImage = {}, onRemoveImage = {}, onToggleRecording = {}, onRemoveAudio = {},
+            onSave = {}, onBack = {},
+        )
+    }
+}
+
+@Preview(name = "Card form · pick deck (selected)", showBackground = true)
+@Composable
+private fun CardFormPickDeckSelectedPreview() {
+    AzriTheme {
+        CardFormContent(
+            state = CardFormUiState(
+                front = "bonjour", back = "hello",
+                pickDeck = true, selectedDeckId = "d2",
+                decks = listOf(DeckOption("d1", "French"), DeckOption("d2", "Spanish")),
+            ),
+            isRecording = false,
+            onFrontChange = {}, onBackChange = {}, onSelectDeck = {}, onToggleReverse = {},
             onAddImage = {}, onRemoveImage = {}, onToggleRecording = {}, onRemoveAudio = {},
             onSave = {}, onBack = {},
         )
