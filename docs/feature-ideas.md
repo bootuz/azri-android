@@ -4,7 +4,7 @@ A living list of feature ideas for the Azri flashcard app, grounded in a 2024-20
 analysis (Anki/AnkiDroid, RemNote, Mochi, SuperMemo, Quizlet, Brainscape, Knowt, StudySmarter/Vaia,
 Cram, Memrise, Duolingo, Busuu, Drops). Revisit and reprioritize over time.
 
-**Last updated:** 2026-06-05 (Streak freeze+repair shipped → PR #19)
+**Last updated:** 2026-06-05 (shipped: streak freeze+repair → PR #19, streak-saver → PR #20)
 
 ## What Azri already has (baseline)
 FSRS-6 with custom parameter presets · decks + folders · cards with image/audio/reverse variants ·
@@ -27,9 +27,9 @@ already exist.
 - **Streak freeze + repair** — `shipped` (PR #19). Earn 1 freeze per 7 streak-days (cap 2),
   auto-covers a missed day; free single-day repair after studying today (once/30 days); synced via
   Firestore. *Duolingo: ~48% longer streaks with freezes.*
-- **Streak-saver notification** — a *separate* evening "your streak is at risk" nudge, distinct from
-  the daily reminder. *Case studies: ~21% retention lift, ~40% churn reduction.* Extends
-  `WorkManagerReminderScheduler`.
+- **Streak-saver notification** — `shipped` (PR #20). Automatic evening (20:00) nudge that fires only
+  when the streak is at risk and unprotected (`currentStreak>0 && studiedToday==0 && freezeTokens==0`);
+  no toggle. *Case studies: ~21% retention lift, ~40% churn reduction.*
 - **Streak milestones** — pick a goal (7/30/100 days); reward + re-goal at each. The 7-day mark is
   where churn drops sharply. Pure derivation from review-log days.
 - **Home-screen widget (Android Glance) + Wear OS tile** — due-count / streak / quick-flip. Near
