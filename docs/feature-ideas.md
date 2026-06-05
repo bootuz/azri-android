@@ -4,7 +4,7 @@ A living list of feature ideas for the Azri flashcard app, grounded in a 2024-20
 analysis (Anki/AnkiDroid, RemNote, Mochi, SuperMemo, Quizlet, Brainscape, Knowt, StudySmarter/Vaia,
 Cram, Memrise, Duolingo, Busuu, Drops). Revisit and reprioritize over time.
 
-**Last updated:** 2026-06-05
+**Last updated:** 2026-06-05 (Streak freeze+repair shipped → PR #19)
 
 ## What Azri already has (baseline)
 FSRS-6 with custom parameter presets · decks + folders · cards with image/audio/reverse variants ·
@@ -24,9 +24,9 @@ SM-2 or opt-in FSRS-4.5/5.
 Cheap because the foundations (streak system, review logs, WorkManager reminders, queue builder)
 already exist.
 
-- **Streak freeze + repair** — auto-consume a freeze on a missed day; free earn-back within hours,
-  paid repair after. *Duolingo: ~48% longer streaks with freezes.* Extends the `StreakProvider` /
-  review-log system.
+- **Streak freeze + repair** — `shipped` (PR #19). Earn 1 freeze per 7 streak-days (cap 2),
+  auto-covers a missed day; free single-day repair after studying today (once/30 days); synced via
+  Firestore. *Duolingo: ~48% longer streaks with freezes.*
 - **Streak-saver notification** — a *separate* evening "your streak is at risk" nudge, distinct from
   the daily reminder. *Case studies: ~21% retention lift, ~40% churn reduction.* Extends
   `WorkManagerReminderScheduler`.
