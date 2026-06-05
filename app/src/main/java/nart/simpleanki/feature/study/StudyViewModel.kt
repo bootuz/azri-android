@@ -11,6 +11,7 @@ import nart.simpleanki.core.analytics.LoggableEvent
 import nart.simpleanki.core.analytics.LogManager
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
+import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.fsrsParameters
 import nart.simpleanki.core.domain.fsrs.IntervalFormatter
@@ -48,6 +49,7 @@ class StudyViewModel(
     private val cardRepository: CardRepository,
     private val deckRepository: DeckRepository,
     private val settingsRepository: SettingsRepository,
+    private val reviewLogRepository: ReviewLogRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
     private val logManager: LogManager = LogManager(emptyList()),
 ) : ViewModel() {
@@ -115,6 +117,7 @@ class StudyViewModel(
         val ratedAt = now()
         val result = scheduling.schedule(card, rating, ratedAt)
         viewModelScope.launch { cardRepository.save(result.card) }
+        viewModelScope.launch { reviewLogRepository.append(card.id, result.log) }
 
         queue.removeFirstOrNull()
         val prev = _uiState.value

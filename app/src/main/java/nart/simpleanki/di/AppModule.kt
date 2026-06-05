@@ -196,6 +196,7 @@ val appModule = module {
             cardRepository = get(),
             deckRepository = get(),
             settingsRepository = get(),
+            reviewLogRepository = get(),
             logManager = get(),
         )
     }
