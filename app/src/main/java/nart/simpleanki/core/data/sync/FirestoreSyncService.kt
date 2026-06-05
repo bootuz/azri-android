@@ -5,10 +5,11 @@ import kotlinx.coroutines.tasks.await
 import nart.simpleanki.core.data.firestore.CardDto
 import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
+import nart.simpleanki.core.data.firestore.ReviewLogDto
 
 /**
  * Firestore-backed [RemoteSyncSource]. Collections mirror the iOS layout exactly:
- * `users/{uid}/folders`, `users/{uid}/decks`, `users/{uid}/cards`.
+ * `users/{uid}/folders`, `users/{uid}/decks`, `users/{uid}/cards`, `users/{uid}/reviewLogs`.
  */
 class FirestoreSyncService(
     private val firestore: FirebaseFirestore,
@@ -34,6 +35,12 @@ class FirestoreSyncService(
 
     override suspend fun pushCards(uid: String, dtos: List<CardDto>) =
         push(uid, "cards", dtos) { it.id }
+
+    override suspend fun fetchReviewLogs(uid: String): List<ReviewLogDto> =
+        col(uid, "reviewLogs").get().await().toObjects(ReviewLogDto::class.java)
+
+    override suspend fun pushReviewLogs(uid: String, dtos: List<ReviewLogDto>) =
+        push(uid, "reviewLogs", dtos) { it.id }
 
     private suspend fun <T : Any> push(uid: String, name: String, dtos: List<T>, id: (T) -> String?) {
         if (dtos.isEmpty()) return

@@ -1,11 +1,14 @@
 package nart.simpleanki.core.data.local
 
 import nart.simpleanki.core.domain.model.Card
+import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.ColorOption
 import nart.simpleanki.core.domain.model.Deck
 import nart.simpleanki.core.domain.model.DeckLayout
 import nart.simpleanki.core.domain.model.Folder
+import nart.simpleanki.core.domain.model.Rating
 import nart.simpleanki.core.domain.model.ReviewCardFilter
+import nart.simpleanki.core.domain.model.ReviewLog
 
 /** Room entity <-> domain mappers. */
 
@@ -98,5 +101,34 @@ fun Card.toEntity(dirty: Boolean = false): CardEntity = CardEntity(
     source = source,
     pairId = pairId,
     isReverse = isReverse,
+    dirty = dirty,
+)
+
+fun ReviewLogEntity.toDomain(): ReviewLog = ReviewLog(
+    rating = Rating.fromValue(rating),
+    state = CardState.fromValue(state),
+    due = due,
+    stability = stability,
+    difficulty = difficulty,
+    elapsedDays = elapsedDays,
+    lastElapsedDays = lastElapsedDays,
+    scheduledDays = scheduledDays,
+    review = review,
+    id = id,
+    cardId = cardId,
+)
+
+fun ReviewLog.toEntity(dirty: Boolean = true): ReviewLogEntity = ReviewLogEntity(
+    id = id,
+    cardId = cardId,
+    rating = rating.value,
+    state = state?.value,
+    due = due,
+    stability = stability,
+    difficulty = difficulty,
+    elapsedDays = elapsedDays,
+    lastElapsedDays = lastElapsedDays,
+    scheduledDays = scheduledDays,
+    review = review,
     dirty = dirty,
 )

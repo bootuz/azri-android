@@ -33,6 +33,7 @@ import nart.simpleanki.core.billing.PlayBillingRepository
 import nart.simpleanki.core.csv.CsvImportService
 import nart.simpleanki.core.csv.DefaultCsvImportService
 import nart.simpleanki.core.data.local.AzriDatabase
+import nart.simpleanki.core.data.local.MIGRATION_1_2
 import nart.simpleanki.core.data.media.FirebaseMediaRepository
 import nart.simpleanki.core.data.media.LocalMediaStore
 import nart.simpleanki.core.data.media.MediaManager
@@ -40,6 +41,7 @@ import nart.simpleanki.core.data.media.MediaUploader
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FolderRepository
+import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
@@ -132,21 +134,24 @@ val appModule = module {
     // Local persistence (Room)
     single {
         Room.databaseBuilder(androidContext(), AzriDatabase::class.java, "azri.db")
+            .addMigrations(MIGRATION_1_2)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
     single { get<AzriDatabase>().folderDao() }
     single { get<AzriDatabase>().deckDao() }
     single { get<AzriDatabase>().cardDao() }
+    single { get<AzriDatabase>().reviewLogDao() }
 
     // Repositories
     single { FolderRepository(get()) }
     single { DeckRepository(get()) }
     single { CardRepository(get()) }
+    single { ReviewLogRepository(get()) }
 
     // Sync
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
-    single { SyncManager(get(), get(), get(), get(), get()) }
+    single { SyncManager(get(), get(), get(), get(), get(), get()) }
 
     // Billing / entitlement
     single { EntitlementCache(androidContext()) }
@@ -191,6 +196,7 @@ val appModule = module {
             cardRepository = get(),
             deckRepository = get(),
             settingsRepository = get(),
+            reviewLogRepository = get(),
             logManager = get(),
         )
     }

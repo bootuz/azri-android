@@ -182,9 +182,11 @@ data class FolderDto(
     }
 }
 
-// MARK: - Review log (stored under cards/{id}/history)
+// MARK: - Review log (stored flat under users/{uid}/reviewLogs)
 
 data class ReviewLogDto(
+    var id: String = "",
+    @get:PropertyName("card_id") @set:PropertyName("card_id") var cardId: String = "",
     var rating: Int = Rating.Again.value,
     var state: Int? = null,
     var due: Timestamp? = null,
@@ -205,10 +207,14 @@ data class ReviewLogDto(
         lastElapsedDays = lastElapsedDays ?: 0.0,
         scheduledDays = scheduledDays ?: 0.0,
         review = review.toMillis(),
+        id = id,
+        cardId = cardId,
     )
 
     companion object {
         fun fromDomain(r: ReviewLog): ReviewLogDto = ReviewLogDto(
+            id = r.id,
+            cardId = r.cardId,
             rating = r.rating.value,
             state = r.state?.value,
             due = r.due?.toTimestamp(),

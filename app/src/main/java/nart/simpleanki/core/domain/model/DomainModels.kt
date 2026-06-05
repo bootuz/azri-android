@@ -16,6 +16,8 @@ data class ReviewLog(
     val lastElapsedDays: Double = 0.0,
     val scheduledDays: Double = 0.0,
     val review: Long,
+    val id: String = "",
+    val cardId: String = "",
 )
 
 data class Card(
