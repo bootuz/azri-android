@@ -199,6 +199,7 @@ val appModule = module {
             deckRepository = get(),
             settingsRepository = get(),
             reviewLogRepository = get(),
+            streakProvider = get(),
             logManager = get(),
         )
     }

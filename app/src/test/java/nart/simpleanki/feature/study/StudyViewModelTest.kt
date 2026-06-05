@@ -3,6 +3,7 @@ package nart.simpleanki.feature.study
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -258,5 +259,25 @@ class StudyViewModelTest {
         assertEquals(1, logs.size)
         assertEquals("c1", logs[0].cardId)
         assertEquals(Rating.Good, logs[0].rating)
+    }
+
+    @Test
+    fun finishingSession_setsCurrentStreakAtLeastOne() = runTest {
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        cardRepo.upsert(newCard("c1", deckId = "d1"))
+
+        val vm = StudyViewModel(
+            "d1", null, cardRepo, DeckRepository(FakeDeckDao(), now = { now }),
+            FakeSettingsRepository(), ReviewLogRepository(FakeReviewLogDao()), now = { now },
+        )
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+
+        vm.onReveal()
+        vm.onRate(Rating.Good)   // last (only) card -> session finishes
+        runCurrent()
+
+        assertTrue(vm.uiState.value.finished)
+        assertEquals(1, vm.uiState.value.currentStreak)
     }
 }

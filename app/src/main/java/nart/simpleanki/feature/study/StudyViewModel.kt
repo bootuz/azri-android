@@ -12,6 +12,7 @@ import nart.simpleanki.core.analytics.LogManager
 import nart.simpleanki.core.data.repository.CardRepository
 import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.ReviewLogRepository
+import nart.simpleanki.core.data.repository.StreakProvider
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.settings.fsrsParameters
 import nart.simpleanki.core.domain.fsrs.IntervalFormatter
@@ -34,6 +35,8 @@ data class StudyUiState(
     val finished: Boolean = false,
     /** Wall-clock millis from session start to finish; 0 until the session finishes, then stamped once. */
     val durationMillis: Long = 0,
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0,
 )
 
 /**
@@ -51,6 +54,7 @@ class StudyViewModel(
     private val settingsRepository: SettingsRepository,
     private val reviewLogRepository: ReviewLogRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
+    private val streakProvider: StreakProvider = StreakProvider(reviewLogRepository, now),
     private val logManager: LogManager = LogManager(emptyList()),
 ) : ViewModel() {
 
@@ -95,6 +99,7 @@ class StudyViewModel(
             finished = queue.isEmpty(),
             durationMillis = if (queue.isEmpty()) now() - sessionStartMillis else 0,
         )
+        if (queue.isEmpty()) refreshSummaryStreak()
         logManager.track(Event.ReviewSessionStart(deckId, folderId))
     }
 
@@ -104,6 +109,11 @@ class StudyViewModel(
         val nowMillis = now()
         return scheduling.preview(card, nowMillis)
             .mapValues { (_, dueMillis) -> IntervalFormatter.format(dueMillis - nowMillis) }
+    }
+
+    private fun refreshSummaryStreak() = viewModelScope.launch {
+        val s = streakProvider.streakIncludingToday()
+        _uiState.value = _uiState.value.copy(currentStreak = s.current, longestStreak = s.longest)
     }
 
     fun onReveal() {
@@ -133,6 +143,7 @@ class StudyViewModel(
             finished = next == null,
             durationMillis = if (next == null) ratedAt - sessionStartMillis else prev.durationMillis,
         )
+        if (next == null) refreshSummaryStreak()
         logManager.track(Event.CardRated(rating))
         if (next == null) logManager.track(Event.ReviewSessionComplete(prev.completed + 1))
     }
