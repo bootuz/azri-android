@@ -13,7 +13,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
@@ -40,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
@@ -149,14 +153,30 @@ fun AzriNavHost() {
         val fadeThroughIn =
             fadeIn(tween(durationMillis = 195, delayMillis = 105, easing = FastOutSlowInEasing))
         val fadeThroughOut = fadeOut(tween(durationMillis = 105, easing = FastOutSlowInEasing))
+        // Apply the outer Scaffold's insets AND consume them, so each screen's own Scaffold
+        // (its TopAppBar's status-bar inset, its content's nav-bar inset) doesn't reserve
+        // them a second time. Without consuming: the status bar gets reserved twice (titles
+        // pushed down) and a nav-bar-height gap appears above the bottom bar.
+        // Exception: the card editor hosts its own BottomAppBar that must paint into the
+        // navigation-bar inset (else a blank strip shows below it). For that route we release
+        // the bottom inset — apply only top + horizontal — and let the editor's bar own the bottom.
+        val isCardEditor = currentRoute?.startsWith("cardForm") == true
+        val contentModifier = if (isCardEditor) {
+            val ld = LocalLayoutDirection.current
+            val topAndSides = PaddingValues(
+                start = padding.calculateStartPadding(ld),
+                end = padding.calculateEndPadding(ld),
+                top = padding.calculateTopPadding(),
+                bottom = 0.dp,
+            )
+            Modifier.padding(topAndSides).consumeWindowInsets(topAndSides)
+        } else {
+            Modifier.padding(padding).consumeWindowInsets(padding)
+        }
         NavHost(
             navController = nav,
             startDestination = QUEUE,
-            // Apply the outer Scaffold's insets AND consume them, so each screen's own Scaffold
-            // (its TopAppBar's status-bar inset, its content's nav-bar inset) doesn't reserve
-            // them a second time. Without consuming: the status bar gets reserved twice (titles
-            // pushed down) and a nav-bar-height gap appears above the bottom bar.
-            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+            modifier = contentModifier,
             // Forward: incoming enters from the right (+30dp), outgoing exits left (−30dp).
             enterTransition = { slideInHorizontally(slideSpec) { slide } + fadeThroughIn },
             exitTransition = { slideOutHorizontally(slideSpec) { -slide } + fadeThroughOut },
