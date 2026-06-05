@@ -38,8 +38,12 @@ The notification system (`core/notifications/`) already has two self-reschedulin
 - **Skip when freeze-protected** (`freezeTokens == 0` is required to fire) — don't nag a safe streak.
 - **Fire regardless of due count** — any review (incl. cramming) keeps the streak, so don't gate on
   `readyCount`.
-- **Matches the existing reminders otherwise:** an opt-in toggle + configurable time, default **20:00**,
-  default **off**, same "reminders" channel + `POST_NOTIFICATIONS` permission (no new infra).
+- **Fully automatic — no in-app toggle or time picker.** The streak-saver is always armed at a fixed
+  evening time (`20:00`, a code constant); there is no settings field and no Notifications-screen row
+  for it. The only "off switch" is the OS notification permission / the app's "reminders" channel
+  (which the user already controls at the system level). It reuses the existing "reminders" channel +
+  `POST_NOTIFICATIONS` (no new infra). The at-risk condition above is the real gate, so on most
+  evenings it posts nothing.
 
 ## Components
 
@@ -69,58 +73,57 @@ The notification system (`core/notifications/`) already has two self-reschedulin
   (The `enabled` flag is NOT checked here — the worker already returns early when the reminder is
   disabled, matching how Study/Goal work.)
 
+- Add a fixed evening time as a constant (e.g. in `ReminderContent.kt` next to the enum):
+  ```kotlin
+  const val STREAK_SAVER_HOUR = 20
+  const val STREAK_SAVER_MINUTE = 0
+  ```
+
 ### 2. `core/notifications/ReminderWorker.kt`
 - Inject `StreakProvider` and `StreakStateRepository` (Koin, like the existing injects).
 - Compute `currentStreak = streakProvider.observeStreak().first().current` and
   `freezeTokens = streakStateRepository.observe().first().freezeTokens`, and pass both into
   `reminderContent(...)`. (Computed unconditionally; Study/Goal ignore them — keeps the worker simple.)
-- Add `StreakSaver` to `scheduleFor`:
-  `ReminderType.StreakSaver -> Schedule(streakSaverEnabled, streakSaverHour, streakSaverMinute)`.
+- Add `StreakSaver` to `scheduleFor` — **always enabled** at the fixed time (it has no settings):
+  `ReminderType.StreakSaver -> Schedule(enabled = true, hour = STREAK_SAVER_HOUR, minute = STREAK_SAVER_MINUTE)`.
+  (So the worker never early-returns for being "disabled"; the at-risk condition in `reminderContent`
+  is the gate, and it always reschedules tomorrow.)
 
-### 3. Settings (`AppSettings` + `SettingsRepository` + DataStore + `FakeSettingsRepository`)
-- `AppSettings` gains `streakSaverEnabled = false`, `streakSaverHour = 20`, `streakSaverMinute = 0`.
-- DataStore keys `STREAK_SAVER_ON`/`STREAK_SAVER_HOUR`/`STREAK_SAVER_MIN`; read them in the settings
-  mapping with the same defaults.
-- `SettingsRepository` interface + impl gain `suspend fun setStreakSaverReminder(enabled, hour, minute)`
-  (mirrors `setStudyReminder`/`setGoalReminder`).
-- `FakeSettingsRepository` implements the new field/setter.
+### 3. `AzriApplication.ensureReminders()`
+- **Unconditionally** arm the streak-saver on launch (no settings check):
+  `scheduler.schedule(ReminderType.StreakSaver, STREAK_SAVER_HOUR, STREAK_SAVER_MINUTE)`.
+  (Study/Goal stay gated on their enabled flags; only the streak-saver is always-on.)
 
-### 4. `AzriApplication.ensureReminders()`
-- Re-arm the streak-saver when enabled:
-  `if (settings.streakSaverEnabled) scheduler.schedule(ReminderType.StreakSaver, settings.streakSaverHour, settings.streakSaverMinute)`.
-
-### 5. UI (`feature/notifications/NotificationsViewModel.kt` + `NotificationsScreen.kt`)
-- `NotificationsUiState` gains `streakSaverEnabled`/`streakSaverHour`/`streakSaverMinute`; the
-  settings-collection block maps them; add `setStreakSaver(enabled, hour, minute)` → repository.
-- `NotificationsScreen` adds a third Switch + `TimePicker` row, "Streak saver" (subtitle e.g.
-  "An evening nudge when your streak is about to lapse"), identical in structure to the Study/Goal
-  rows, wired to `viewModel::setStreakSaver`. Enabling it requests `POST_NOTIFICATIONS` via the same
-  existing launcher path the other toggles use.
+**No Settings and no UI changes** — by design (the feature is automatic). `AppSettings`,
+`SettingsRepository`, DataStore, `FakeSettingsRepository`, `NotificationsViewModel`, and
+`NotificationsScreen` are untouched.
 
 ## Data flow
 
-Evening trigger → `ReminderWorker` reads settings (streak-saver enabled? else stop), cards
-(`studiedToday`), `StreakProvider` (`currentStreak`), `StreakStateRepository` (`freezeTokens`) →
-pure `reminderContent(StreakSaver, …)` returns a notification iff `currentStreak>0 && studiedToday==0
-&& freezeTokens==0` → `Notifier.post` → reschedule for tomorrow.
+Evening trigger (fixed 20:00) → `ReminderWorker` reads cards (`studiedToday`), `StreakProvider`
+(`currentStreak`), `StreakStateRepository` (`freezeTokens`) → pure `reminderContent(StreakSaver, …)`
+returns a notification iff `currentStreak>0 && studiedToday==0 && freezeTokens==0` → `Notifier.post`
+(silently dropped by the OS if notifications are disabled) → reschedule for tomorrow.
 
 ## Error handling
 
-- Disabled mid-chain → worker returns `Result.success()` without rescheduling (same as Study/Goal).
+- The streak-saver always reschedules (it's never "disabled" in-app); the at-risk gate decides
+  whether to post.
 - Pure decision is null-safe and side-effect-free; a protected or already-extended streak simply
   posts nothing but still reschedules.
 - Reading streak/freeze state is a one-shot `.first()` on existing flows; no new failure modes.
+- If the user has revoked notification permission, `Notifier.post` is a no-op at the OS level — the
+  worker still completes successfully.
 
 ## Testing
 
 - **`ReminderContentTest`** (pure, JVM): `StreakSaver` fires for `currentStreak>0, studiedToday==0,
   freezeTokens==0`; returns null for each of — `studiedToday>0` (already studied), `currentStreak==0`
-  (no streak), `freezeTokens>0` (protected). Singular/plural copy uses the streak count directly
-  ("1-day streak" is acceptable).
-- **`NotificationsViewModelTest`**: `setStreakSaver(true, 21, 30)` persists via the repository and
-  surfaces in `uiState`.
+  (no streak), `freezeTokens>0` (protected). Copy uses the streak count directly ("1-day streak" is
+  acceptable).
 - **`ReminderWorker.scheduleFor` + `ensureReminders`**: compile/integration-verified (the worker and
   Application are Android-coupled; the emulator is unavailable for instrumented runs).
+- No settings/VM tests — there are no settings or UI changes.
 
 **Build/test prefix:** Gradle commands MUST be prefixed with
 `export JAVA_HOME=/opt/homebrew/opt/openjdk &&`, run from
@@ -128,7 +131,10 @@ pure `reminderContent(StreakSaver, …)` returns a notification iff `currentStre
 
 ## Out of scope (v1)
 
-- Per-user-activity send-time optimization (fixed configurable time only).
+- **Any in-app toggle or time picker for the streak-saver** — it's intentionally automatic; the OS
+  notification controls are the only off switch. (If a user-facing control is wanted later, it's an
+  additive follow-up.)
+- Per-user-activity send-time optimization (fixed 20:00 only).
 - Snooze / action buttons on the notification.
 - Changing the Study/Goal reminders, the streak/freeze logic, the notification channel, or sync.
 - A separate "streak milestone" celebration notification (separate backlog item).
