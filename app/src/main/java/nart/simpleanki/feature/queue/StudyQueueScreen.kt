@@ -86,6 +86,7 @@ fun StudyQueueScreen(
     onStudyDeck: (String) -> Unit,
     onStudyFolder: (String) -> Unit,
     onGoToLibrary: () -> Unit,
+    onAddCards: () -> Unit = {},
     onOpenPaywall: () -> Unit = {},
     viewModel: StudyQueueViewModel = koinViewModel(),
 ) {
@@ -99,6 +100,7 @@ fun StudyQueueScreen(
         onEditGoal = { showGoalSheet = true },
         onSortChange = viewModel::setSortOrder,
         onGoToLibrary = onGoToLibrary,
+        onAddCards = onAddCards,
         onOpenPaywall = onOpenPaywall,
         onDismissNudge = viewModel::dismissPremiumNudge,
     )
@@ -118,6 +120,7 @@ fun StudyQueueContent(
     onEditGoal: () -> Unit = {},
     onSortChange: (QueueSortOrder) -> Unit = {},
     onGoToLibrary: () -> Unit = {},
+    onAddCards: () -> Unit = {},
     onOpenPaywall: () -> Unit = {},
     onDismissNudge: () -> Unit = {},
 ) {
@@ -177,7 +180,7 @@ fun StudyQueueContent(
             if ((state.dailyGoalEnabled && state.goalTotal > 0) || !state.hasAnyCards) {
                 item { DailyGoalCard(state, onClick = onEditGoal) }
             }
-            item { HeroCard(state, onStudyAll, onGoToLibrary) }
+            item { HeroCard(state, onStudyAll, onGoToLibrary, onAddCards) }
 
             if (state.decks.isNotEmpty()) {
                 item {
@@ -339,7 +342,12 @@ private fun DailyGoalCard(state: StudyQueueUiState, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit, onGoToLibrary: () -> Unit) {
+private fun HeroCard(
+    state: StudyQueueUiState,
+    onStudyAll: () -> Unit,
+    onGoToLibrary: () -> Unit,
+    onAddCards: () -> Unit,
+) {
     AzriCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -442,8 +450,10 @@ private fun HeroCard(state: StudyQueueUiState, onStudyAll: () -> Unit, onGoToLib
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(20.dp))
+                // This branch only renders when the user has cards (hasAnyCards), which guarantees
+                // at least one deck exists — so the card editor's deck picker is never empty here.
                 OutlinedButton(
-                    onClick = onGoToLibrary,
+                    onClick = onAddCards,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),

@@ -10,9 +10,13 @@ import nart.simpleanki.core.analytics.LogManager
 import nart.simpleanki.core.analytics.LoggableEvent
 import nart.simpleanki.core.data.media.MediaManager
 import nart.simpleanki.core.data.repository.CardRepository
+import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import java.util.UUID
+
+/** A deck choice for the in-editor selector (queue-path "picker mode"). */
+data class DeckOption(val id: String, val name: String)
 
 data class CardFormUiState(
     val front: String = "",
@@ -25,13 +29,18 @@ data class CardFormUiState(
     val audioName: String? = null,
     val audioPath: String? = null,
     val uploadingAudio: Boolean = false,
+    /** True ⇒ the user picks the destination deck in-editor (opened from the Study tab). */
+    val pickDeck: Boolean = false,
+    val decks: List<DeckOption> = emptyList(),
+    val selectedDeckId: String? = null,
     /** Increments on each successful new-card save; drives the "Card saved" toast (re-triggerable). */
     val savedTick: Int = 0,
     /** Set once after editing an existing card, signaling the screen to close. */
     val finished: Boolean = false,
 ) {
     val canSave: Boolean
-        get() = front.isNotBlank() && back.isNotBlank() && !uploadingImage && !uploadingAudio
+        get() = front.isNotBlank() && back.isNotBlank() &&
+            !uploadingImage && !uploadingAudio && selectedDeckId != null
 }
 
 /**
@@ -39,18 +48,29 @@ data class CardFormUiState(
  * [MediaManager]; upload to the cloud happens later during premium sync. When
  * [CardFormUiState.createReverse] is set for a new card, a second reversed card is created
  * with swapped front/back and a shared [Card.pairId].
+ *
+ * Pass [deckId] = null to enter "picker mode": the user selects the destination deck
+ * in-editor (e.g. when opening the editor from the Study tab without a deck context).
+ * Picker mode ([deckId] == null) requires a non-null [deckRepository]; fixed-deck mode leaves it null.
  */
 class CardFormViewModel(
-    private val deckId: String,
+    private val deckId: String?,
     private val cardRepository: CardRepository,
     private val mediaManager: MediaManager,
+    private val deckRepository: DeckRepository? = null,
     private val editingCardId: String? = null,
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
     private val now: () -> Long = { System.currentTimeMillis() },
     private val logManager: LogManager = LogManager(emptyList()),
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CardFormUiState(isEdit = editingCardId != null))
+    private val _uiState = MutableStateFlow(
+        CardFormUiState(
+            isEdit = editingCardId != null,
+            pickDeck = deckId == null,
+            selectedDeckId = deckId,
+        ),
+    )
     val uiState: StateFlow<CardFormUiState> = _uiState.asStateFlow()
 
     private var editingCard: Card? = null
@@ -68,6 +88,16 @@ class CardFormViewModel(
                 }
             }
         }
+        if (deckId == null) {
+            checkNotNull(deckRepository) { "deckRepository is required in picker mode (deckId == null)" }
+            viewModelScope.launch {
+                deckRepository.observeDecks().collect { decks ->
+                    _uiState.value = _uiState.value.copy(
+                        decks = decks.map { DeckOption(it.id, it.name) },
+                    )
+                }
+            }
+        }
     }
 
     fun onFrontChange(value: String) {
@@ -76,6 +106,10 @@ class CardFormViewModel(
 
     fun onBackChange(value: String) {
         _uiState.value = _uiState.value.copy(back = value)
+    }
+
+    fun onSelectDeck(id: String) {
+        _uiState.value = _uiState.value.copy(selectedDeckId = id)
     }
 
     fun onToggleReverse(value: Boolean) {
@@ -130,28 +164,23 @@ class CardFormViewModel(
                 // Editing targets one card: close the editor once saved.
                 _uiState.value = _uiState.value.copy(finished = true)
             } else {
+                val targetDeckId = state.selectedDeckId ?: return@launch
                 val baseId = idGenerator()
                 cardRepository.upsert(
                     newCard(
-                        baseId, state.front, state.back, isReverse = false,
+                        baseId, targetDeckId, state.front, state.back, isReverse = false,
                         pairId = if (state.createReverse) baseId else null,
                         image = state.imageName, imagePath = state.imagePath,
-                        audioName = state.audioName, audioPath = state.audioPath
+                        audioName = state.audioName, audioPath = state.audioPath,
                     ),
                 )
                 if (state.createReverse) {
                     // Reverse cards are intentionally audio-free (mirrors iOS).
                     cardRepository.upsert(
                         newCard(
-                            idGenerator(),
-                            state.back,
-                            state.front,
-                            isReverse = true,
-                            pairId = baseId,
-                            image = null,
-                            imagePath = null,
-                            audioName = null,
-                            audioPath = null
+                            idGenerator(), targetDeckId, state.back, state.front,
+                            isReverse = true, pairId = baseId,
+                            image = null, imagePath = null, audioName = null, audioPath = null,
                         ),
                     )
                 }
@@ -163,13 +192,20 @@ class CardFormViewModel(
                     )
                 )
                 // Keep the editor open for rapid entry: clear inputs and bump the toast counter.
-                _uiState.value = CardFormUiState(isEdit = false, savedTick = state.savedTick + 1)
+                // In picker mode, preserve the deck selection and list for the next card.
+                _uiState.value = CardFormUiState(
+                    isEdit = false,
+                    savedTick = state.savedTick + 1,
+                    pickDeck = state.pickDeck,
+                    decks = state.decks,
+                    selectedDeckId = state.selectedDeckId,
+                )
             }
         }
     }
 
     private fun newCard(
-        id: String, front: String, back: String, isReverse: Boolean, pairId: String?,
+        id: String, deckId: String, front: String, back: String, isReverse: Boolean, pairId: String?,
         image: String?, imagePath: String?, audioName: String?, audioPath: String?,
     ): Card {
         val t = now()

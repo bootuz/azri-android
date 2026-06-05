@@ -14,9 +14,12 @@ import nart.simpleanki.core.data.media.FakeMediaUploader
 import nart.simpleanki.core.data.media.LocalMediaStore
 import nart.simpleanki.core.data.media.MediaManager
 import nart.simpleanki.core.data.repository.CardRepository
+import nart.simpleanki.core.data.repository.DeckRepository
 import nart.simpleanki.core.data.repository.FakeCardDao
+import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
+import nart.simpleanki.core.domain.model.Deck
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -200,5 +203,68 @@ class CardFormViewModelTest {
         runCurrent()
         vm.onFrontChange("a2"); vm.save(); runCurrent()
         assertTrue(log.events.any { it.eventName == "card_updated" })
+    }
+
+    @Test
+    fun pickerMode_loadsDecks_andRequiresDeckBeforeSave() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        deckRepo.upsert(Deck(id = "d1", name = "French", dateCreated = now, lastModified = now))
+        deckRepo.upsert(Deck(id = "d2", name = "Spanish", dateCreated = now, lastModified = now))
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        val vm = CardFormViewModel(
+            deckId = null, cardRepository = cardRepo, mediaManager = media(),
+            deckRepository = deckRepo, now = { now },
+        )
+        runCurrent()
+
+        assertTrue(vm.uiState.value.pickDeck)
+        assertEquals(listOf("French", "Spanish"), vm.uiState.value.decks.map { it.name })
+
+        // Front + Back filled, but no deck chosen yet → cannot save.
+        vm.onFrontChange("bonjour"); vm.onBackChange("hello")
+        assertFalse(vm.uiState.value.canSave)
+
+        vm.onSelectDeck("d2")
+        assertTrue(vm.uiState.value.canSave)
+    }
+
+    @Test
+    fun pickerMode_save_persistsToSelectedDeck_andPreservesDeckOnReset() = runTest {
+        val dao = FakeCardDao()
+        val cardRepo = CardRepository(dao, now = { now })
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        deckRepo.upsert(Deck(id = "d1", name = "French", dateCreated = now, lastModified = now))
+        deckRepo.upsert(Deck(id = "d2", name = "Spanish", dateCreated = now, lastModified = now))
+        val vm = CardFormViewModel(
+            deckId = null, cardRepository = cardRepo, mediaManager = media(),
+            deckRepository = deckRepo, idGenerator = ids("c-1"), now = { now },
+        )
+        runCurrent()
+        vm.onSelectDeck("d2")
+        vm.onFrontChange("bonjour"); vm.onBackChange("hello")
+        vm.save(); runCurrent()
+
+        // Card landed in the selected deck d2 (not d1).
+        assertEquals(1, dao.observeByDeck("d2").first().size)
+        assertEquals(0, dao.observeByDeck("d1").first().size)
+        // Form reset for the next card, but the deck selection sticks.
+        assertEquals(1, vm.uiState.value.savedTick)
+        assertEquals("", vm.uiState.value.front)
+        assertEquals("d2", vm.uiState.value.selectedDeckId)
+        assertTrue(vm.uiState.value.pickDeck)
+        assertEquals(2, vm.uiState.value.decks.size)
+    }
+
+    @Test
+    fun fixedDeckMode_hasNoPicker_andSavesWithoutManualSelection() = runTest {
+        val dao = FakeCardDao()
+        val cardRepo = CardRepository(dao, now = { now })
+        val vm = CardFormViewModel("d1", cardRepo, media(), idGenerator = ids("c-1"), now = { now })
+        assertFalse(vm.uiState.value.pickDeck)
+        assertEquals("d1", vm.uiState.value.selectedDeckId)
+        vm.onFrontChange("hello"); vm.onBackChange("hola")
+        assertTrue(vm.uiState.value.canSave)   // no manual deck pick needed
+        vm.save(); runCurrent()
+        assertEquals(1, dao.observeByDeck("d1").first().size)
     }
 }
