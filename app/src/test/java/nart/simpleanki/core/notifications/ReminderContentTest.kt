@@ -45,4 +45,38 @@ class ReminderContentTest {
         assertEquals("Daily goal", c.title)
         assertTrue("remaining = 8", c.body.contains("8 cards"))
     }
+
+    @Test
+    fun streakSaver_postsWhenAtRiskAndUnprotected() {
+        val c = reminderContent(
+            ReminderType.StreakSaver, settings, studiedToday = 0, readyCount = 0,
+            currentStreak = 5, freezeTokens = 0,
+        )!!
+        assertEquals("Keep your streak alive", c.title)
+        assertTrue(c.body.contains("5-day streak"))
+    }
+
+    @Test
+    fun streakSaver_skipsWhenAlreadyStudiedToday() {
+        assertNull(reminderContent(
+            ReminderType.StreakSaver, settings, studiedToday = 1, readyCount = 0,
+            currentStreak = 5, freezeTokens = 0,
+        ))
+    }
+
+    @Test
+    fun streakSaver_skipsWhenNoStreak() {
+        assertNull(reminderContent(
+            ReminderType.StreakSaver, settings, studiedToday = 0, readyCount = 0,
+            currentStreak = 0, freezeTokens = 0,
+        ))
+    }
+
+    @Test
+    fun streakSaver_skipsWhenFreezeProtected() {
+        assertNull(reminderContent(
+            ReminderType.StreakSaver, settings, studiedToday = 0, readyCount = 0,
+            currentStreak = 5, freezeTokens = 1,
+        ))
+    }
 }

@@ -52,6 +52,7 @@ class ReminderWorker(
     private fun AppSettings.scheduleFor(type: ReminderType): Schedule = when (type) {
         ReminderType.Study -> Schedule(studyReminderEnabled, studyReminderHour, studyReminderMinute)
         ReminderType.Goal -> Schedule(goalReminderEnabled, goalReminderHour, goalReminderMinute)
+        ReminderType.StreakSaver -> Schedule(enabled = true, STREAK_SAVER_HOUR, STREAK_SAVER_MINUTE)
     }
 
     private fun startOfDay(nowMillis: Long): Long = Calendar.getInstance().apply {
