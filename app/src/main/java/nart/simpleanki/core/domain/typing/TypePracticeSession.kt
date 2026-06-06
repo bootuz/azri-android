@@ -52,6 +52,8 @@ class TypePracticeSession(
     val isRevealing: Boolean get() = awaiting
     /** "I was right" is only offered on a first attempt. */
     val canOverride: Boolean get() = awaiting && awaitingFirstAttempt
+    /** The live combo (consecutive first-try corrects; resets to 0 on any wrong submit). */
+    val currentCombo: Int get() = combo
 
     fun submit(answer: String): SubmitResult {
         val card = current ?: return SubmitResult.Correct

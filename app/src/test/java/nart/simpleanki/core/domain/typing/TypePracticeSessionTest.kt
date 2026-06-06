@@ -116,4 +116,12 @@ class TypePracticeSessionTest {
         assertEquals(Recorder.Entry("c1", true, "nope"), rec.entries.single())
         assertTrue(s.isFinished)
     }
+
+    @Test fun currentCombo_incrementsOnCorrect_resetsOnWrong() {
+        val s = TypePracticeSession(listOf(card("c1", "a"), card("c2", "b"), card("c3", "c")))
+        assertEquals(0, s.currentCombo)
+        s.submit("a"); assertEquals(1, s.currentCombo)
+        s.submit("b"); assertEquals(2, s.currentCombo)
+        s.submit("nope"); assertEquals(0, s.currentCombo)   // wrong first-try resets the combo
+    }
 }
