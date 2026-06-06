@@ -126,12 +126,12 @@ class TypePracticeViewModel(
         if (direction == TypeDirection.TypeFront) card.front else card.back
 
     fun onInput(text: String) {
-        if (_uiState.value.celebrating) return
+        if (_uiState.value.celebrating || _uiState.value.revealing) return
         _uiState.value = _uiState.value.copy(input = text)
     }
 
     fun onSubmit() {
-        if (!::session.isInitialized || _uiState.value.celebrating) return
+        if (!::session.isInitialized || _uiState.value.celebrating || _uiState.value.revealing) return
         val typed = _uiState.value.input
         val answered = session.current
         when (val r = session.submit(typed)) {
@@ -162,7 +162,7 @@ class TypePracticeViewModel(
 
     /** "Don't know": reveal the answer without an attempt; only Continue is offered. */
     fun onDontKnow() {
-        if (!::session.isInitialized || _uiState.value.celebrating) return
+        if (!::session.isInitialized || _uiState.value.celebrating || _uiState.value.revealing) return
         if (session.current == null) return
         when (val r = session.submit("")) {
             is SubmitResult.Wrong -> {

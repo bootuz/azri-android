@@ -24,12 +24,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -61,7 +59,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -124,6 +121,11 @@ fun TypePracticeContent(
     val inSession = !state.loading && !state.awaitingDirection && !state.finished
     val progressTarget = if (inSession && state.total > 0) (state.total - state.remaining).toFloat() / state.total else 0f
     val progress by animateFloatAsState(targetValue = progressTarget, animationSpec = tween(300), label = "progress")
+    // One persistent focus requester for the bottom-bar field — re-focused on each new card so the
+    // keyboard stays up for the whole session (the field never unmounts mid-session).
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(state.cardTick) { if (inSession) runCatching { focus.requestFocus() } }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -147,13 +149,29 @@ fun TypePracticeContent(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
+        bottomBar = {
+            if (inSession) {
+                // imePadding() on the bar (not the content) lifts it above the keyboard while the
+                // top bar stays put — mirrors CardFormScreen. The keyboard is up the whole session.
+                AnswerBar(
+                    state = state,
+                    focus = focus,
+                    onInput = onInput,
+                    onSubmit = onSubmit,
+                    onDontKnow = onDontKnow,
+                    onContinue = onContinue,
+                    onOverride = onOverride,
+                    modifier = Modifier.imePadding(),
+                )
+            }
+        },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             when {
                 state.loading -> CircularProgressIndicator()
                 state.awaitingDirection -> DirectionChooser(onChooseDirection)
                 state.finished -> SessionReportView(state.report, onRestart, onDone)
-                else -> PracticeCard(state, onInput, onSubmit, onDontKnow, onContinue, onOverride)
+                else -> PromptArea(state)
             }
         }
     }
@@ -227,49 +245,29 @@ private fun DirectionOption(title: String, subtitle: String, onClick: () -> Unit
     }
 }
 
+/** The upper zone: the prompt hero card, plus the char-diff when a wrong answer is revealed. */
 @Composable
-private fun PracticeCard(
-    state: TypePracticeUiState,
-    onInput: (String) -> Unit,
-    onSubmit: () -> Unit,
-    onDontKnow: () -> Unit,
-    onContinue: () -> Unit,
-    onOverride: () -> Unit,
-) {
+private fun PromptArea(state: TypePracticeUiState) {
     val card = state.current ?: return
     val typeFront = state.direction == TypeDirection.TypeFront
-    val focus = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(state.cardTick) { runCatching { focus.requestFocus() } }
-    LaunchedEffect(state.revealing, state.celebrating) {
-        if (state.revealing || state.celebrating) keyboard?.hide()
-    }
-
-    Column(Modifier.fillMaxSize().padding(20.dp).imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
-        // Upper zone: prompt hero card — scrolls if long, slides per card.
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            AnimatedContent(
-                targetState = state.cardTick,
-                transitionSpec = {
-                    (slideInHorizontally(tween(250)) { it / 3 } + fadeIn(tween(250))) togetherWith
-                        (slideOutHorizontally(tween(200)) { -it / 3 } + fadeOut(tween(200)))
-                },
-                label = "card",
-            ) { _ ->
-                Column(
-                    Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    PromptCard(card, typeFront, celebrating = state.celebrating)
-                }
-            }
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        AnimatedContent(
+            targetState = state.cardTick,
+            transitionSpec = {
+                (slideInHorizontally(tween(250)) { it / 3 } + fadeIn(tween(250))) togetherWith
+                    (slideOutHorizontally(tween(200)) { -it / 3 } + fadeOut(tween(200)))
+            },
+            label = "card",
+        ) { _ ->
+            PromptCard(card, typeFront, celebrating = state.celebrating)
         }
-        Spacer(Modifier.height(16.dp))
-        // Lower zone (thumb-rail): answer / celebrate / reveal.
-        when {
-            state.celebrating -> CorrectInput(state.input)
-            state.revealing -> RevealPanel(state, onContinue, onOverride)
-            else -> AnswerInput(state, focus, onInput, onSubmit, onDontKnow)
+        if (state.revealing) {
+            Spacer(Modifier.height(20.dp))
+            RevealDiff(state)
         }
     }
 }
@@ -326,61 +324,14 @@ private fun DirectionPill(typeFront: Boolean) {
     }
 }
 
+/** The char-level diff shown in the upper zone on a wrong answer (buttons live in the bottom bar). */
 @Composable
-private fun AnswerInput(
-    state: TypePracticeUiState,
-    focus: FocusRequester,
-    onInput: (String) -> Unit,
-    onSubmit: () -> Unit,
-    onDontKnow: () -> Unit,
-) {
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        OutlinedTextField(
-            value = state.input,
-            onValueChange = onInput,
-            modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            singleLine = true,
-            label = { Text("Type the answer") },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-        )
-        Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = onSubmit,
-            enabled = state.input.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = MaterialTheme.shapes.large,
-        ) { Text("Check") }
-        Spacer(Modifier.height(4.dp))
-        TextButton(onClick = onDontKnow, modifier = Modifier.fillMaxWidth()) { Text("Don't know") }
-    }
-}
-
-@Composable
-private fun CorrectInput(typed: String) {
-    val mint = RatingColors.Easy
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.5.dp, mint),
-        color = mint.copy(alpha = 0.06f),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            typed,
-            color = mint,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun RevealPanel(state: TypePracticeUiState, onContinue: () -> Unit, onOverride: () -> Unit) {
+private fun RevealDiff(state: TypePracticeUiState) {
     val diff = remember(state.revealedAnswer, state.lastTyped) {
         AnswerDiff.diff(typed = state.lastTyped, expected = state.revealedAnswer)
     }
-    val matchColor = RatingColors.Easy        // got it right = mint
-    val missColor = RatingColors.Again        // wrong/missing = pink
+    val matchColor = RatingColors.Easy
+    val missColor = RatingColors.Again
     val typedMatchColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -415,11 +366,67 @@ private fun RevealPanel(state: TypePracticeUiState, onContinue: () -> Unit, onOv
                 textAlign = TextAlign.Center,
             )
         }
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(50.dp), shape = MaterialTheme.shapes.large) { Text("Continue") }
-        if (state.canOverride) {
-            Spacer(Modifier.height(4.dp))
-            TextButton(onClick = onOverride, modifier = Modifier.fillMaxWidth()) { Text("I was right") }
+    }
+}
+
+/** The bottom thumb-rail: a persistent (always-focused) input + contextual actions, above the keyboard. */
+@Composable
+private fun AnswerBar(
+    state: TypePracticeUiState,
+    focus: FocusRequester,
+    onInput: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onDontKnow: () -> Unit,
+    onContinue: () -> Unit,
+    onOverride: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Always mounted + focused so the IME stays open all session; the VM ignores input
+            // while celebrating/revealing, so it is effectively read-only then.
+            OutlinedTextField(
+                value = state.input,
+                onValueChange = onInput,
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                singleLine = true,
+                label = { Text("Type the answer") },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+            )
+            Spacer(Modifier.height(10.dp))
+            when {
+                state.revealing -> {
+                    Button(
+                        onClick = onContinue,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = MaterialTheme.shapes.large,
+                    ) { Text("Continue") }
+                    Spacer(Modifier.height(4.dp))
+                    if (state.canOverride) {
+                        TextButton(onClick = onOverride, modifier = Modifier.fillMaxWidth()) { Text("I was right") }
+                    } else {
+                        Spacer(Modifier.height(36.dp))
+                    }
+                }
+                state.celebrating -> {
+                    Text("Correct!", style = MaterialTheme.typography.titleMedium, color = RatingColors.Easy)
+                    Spacer(Modifier.height(58.dp))
+                }
+                else -> {
+                    Button(
+                        onClick = onSubmit,
+                        enabled = state.input.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = MaterialTheme.shapes.large,
+                    ) { Text("Check") }
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(onClick = onDontKnow, modifier = Modifier.fillMaxWidth()) { Text("Don't know") }
+                }
+            }
         }
     }
 }
