@@ -314,17 +314,24 @@ private fun PromptCard(card: Card, typeFront: Boolean, celebrating: Boolean) {
     }
 }
 
+/** A small uppercase status chip (rounded, tinted by [color]) — used for the direction tag and the
+ *  wrong-answer INCORRECT marker so they read as one component. */
 @Composable
-private fun DirectionPill(typeFront: Boolean) {
-    Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)) {
+private fun StatusPill(text: String, color: Color) {
+    Surface(shape = RoundedCornerShape(50), color = color.copy(alpha = 0.14f)) {
         Text(
-            if (typeFront) "TYPE THE FRONT" else "TYPE THE BACK",
+            text,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
+            color = color,
             letterSpacing = 1.sp,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
+}
+
+@Composable
+private fun DirectionPill(typeFront: Boolean) {
+    StatusPill(if (typeFront) "TYPE THE FRONT" else "TYPE THE BACK", MaterialTheme.colorScheme.primary)
 }
 
 /** The bottom thumb-rail. While typing/celebrating: a persistent (always-focused) input + actions,
@@ -378,8 +385,9 @@ private fun AnswerBar(
     }
 }
 
-/** Wrong-answer result sheet: rises into the space freed by the dismissed keyboard, showing the
- *  correct answer vs. what the user typed (char-diff), with Continue / "I was right". */
+/** Wrong-answer result card: rises into the space freed by the dismissed keyboard, in Azri's card
+ *  style (white surface + hairline border, an INCORRECT status pill, color only in the diff),
+ *  showing the correct answer vs. what the user typed, with Continue / "I was right". */
 @Composable
 private fun ResultSheet(
     state: TypePracticeUiState,
@@ -402,52 +410,49 @@ private fun ResultSheet(
         enter = slideInVertically(tween(250)) { it } + fadeIn(tween(250)),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = pink.copy(alpha = 0.08f),
-            border = BorderStroke(1.dp, pink.copy(alpha = 0.5f)),
-            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(26.dp).clip(CircleShape).background(pink),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Text("Correct answer", style = MaterialTheme.typography.titleSmall, color = pink)
-                }
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    buildAnnotatedString {
-                        diff.expected.forEach { seg ->
-                            when (seg.kind) {
-                                AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = mint)) { append(seg.text) }
-                                AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = pink, textDecoration = TextDecoration.Underline)) { append(seg.text) }
-                            }
-                        }
-                    },
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                if (state.lastTyped.isNotBlank()) {
-                    Spacer(Modifier.height(10.dp))
-                    Text("You typed", style = MaterialTheme.typography.labelMedium, color = typedMatch)
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        buildAnnotatedString {
-                            diff.typed.forEach { seg ->
-                                when (seg.kind) {
-                                    AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = typedMatch)) { append(seg.text) }
-                                    AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = pink, textDecoration = TextDecoration.LineThrough)) { append(seg.text) }
+        Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    shape = RoundedCornerShape(20.dp),
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        StatusPill("INCORRECT", pink)
+                        Spacer(Modifier.height(10.dp))
+                        Text("Correct answer", style = MaterialTheme.typography.labelMedium, color = typedMatch)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            buildAnnotatedString {
+                                diff.expected.forEach { seg ->
+                                    when (seg.kind) {
+                                        AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = mint)) { append(seg.text) }
+                                        AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = pink, textDecoration = TextDecoration.Underline)) { append(seg.text) }
+                                    }
                                 }
-                            }
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                            },
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        if (state.lastTyped.isNotBlank()) {
+                            Spacer(Modifier.height(10.dp))
+                            Text("You typed", style = MaterialTheme.typography.labelMedium, color = typedMatch)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                buildAnnotatedString {
+                                    diff.typed.forEach { seg ->
+                                        when (seg.kind) {
+                                            AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = typedMatch)) { append(seg.text) }
+                                            AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = pink, textDecoration = TextDecoration.LineThrough)) { append(seg.text) }
+                                        }
+                                    }
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onContinue,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
