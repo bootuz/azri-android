@@ -3,6 +3,7 @@ package nart.simpleanki.feature.typepractice
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.typing.SessionReport
+import nart.simpleanki.core.domain.typing.TypeDirection
 import nart.simpleanki.di.StudyArgs
 import nart.simpleanki.ui.components.AudioPlayButton
 import nart.simpleanki.ui.components.MediaImage
@@ -61,6 +63,7 @@ fun TypePracticeScreen(
     val state by viewModel.uiState.collectAsState()
     TypePracticeContent(
         state = state,
+        onChooseDirection = viewModel::chooseDirection,
         onInput = viewModel::onInput,
         onSubmit = viewModel::onSubmit,
         onDontKnow = viewModel::onDontKnow,
@@ -76,6 +79,7 @@ fun TypePracticeScreen(
 @Composable
 fun TypePracticeContent(
     state: TypePracticeUiState,
+    onChooseDirection: (TypeDirection) -> Unit,
     onInput: (String) -> Unit,
     onSubmit: () -> Unit,
     onDontKnow: () -> Unit,
@@ -98,9 +102,63 @@ fun TypePracticeContent(
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             when {
                 state.loading -> CircularProgressIndicator()
+                state.awaitingDirection -> DirectionChooser(onChooseDirection)
                 state.finished -> SessionReportView(state.report, onRestart, onDone)
                 else -> PracticeCard(state, onInput, onSubmit, onDontKnow, onContinue, onOverride)
             }
+        }
+    }
+}
+
+@Composable
+private fun DirectionChooser(onChoose: (TypeDirection) -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            "What do you want to type?",
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Pick the side you'll produce from memory.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(28.dp))
+        DirectionOption(
+            title = "Type the back",
+            subtitle = "See the front → type the back (the answer)",
+            onClick = { onChoose(TypeDirection.TypeBack) },
+        )
+        Spacer(Modifier.height(12.dp))
+        DirectionOption(
+            title = "Type the front",
+            subtitle = "See the back → type the front",
+            onClick = { onChoose(TypeDirection.TypeFront) },
+        )
+    }
+}
+
+@Composable
+private fun DirectionOption(title: String, subtitle: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+    ) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -115,6 +173,7 @@ private fun PracticeCard(
     onOverride: () -> Unit,
 ) {
     val card = state.current ?: return
+    val typeFront = state.direction == TypeDirection.TypeFront
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     // Re-focus the field each time the prompt changes (this also re-shows the keyboard for the next card).
@@ -135,12 +194,15 @@ private fun PracticeCard(
             letterSpacing = 1.sp,
         )
         Spacer(Modifier.height(12.dp))
-        card.image?.let { name ->
-            MediaImage(name, card.imagePath, Modifier.fillMaxWidth().height(160.dp))
-            Spacer(Modifier.height(16.dp))
+        // The image is a front-side artifact: show it only when the front is the prompt (TypeBack).
+        if (!typeFront) {
+            card.image?.let { name ->
+                MediaImage(name, card.imagePath, Modifier.fillMaxWidth().height(160.dp))
+                Spacer(Modifier.height(16.dp))
+            }
         }
         Text(
-            card.front,
+            if (typeFront) card.back else card.front,   // prompt = the side the user is NOT typing
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -264,8 +326,8 @@ private val previewCard = Card(
 private fun TypePromptPreview() {
     AzriTheme {
         TypePracticeContent(
-            state = TypePracticeUiState(loading = false, current = previewCard, input = "How are", remaining = 5),
-            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {}, onRestart = {}, onDone = {},
+            state = TypePracticeUiState(loading = false, current = previewCard, input = "How are", remaining = 5, direction = TypeDirection.TypeBack),
+            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {}, onRestart = {}, onDone = {}, onChooseDirection = {},
         )
     }
 }
@@ -278,8 +340,9 @@ private fun TypeRevealPreview() {
             state = TypePracticeUiState(
                 loading = false, current = previewCard, remaining = 5,
                 revealing = true, revealedAnswer = "How are you?", lastTyped = "how is you", canOverride = true,
+                direction = TypeDirection.TypeBack,
             ),
-            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {}, onRestart = {}, onDone = {},
+            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {}, onRestart = {}, onDone = {}, onChooseDirection = {},
         )
     }
 }
@@ -293,7 +356,34 @@ private fun TypeReportPreview() {
                 loading = false, finished = true,
                 report = SessionReport(completed = 12, firstTryCorrect = 9, firstTryAccuracy = 75, bestCombo = 5, newlyMastered = 3),
             ),
-            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {}, onRestart = {}, onDone = {},
+            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {}, onRestart = {}, onDone = {}, onChooseDirection = {},
+        )
+    }
+}
+
+@Preview(name = "Type · direction chooser", showBackground = true)
+@Composable
+private fun TypeDirectionChooserPreview() {
+    AzriTheme {
+        TypePracticeContent(
+            state = TypePracticeUiState(loading = false, awaitingDirection = true),
+            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {},
+            onRestart = {}, onDone = {}, onChooseDirection = {},
+        )
+    }
+}
+
+@Preview(name = "Type · prompt (type front)", showBackground = true)
+@Composable
+private fun TypeFrontPromptPreview() {
+    AzriTheme {
+        TypePracticeContent(
+            state = TypePracticeUiState(
+                loading = false, current = previewCard, input = "¿Cómo",
+                remaining = 5, direction = TypeDirection.TypeFront,
+            ),
+            onInput = {}, onSubmit = {}, onDontKnow = {}, onContinue = {}, onOverride = {},
+            onRestart = {}, onDone = {}, onChooseDirection = {},
         )
     }
 }
