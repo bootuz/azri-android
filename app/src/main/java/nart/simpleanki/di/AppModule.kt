@@ -35,6 +35,7 @@ import nart.simpleanki.core.csv.DefaultCsvImportService
 import nart.simpleanki.core.data.local.AzriDatabase
 import nart.simpleanki.core.data.local.MIGRATION_1_2
 import nart.simpleanki.core.data.local.MIGRATION_2_3
+import nart.simpleanki.core.data.local.MIGRATION_3_4
 import nart.simpleanki.core.data.media.FirebaseMediaRepository
 import nart.simpleanki.core.data.media.LocalMediaStore
 import nart.simpleanki.core.data.media.MediaManager
@@ -46,6 +47,8 @@ import nart.simpleanki.core.data.repository.ReviewLogRepository
 import nart.simpleanki.core.data.repository.StreakProvider
 import nart.simpleanki.core.data.repository.StreakStateManager
 import nart.simpleanki.core.data.repository.StreakStateRepository
+import nart.simpleanki.core.data.repository.TypingLogRepository
+import nart.simpleanki.core.data.repository.TypingMasteryProvider
 import nart.simpleanki.core.data.settings.DataStoreSettingsRepository
 import nart.simpleanki.core.data.settings.SettingsRepository
 import nart.simpleanki.core.data.sync.FirestoreSyncService
@@ -70,6 +73,7 @@ import nart.simpleanki.feature.queue.StudyQueueViewModel
 import nart.simpleanki.feature.settings.SettingsViewModel
 import nart.simpleanki.feature.review.ReviewViewModel
 import nart.simpleanki.feature.study.StudyViewModel
+import nart.simpleanki.feature.typepractice.TypePracticeViewModel
 import nart.simpleanki.feature.sync.SyncViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
@@ -138,7 +142,7 @@ val appModule = module {
     // Local persistence (Room)
     single {
         Room.databaseBuilder(androidContext(), AzriDatabase::class.java, "azri.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
@@ -147,19 +151,22 @@ val appModule = module {
     single { get<AzriDatabase>().cardDao() }
     single { get<AzriDatabase>().reviewLogDao() }
     single { get<AzriDatabase>().streakStateDao() }
+    single { get<AzriDatabase>().typingLogDao() }
 
     // Repositories
     single { FolderRepository(get()) }
     single { DeckRepository(get()) }
     single { CardRepository(get()) }
     single { ReviewLogRepository(get()) }
+    single { TypingLogRepository(get()) }
+    single { TypingMasteryProvider(get(), get(), get()) }
     single { StreakStateRepository(get()) }
     single { StreakProvider(get(), get()) }
     single { StreakStateManager(get(), get()) }
 
     // Sync
     single<RemoteSyncSource> { FirestoreSyncService(get()) }
-    single { SyncManager(get(), get(), get(), get(), get(), get(), get()) }
+    single { SyncManager(get(), get(), get(), get(), get(), get(), get(), get()) }
 
     // Billing / entitlement
     single { EntitlementCache(androidContext()) }
@@ -185,7 +192,8 @@ val appModule = module {
         DeckDetailViewModel(
             deckId = params.get(),
             cardRepository = get(),
-            deckRepository = get()
+            deckRepository = get(),
+            typingMasteryProvider = get(),
         )
     }
     viewModel { params ->
@@ -218,6 +226,17 @@ val appModule = module {
             folderId = args.folderId,
             cardRepository = get(),
             deckRepository = get(),
+            logManager = get(),
+        )
+    }
+    viewModel { params ->
+        val args = params.get<StudyArgs>()
+        // Type Practice is deck-level only (v1) — args.folderId is intentionally unused.
+        TypePracticeViewModel(
+            deckId = args.deckId,
+            cardRepository = get(),
+            deckRepository = get(),
+            typingLogRepository = get(),
             logManager = get(),
         )
     }

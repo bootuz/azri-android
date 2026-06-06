@@ -7,6 +7,7 @@ import nart.simpleanki.core.data.firestore.CardDto
 import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
 import nart.simpleanki.core.data.firestore.ReviewLogDto
+import nart.simpleanki.core.data.firestore.TypingLogDto
 import nart.simpleanki.core.data.local.CardEntity
 import nart.simpleanki.core.data.local.FolderEntity
 import nart.simpleanki.core.data.media.FakeMediaUploader
@@ -19,6 +20,7 @@ import nart.simpleanki.core.data.repository.FakeDeckDao
 import nart.simpleanki.core.data.repository.FakeFolderDao
 import nart.simpleanki.core.data.repository.FakeReviewLogDao
 import nart.simpleanki.core.data.repository.FakeStreakStateDao
+import nart.simpleanki.core.data.repository.FakeTypingLogDao
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -36,11 +38,13 @@ class SyncManagerTest {
         var decks: MutableList<DeckDto> = mutableListOf(),
         var cards: MutableList<CardDto> = mutableListOf(),
         var reviewLogs: MutableList<ReviewLogDto> = mutableListOf(),
+        var typingLogs: MutableList<TypingLogDto> = mutableListOf(),
         var streakState: StreakStateDto? = null,
     ) : RemoteSyncSource {
         val pushedFolders = mutableListOf<FolderDto>()
         val pushedCards = mutableListOf<CardDto>()
         val pushedReviewLogs = mutableListOf<ReviewLogDto>()
+        val pushedTypingLogs = mutableListOf<TypingLogDto>()
         var pushedStreakState: StreakStateDto? = null
         override suspend fun fetchFolders(uid: String) = folders
         override suspend fun pushFolders(uid: String, dtos: List<FolderDto>) { pushedFolders += dtos }
@@ -50,6 +54,8 @@ class SyncManagerTest {
         override suspend fun pushCards(uid: String, dtos: List<CardDto>) { pushedCards += dtos }
         override suspend fun fetchReviewLogs(uid: String) = reviewLogs
         override suspend fun pushReviewLogs(uid: String, dtos: List<ReviewLogDto>) { pushedReviewLogs += dtos }
+        override suspend fun fetchTypingLogs(uid: String) = typingLogs
+        override suspend fun pushTypingLogs(uid: String, dtos: List<TypingLogDto>) { pushedTypingLogs += dtos }
         override suspend fun fetchStreakState(uid: String) = streakState
         override suspend fun pushStreakState(uid: String, dto: StreakStateDto) { pushedStreakState = dto }
     }
@@ -93,7 +99,7 @@ class SyncManagerTest {
         folderDao.upsertAll(listOf(FolderEntity(id = "f1", name = "A", lastModified = 5, dirty = true)))
         val remote = FakeRemote()
         val (m, _) = media()
-        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -118,7 +124,7 @@ class SyncManagerTest {
             )
         )
         val (m, _) = media()
-        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -137,7 +143,7 @@ class SyncManagerTest {
             )
         )
         val (m, _) = media()
-        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(folderDao, FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -152,7 +158,7 @@ class SyncManagerTest {
         val name = m.saveImage(byteArrayOf(1, 2, 3))
         cardDao.upsertAll(listOf(cardEntity(id = "c1", image = name, imagePath = null, dirty = true)))
         val remote = FakeRemote()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -167,7 +173,7 @@ class SyncManagerTest {
         val cardDao = FakeCardDao()
         val (m, up) = media()
         cardDao.upsertAll(listOf(cardEntity(id = "c1", image = null, imagePath = null, dirty = true)))
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeStreakStateDao(), FakeRemote(), m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeTypingLogDao(), FakeStreakStateDao(), FakeRemote(), m)
 
         sync.sync("u1")
 
@@ -186,7 +192,7 @@ class SyncManagerTest {
                 CardDto(id = "c1", image = "pic.jpg", imagePath = "users/u/images/pic.jpg", lastModified = ts(100)),
             ),
         )
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -202,7 +208,7 @@ class SyncManagerTest {
         val name = m.saveImage(byteArrayOf(1, 2, 3))
         cardDao.upsertAll(listOf(cardEntity(id = "c1", image = name, imagePath = null, dirty = true)))
         val remote = FakeRemote()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), cardDao, FakeReviewLogDao(), FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -217,7 +223,7 @@ class SyncManagerTest {
         logDao.insertAll(listOf(reviewLogEntity("l1", dirty = true)))
         val remote = FakeRemote()
         val (m, _) = media()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), logDao, FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), logDao, FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -234,7 +240,7 @@ class SyncManagerTest {
             ReviewLogDto.fromDomain(reviewLogEntity("l2", dirty = false).toDomain()),
         ))
         val (m, _) = media()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), logDao, FakeStreakStateDao(), remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), logDao, FakeTypingLogDao(), FakeStreakStateDao(), remote, m)
 
         sync.sync("u1")
 
@@ -256,7 +262,7 @@ class SyncManagerTest {
         dao.upsert(streakEntity(lastModified = 100, dirty = true))
         val remote = FakeRemote()
         val (m, _) = media()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), dao, remote, m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeTypingLogDao(), dao, remote, m)
         sync.sync("u1")
         assertEquals(100L, remote.pushedStreakState!!.lastModifiedMillis())
         assertFalse(dao.get()!!.dirty)
@@ -268,8 +274,45 @@ class SyncManagerTest {
         dao.upsert(streakEntity(lastModified = 100, dirty = false))
         val newer = StreakStateDto.fromEntity(streakEntity(lastModified = 200, dirty = false)).apply { freezeTokens = 2 }
         val (m, _) = media()
-        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), dao, FakeRemote(streakState = newer), m)
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), FakeTypingLogDao(), dao, FakeRemote(streakState = newer), m)
         sync.sync("u1")
         assertEquals(2, dao.get()!!.freezeTokens)
+    }
+
+    private fun typingLogEntity(id: String, dirty: Boolean) = nart.simpleanki.core.data.local.TypingLogEntity(
+        id = id, cardId = "c1", deckId = "d1", correct = true, typedText = "x", timestamp = 1_000, dirty = dirty,
+    )
+
+    @Test
+    fun typingLogs_pushDirty_thenClearDirty() = runTest {
+        val logDao = FakeTypingLogDao()
+        logDao.insertAll(listOf(typingLogEntity("t1", dirty = true)))
+        val remote = FakeRemote()
+        val (m, _) = media()
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), logDao, FakeStreakStateDao(), remote, m)
+
+        sync.sync("u1")
+
+        assertEquals(listOf("t1"), remote.pushedTypingLogs.map { it.id })
+        assertTrue(logDao.getDirty().isEmpty())
+    }
+
+    @Test
+    fun typingLogs_pullUnionsRemote_andSkipsExisting() = runTest {
+        val logDao = FakeTypingLogDao()
+        logDao.insertAll(listOf(typingLogEntity("t1", dirty = false)))
+        val remote = FakeRemote(typingLogs = mutableListOf(
+            TypingLogDto.fromDomain(typingLogEntity("t1", dirty = false).toDomain()),
+            TypingLogDto.fromDomain(typingLogEntity("t2", dirty = false).toDomain()),
+        ))
+        val (m, _) = media()
+        val sync = SyncManager(FakeFolderDao(), FakeDeckDao(), FakeCardDao(), FakeReviewLogDao(), logDao, FakeStreakStateDao(), remote, m)
+
+        sync.sync("u1")
+
+        assertEquals(setOf("t1", "t2"), logDao.getAllIds().toSet())
+        // Prove SyncManager's own filter (not just the DAO's IGNORE) skipped the duplicate t1:
+        // only the seed t1 and the synced t2 were ever forwarded to insertAll — not t1 twice.
+        assertEquals(listOf("t1", "t2"), logDao.inserted.map { it.id })
     }
 }

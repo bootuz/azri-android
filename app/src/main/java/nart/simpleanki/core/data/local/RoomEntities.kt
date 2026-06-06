@@ -90,6 +90,20 @@ data class ReviewLogEntity(
     val dirty: Boolean = true,
 )
 
+@Entity(
+    tableName = "typing_logs",
+    indices = [Index("cardId"), Index("deckId")],
+)
+data class TypingLogEntity(
+    @PrimaryKey val id: String,
+    val cardId: String,
+    val deckId: String,
+    val correct: Boolean,
+    val typedText: String,
+    val timestamp: Long,
+    val dirty: Boolean = true,
+)
+
 @Entity(tableName = "streak_state")
 data class StreakStateEntity(
     @PrimaryKey val id: String = "current",

@@ -5,11 +5,13 @@ import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
 import nart.simpleanki.core.data.firestore.ReviewLogDto
 import nart.simpleanki.core.data.firestore.StreakStateDto
+import nart.simpleanki.core.data.firestore.TypingLogDto
 import nart.simpleanki.core.data.local.dao.CardDao
 import nart.simpleanki.core.data.local.dao.DeckDao
 import nart.simpleanki.core.data.local.dao.FolderDao
 import nart.simpleanki.core.data.local.dao.ReviewLogDao
 import nart.simpleanki.core.data.local.dao.StreakStateDao
+import nart.simpleanki.core.data.local.dao.TypingLogDao
 import nart.simpleanki.core.data.local.toDomain
 import nart.simpleanki.core.data.local.toEntity
 import nart.simpleanki.core.data.media.MediaManager
@@ -21,7 +23,7 @@ import nart.simpleanki.core.data.media.MediaManager
  *     (last-write-wins by `lastModified`). Soft-deletes (`isDeleted`) propagate
  *     because a deleted remote doc simply overwrites the local row.
  *
- * Review logs are the exception: immutable append-only events, unioned by id on pull
+ * Review logs and typing logs are the exception: immutable append-only events, unioned by id on pull
  * (never overwritten, no last-write-wins).
  */
 class SyncManager(
@@ -29,6 +31,7 @@ class SyncManager(
     private val deckDao: DeckDao,
     private val cardDao: CardDao,
     private val reviewLogDao: ReviewLogDao,
+    private val typingLogDao: TypingLogDao,
     private val streakStateDao: StreakStateDao,
     private val remote: RemoteSyncSource,
     private val media: MediaManager,
@@ -75,6 +78,11 @@ class SyncManager(
             remote.pushReviewLogs(uid, rows.map { ReviewLogDto.fromDomain(it.toDomain()) })
             rows.forEach { reviewLogDao.clearDirty(it.id) }
         }
+        // Typing logs are immutable, append-only events: push any dirty rows, then clear the flag.
+        typingLogDao.getDirty().takeIf { it.isNotEmpty() }?.let { rows ->
+            remote.pushTypingLogs(uid, rows.map { TypingLogDto.fromDomain(it.toDomain()) })
+            rows.forEach { typingLogDao.clearDirty(it.id) }
+        }
         streakStateDao.getDirty()?.let { row ->
             remote.pushStreakState(uid, StreakStateDto.fromEntity(row))
             streakStateDao.clearDirty(row.lastModified)
@@ -115,6 +123,13 @@ class SyncManager(
             .map { it.toDomain().toEntity(dirty = false) }
             .takeIf { it.isNotEmpty() }
             ?.let { reviewLogDao.insertAll(it) }
+        // Typing logs: union by id (immutable, so no last-write-wins) — insert only the ids we lack.
+        val localTypingIds = typingLogDao.getAllIds().toSet()
+        remote.fetchTypingLogs(uid)
+            .filter { it.id.isNotEmpty() && it.id !in localTypingIds }
+            .map { it.toDomain().toEntity(dirty = false) }
+            .takeIf { it.isNotEmpty() }
+            ?.let { typingLogDao.insertAll(it) }
         remote.fetchStreakState(uid)?.let { dto ->
             if (shouldApplyRemote(streakStateDao.get()?.lastModified, dto.lastModifiedMillis())) {
                 streakStateDao.upsert(dto.toEntity(dirty = false))

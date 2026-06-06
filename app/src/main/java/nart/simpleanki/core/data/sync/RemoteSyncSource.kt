@@ -5,6 +5,7 @@ import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
 import nart.simpleanki.core.data.firestore.ReviewLogDto
 import nart.simpleanki.core.data.firestore.StreakStateDto
+import nart.simpleanki.core.data.firestore.TypingLogDto
 
 /**
  * Remote sync seam over Firestore. Implemented by [FirestoreSyncService]; faked in tests.
@@ -22,6 +23,9 @@ interface RemoteSyncSource {
 
     suspend fun fetchReviewLogs(uid: String): List<ReviewLogDto>
     suspend fun pushReviewLogs(uid: String, dtos: List<ReviewLogDto>)
+
+    suspend fun fetchTypingLogs(uid: String): List<TypingLogDto>
+    suspend fun pushTypingLogs(uid: String, dtos: List<TypingLogDto>)
 
     suspend fun fetchStreakState(uid: String): StreakStateDto?
     suspend fun pushStreakState(uid: String, dto: StreakStateDto)

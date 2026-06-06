@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -17,11 +19,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,6 +69,7 @@ import kotlinx.coroutines.launch
 import nart.simpleanki.core.domain.fsrs.IntervalFormatter
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
+import nart.simpleanki.core.domain.typing.DeckMastery
 import nart.simpleanki.ui.components.AzriCard
 import nart.simpleanki.ui.theme.AzriTheme
 import org.koin.androidx.compose.koinViewModel
@@ -76,6 +81,7 @@ fun DeckDetailScreen(
     onBack: () -> Unit,
     onStudy: () -> Unit,
     onReview: () -> Unit,
+    onTypePractice: () -> Unit,
     onAddCard: () -> Unit,
     onEditCard: (String) -> Unit,
     onSettings: () -> Unit,
@@ -91,6 +97,7 @@ fun DeckDetailScreen(
         onBack = onBack,
         onStudy = onStudy,
         onReview = onReview,
+        onTypePractice = onTypePractice,
         onAddCard = onAddCard,
         onEditCard = onEditCard,
         onSettings = onSettings,
@@ -117,6 +124,7 @@ fun DeckDetailContent(
     onBack: () -> Unit,
     onStudy: () -> Unit,
     onReview: () -> Unit = {},
+    onTypePractice: () -> Unit = {},
     onAddCard: () -> Unit,
     onEditCard: (String) -> Unit,
     onSettings: () -> Unit,
@@ -230,6 +238,36 @@ fun DeckDetailContent(
                             style = MaterialTheme.typography.labelLarge,
                             modifier = Modifier.padding(start = 8.dp),
                         )
+                    }
+                }
+                if (state.total > 0) {
+                    OutlinedButton(
+                        onClick = onTypePractice,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        if (state.mastery.total > 0) {
+                            CircularProgressIndicator(
+                                progress = { state.mastery.mastered.toFloat() / state.mastery.total },
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(Icons.Filled.Keyboard, contentDescription = null)
+                        }
+                        Text(
+                            "Type Practice",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                        if (state.mastery.total > 0) {
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                "${state.mastery.mastered}/${state.mastery.total} mastered",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -435,6 +473,7 @@ private fun DeckDetailPreview() {
                     previewCard("2", "gracias", "thank you", CardState.Review, fsrsDue = now + 4 * 86_400_000L),
                     previewCard("3", "por favor", "please", CardState.Learning, fsrsDue = now - 60_000L),
                 ),
+                mastery = DeckMastery(mastered = 1, total = 2),
             ),
             onQueryChange = {}, onBack = {}, onStudy = {}, onAddCard = {}, onEditCard = {}, onSettings = {},
             now = now,

@@ -10,6 +10,7 @@ import nart.simpleanki.core.data.local.DeckEntity
 import nart.simpleanki.core.data.local.FolderEntity
 import nart.simpleanki.core.data.local.ReviewLogEntity
 import nart.simpleanki.core.data.local.StreakStateEntity
+import nart.simpleanki.core.data.local.TypingLogEntity
 
 @Dao
 interface FolderDao {
@@ -97,6 +98,28 @@ interface ReviewLogDao {
 
     @Query("SELECT * FROM review_logs ORDER BY review")
     fun observeAll(): Flow<List<ReviewLogEntity>>
+}
+
+@Dao
+interface TypingLogDao {
+    // IGNORE makes both append (fresh UUID) and pull (union) idempotent: an existing id is a no-op.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(logs: List<TypingLogEntity>)
+
+    @Query("SELECT * FROM typing_logs WHERE dirty = 1")
+    suspend fun getDirty(): List<TypingLogEntity>
+
+    @Query("UPDATE typing_logs SET dirty = 0 WHERE id = :id")
+    suspend fun clearDirty(id: String)
+
+    @Query("SELECT id FROM typing_logs")
+    suspend fun getAllIds(): List<String>
+
+    @Query("SELECT * FROM typing_logs ORDER BY timestamp")
+    fun observeAll(): Flow<List<TypingLogEntity>>
+
+    @Query("SELECT * FROM typing_logs WHERE deckId = :deckId ORDER BY timestamp")
+    fun observeForDeck(deckId: String): Flow<List<TypingLogEntity>>
 }
 
 @Dao

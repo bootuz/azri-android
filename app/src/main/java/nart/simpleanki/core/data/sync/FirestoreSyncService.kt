@@ -7,10 +7,11 @@ import nart.simpleanki.core.data.firestore.DeckDto
 import nart.simpleanki.core.data.firestore.FolderDto
 import nart.simpleanki.core.data.firestore.ReviewLogDto
 import nart.simpleanki.core.data.firestore.StreakStateDto
+import nart.simpleanki.core.data.firestore.TypingLogDto
 
 /**
  * Firestore-backed [RemoteSyncSource]. Collections mirror the iOS layout exactly:
- * `users/{uid}/folders`, `users/{uid}/decks`, `users/{uid}/cards`, `users/{uid}/reviewLogs`.
+ * `users/{uid}/folders`, `users/{uid}/decks`, `users/{uid}/cards`, `users/{uid}/reviewLogs`, `users/{uid}/typingLogs`.
  */
 class FirestoreSyncService(
     private val firestore: FirebaseFirestore,
@@ -42,6 +43,12 @@ class FirestoreSyncService(
 
     override suspend fun pushReviewLogs(uid: String, dtos: List<ReviewLogDto>) =
         push(uid, "reviewLogs", dtos) { it.id }
+
+    override suspend fun fetchTypingLogs(uid: String): List<TypingLogDto> =
+        col(uid, "typingLogs").get().await().toObjects(TypingLogDto::class.java)
+
+    override suspend fun pushTypingLogs(uid: String, dtos: List<TypingLogDto>) =
+        push(uid, "typingLogs", dtos) { it.id }
 
     override suspend fun fetchStreakState(uid: String): StreakStateDto? =
         col(uid, "streakState").document("current").get().await().toObject(StreakStateDto::class.java)
