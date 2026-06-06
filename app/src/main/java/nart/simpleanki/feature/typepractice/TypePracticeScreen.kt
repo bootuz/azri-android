@@ -57,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -124,7 +125,11 @@ fun TypePracticeContent(
     // One persistent focus requester for the bottom-bar field — re-focused on each new card so the
     // keyboard stays up for the whole session (the field never unmounts mid-session).
     val focus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(state.cardTick) { if (inSession) runCatching { focus.requestFocus() } }
+    // On a wrong answer, release focus so the IME slides away and the result sheet has room.
+    // On advance, cardTick changes and the effect above re-focuses, bringing the keyboard back.
+    LaunchedEffect(state.revealing) { if (state.revealing) focusManager.clearFocus(force = true) }
 
     Scaffold(
         topBar = {
