@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
+import nart.simpleanki.core.domain.model.Deck
+import nart.simpleanki.core.domain.model.ReviewCardFilter
 import nart.simpleanki.core.domain.model.TypingLog
 import nart.simpleanki.core.domain.typing.DeckMastery
 import org.junit.Assert.assertEquals
@@ -26,7 +28,23 @@ class TypingMasteryProviderTest {
         val logRepo = TypingLogRepository(logDao, newId = { java.util.UUID.randomUUID().toString() })
         logRepo.append(TypingLog(cardId = "c1", deckId = "d1", correct = true, typedText = "x", timestamp = 1))
 
-        val provider = TypingMasteryProvider(logRepo, cardRepo)
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val provider = TypingMasteryProvider(logRepo, cardRepo, deckRepo)
         assertEquals(DeckMastery(mastered = 1, total = 2), provider.observeDeckMastery("d1").first())
+    }
+
+    @Test fun deckMastery_excludesMemorizedAndReviewFilteredCards() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        deckRepo.upsert(
+            Deck(id = "d1", name = "D", dateCreated = now, lastModified = now, reviewFilter = ReviewCardFilter.OriginalsOnly),
+        )
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        cardRepo.upsert(card("orig", "d1"))                               // typeable original
+        cardRepo.upsert(card("rev", "d1").copy(isReverse = true))         // excluded: OriginalsOnly
+        cardRepo.upsert(card("mem", "d1").copy(memorized = true))         // excluded: memorized
+        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
+
+        val provider = TypingMasteryProvider(logRepo, cardRepo, deckRepo)
+        assertEquals(DeckMastery(mastered = 0, total = 1), provider.observeDeckMastery("d1").first())
     }
 }

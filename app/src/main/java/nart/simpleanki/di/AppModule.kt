@@ -159,7 +159,7 @@ val appModule = module {
     single { CardRepository(get()) }
     single { ReviewLogRepository(get()) }
     single { TypingLogRepository(get()) }
-    single { TypingMasteryProvider(get(), get()) }
+    single { TypingMasteryProvider(get(), get(), get()) }
     single { StreakStateRepository(get()) }
     single { StreakProvider(get(), get()) }
     single { StreakStateManager(get(), get()) }
