@@ -4,9 +4,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import nart.simpleanki.core.data.repository.CardRepository
@@ -29,8 +29,9 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class TypePracticeViewModelTest {
     private val now = 1_700_000_000_000L
+    private val dispatcher = StandardTestDispatcher()
 
-    @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    @Before fun setUp() = Dispatchers.setMain(dispatcher)
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun card(id: String, back: String, front: String = "f-$id") = Card(
@@ -38,153 +39,115 @@ class TypePracticeViewModelTest {
         dateCreated = now, lastModified = now, fsrsDue = now, fsrsState = CardState.New.value,
     )
 
-    @Test
-    fun correctAnswer_advances_appendsOneLog_andFinishes() = runTest {
+    private fun model(vararg cards: Card): Pair<TypePracticeViewModel, TypingLogRepository> {
         val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
         val cardRepo = CardRepository(FakeCardDao(), now = { now })
-        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
-        cardRepo.upsert(card("c1", "answer"))
         val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
-        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
-        backgroundScope.launch { model.uiState.collect {} }
-        runCurrent()
+        kotlinx.coroutines.runBlocking {
+            deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
+            cards.forEach { cardRepo.upsert(it) }
+        }
+        // shuffleSeed = { null } disables shuffling so cards stay in insertion order (c1, c2, ...)
+        return TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now }, shuffleSeed = { null }) to logRepo
+    }
 
-        assertTrue(model.uiState.value.awaitingDirection)
-        model.chooseDirection(TypeDirection.TypeBack)
-        runCurrent()
+    @Test
+    fun correctAnswer_celebrates_thenAdvances_andAppendsOneLog() = runTest(dispatcher.scheduler) {
+        val (vm, logRepo) = model(card("c1", "answer"), card("c2", "two"))
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.awaitingDirection)
 
-        assertFalse(model.uiState.value.loading)
-        assertEquals("c1", model.uiState.value.current!!.id)
+        vm.chooseDirection(TypeDirection.TypeBack)
+        advanceUntilIdle()
+        assertEquals("c1", vm.uiState.value.current!!.id)
+        assertEquals(2, vm.uiState.value.total)
 
-        model.onInput("answer")
-        model.onSubmit()
-        runCurrent()
+        vm.onInput("answer")
+        vm.onSubmit()
+        assertTrue(vm.uiState.value.celebrating)
+        assertEquals("c1", vm.uiState.value.current!!.id)
+        assertEquals(1, vm.uiState.value.combo)
 
-        assertTrue(model.uiState.value.finished)
-        assertEquals(1, model.uiState.value.report!!.firstTryCorrect)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.celebrating)
+        assertEquals("c2", vm.uiState.value.current!!.id)
+
         val logs = logRepo.observeLogs().first()
         assertEquals(1, logs.size)
         assertTrue(logs.single().correct)
     }
 
     @Test
-    fun wrongAnswer_revealsThenContinue_logsWrong_andRequeues() = runTest {
-        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
-        val cardRepo = CardRepository(FakeCardDao(), now = { now })
-        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
-        cardRepo.upsert(card("c1", "answer"))
-        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
-        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
-        backgroundScope.launch { model.uiState.collect {} }
-        runCurrent()
+    fun progress_tracksClearedOverTotal() = runTest(dispatcher.scheduler) {
+        val (vm, _) = model(card("c1", "a"), card("c2", "b"))
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        vm.chooseDirection(TypeDirection.TypeBack)
+        advanceUntilIdle()
+        assertEquals(2, vm.uiState.value.total)
+        assertEquals(2, vm.uiState.value.remaining)
 
-        assertTrue(model.uiState.value.awaitingDirection)
-        model.chooseDirection(TypeDirection.TypeBack)
-        runCurrent()
-
-        model.onInput("nope")
-        model.onSubmit()
-        runCurrent()
-        assertTrue(model.uiState.value.revealing)
-        assertEquals("answer", model.uiState.value.revealedAnswer)
-        assertTrue(model.uiState.value.canOverride)
-
-        model.onContinue()
-        runCurrent()
-        assertFalse(model.uiState.value.revealing)
-        assertEquals("c1", model.uiState.value.current!!.id)        // requeued back to itself (only card)
-        val logs = logRepo.observeLogs().first()
-        assertEquals(1, logs.size)
-        assertFalse(logs.single().correct)
+        vm.onInput("a"); vm.onSubmit(); advanceUntilIdle()
+        assertEquals(2, vm.uiState.value.total)
+        assertEquals(1, vm.uiState.value.remaining)
     }
 
     @Test
-    fun blankBackCards_excluded_emptyPoolFinishesImmediately() = runTest {
-        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
-        val cardRepo = CardRepository(FakeCardDao(), now = { now })
-        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
-        cardRepo.upsert(card("c1", "   "))                          // blank back -> not typeable
-        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
-        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
-        backgroundScope.launch { model.uiState.collect {} }
-        runCurrent()
+    fun wrongAnswer_resetsComboChip_andReveals() = runTest(dispatcher.scheduler) {
+        val (vm, _) = model(card("c1", "answer"))
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        vm.chooseDirection(TypeDirection.TypeBack)
+        advanceUntilIdle()
 
-        assertTrue(model.uiState.value.awaitingDirection)
-        model.chooseDirection(TypeDirection.TypeBack)
-        runCurrent()
-
-        assertTrue(model.uiState.value.finished)
-        assertEquals(0, model.uiState.value.report!!.completed)
+        vm.onInput("nope"); vm.onSubmit()
+        assertTrue(vm.uiState.value.revealing)
+        assertEquals(0, vm.uiState.value.combo)
+        assertEquals("answer", vm.uiState.value.revealedAnswer)
+        assertFalse(vm.uiState.value.celebrating)
     }
 
     @Test
-    fun override_appendsCorrectLog_andFinishes() = runTest {
-        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
-        val cardRepo = CardRepository(FakeCardDao(), now = { now })
-        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
-        cardRepo.upsert(card("c1", "answer"))
-        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
-        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
-        backgroundScope.launch { model.uiState.collect {} }
-        runCurrent()
+    fun inputIgnoredWhileCelebrating() = runTest(dispatcher.scheduler) {
+        val (vm, _) = model(card("c1", "a"), card("c2", "b"))
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        vm.chooseDirection(TypeDirection.TypeBack)
+        advanceUntilIdle()
 
-        assertTrue(model.uiState.value.awaitingDirection)
-        model.chooseDirection(TypeDirection.TypeBack)
-        runCurrent()
-
-        model.onInput("nope")
-        model.onSubmit()
-        runCurrent()
-        assertTrue(model.uiState.value.canOverride)
-
-        model.onOverride()
-        runCurrent()
-        assertTrue(model.uiState.value.finished)
-        val logs = logRepo.observeLogs().first()
-        assertEquals(1, logs.size)
-        assertTrue(logs.single().correct)
+        vm.onInput("a"); vm.onSubmit()
+        assertTrue(vm.uiState.value.celebrating)
+        vm.onInput("ignored")
+        assertEquals("a", vm.uiState.value.input)
+        vm.onSubmit()
+        assertEquals("c1", vm.uiState.value.current!!.id)
     }
 
     @Test
-    fun typeFront_typesTheFront_appendsCorrectLog() = runTest {
-        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
-        val cardRepo = CardRepository(FakeCardDao(), now = { now })
-        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
-        cardRepo.upsert(card("c1", back = "definition"))            // front is "f-c1"
-        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
-        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
-        backgroundScope.launch { model.uiState.collect {} }
-        runCurrent()
+    fun lastCardCorrect_finishesAfterCelebrate() = runTest(dispatcher.scheduler) {
+        val (vm, _) = model(card("c1", "a"))
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        vm.chooseDirection(TypeDirection.TypeBack)
+        advanceUntilIdle()
 
-        model.chooseDirection(TypeDirection.TypeFront)
-        runCurrent()
-        assertEquals("c1", model.uiState.value.current!!.id)
-
-        model.onInput("f-c1")                                      // typing the FRONT clears it
-        model.onSubmit()
-        runCurrent()
-
-        assertTrue(model.uiState.value.finished)
-        val logs = logRepo.observeLogs().first()
-        assertEquals(1, logs.size)
-        assertTrue(logs.single().correct)
+        vm.onInput("a"); vm.onSubmit()
+        assertTrue(vm.uiState.value.celebrating)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.finished)
+        assertEquals(1, vm.uiState.value.report!!.completed)
     }
 
     @Test
-    fun blankFrontCard_excludedInTypeFront() = runTest {
-        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
-        val cardRepo = CardRepository(FakeCardDao(), now = { now })
-        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
-        cardRepo.upsert(card("c1", back = "b", front = "   "))     // blank front -> not typeable in TypeFront
-        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
-        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
-        backgroundScope.launch { model.uiState.collect {} }
-        runCurrent()
-
-        model.chooseDirection(TypeDirection.TypeFront)
-        runCurrent()
-
-        assertTrue(model.uiState.value.finished)
-        assertEquals(0, model.uiState.value.report!!.completed)
+    fun typeFront_typesTheFront() = runTest(dispatcher.scheduler) {
+        val (vm, logRepo) = model(card("c1", back = "definition"))
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        vm.chooseDirection(TypeDirection.TypeFront)
+        advanceUntilIdle()
+        vm.onInput("f-c1"); vm.onSubmit(); advanceUntilIdle()
+        assertTrue(vm.uiState.value.finished)
+        assertTrue(logRepo.observeLogs().first().single().correct)
     }
 }

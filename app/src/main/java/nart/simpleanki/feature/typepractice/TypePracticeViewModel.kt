@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nart.simpleanki.core.analytics.LoggableEvent
@@ -22,6 +23,9 @@ import nart.simpleanki.core.domain.typing.SubmitResult
 import nart.simpleanki.core.domain.typing.TypeDirection
 import nart.simpleanki.core.domain.typing.TypePracticeSession
 import nart.simpleanki.core.domain.typing.TypingMastery
+
+/** How long the mint success flash holds before auto-advancing. */
+private const val CELEBRATE_MS = 400L
 
 data class TypePracticeUiState(
     val loading: Boolean = true,
@@ -42,6 +46,12 @@ data class TypePracticeUiState(
     val report: SessionReport? = null,
     /** Increments whenever the prompt card changes; the screen keys autofocus on it. */
     val cardTick: Int = 0,
+    /** Live combo for the chip (consecutive first-try correct; 0 resets on a miss). */
+    val combo: Int = 0,
+    /** Session pool size, for the progress bar (progress = (total - remaining)/total). */
+    val total: Int = 0,
+    /** True during the brief mint success flash before auto-advancing. */
+    val celebrating: Boolean = false,
 )
 
 /**
@@ -57,11 +67,14 @@ class TypePracticeViewModel(
     private val typingLogRepository: TypingLogRepository,
     private val now: () -> Long = { System.currentTimeMillis() },
     private val logManager: LogManager = LogManager(emptyList()),
+    /** Supplies the pool shuffle seed; production uses now(). Return null to disable shuffling (tests). */
+    private val shuffleSeed: () -> Long? = { now() },
 ) : ViewModel() {
 
     private lateinit var session: TypePracticeSession
     private var deck: Deck? = null
     private var baseCards: List<Card> = emptyList()
+    private var poolTotal = 0
     private val _uiState = MutableStateFlow(TypePracticeUiState())
     val uiState: StateFlow<TypePracticeUiState> = _uiState.asStateFlow()
 
@@ -84,8 +97,9 @@ class TypePracticeViewModel(
             cards = baseCards,
             filter = deck?.reviewFilter ?: ReviewCardFilter.All,
             // Type Practice always shuffles (a fresh drill order), independent of the deck's shuffle setting.
-            shuffleSeed = now(),
+            shuffleSeed = shuffleSeed(),
         ).filter { typedSide(it, direction).isNotBlank() }
+        poolTotal = pool.size
         val previouslyMastered = TypingMastery.masteredCardIds(
             typingLogRepository.observeLogsForDeck(deckId.orEmpty()).first(),
         )
@@ -112,22 +126,35 @@ class TypePracticeViewModel(
         if (direction == TypeDirection.TypeFront) card.front else card.back
 
     fun onInput(text: String) {
+        if (_uiState.value.celebrating) return
         _uiState.value = _uiState.value.copy(input = text)
     }
 
     fun onSubmit() {
-        if (!::session.isInitialized) return
+        if (!::session.isInitialized || _uiState.value.celebrating) return
         val typed = _uiState.value.input
+        val answered = session.current
         when (val r = session.submit(typed)) {
             SubmitResult.Correct -> {
                 logManager.track(Event.Answered(true))
-                renderAdvance()
-                if (session.isFinished) logComplete()
+                _uiState.value = _uiState.value.copy(
+                    celebrating = true,
+                    current = answered,
+                    input = typed,
+                    combo = session.currentCombo,
+                    revealing = false,
+                )
+                viewModelScope.launch {
+                    delay(CELEBRATE_MS)
+                    renderAdvance()
+                    if (session.isFinished) logComplete()
+                }
             }
             is SubmitResult.Wrong -> {
                 logManager.track(Event.Answered(false))
                 _uiState.value = _uiState.value.copy(
-                    revealing = true, revealedAnswer = r.expected, lastTyped = typed, canOverride = session.canOverride,
+                    revealing = true, revealedAnswer = r.expected, lastTyped = typed,
+                    canOverride = session.canOverride, combo = session.currentCombo,
                 )
             }
         }
@@ -135,13 +162,14 @@ class TypePracticeViewModel(
 
     /** "Don't know": reveal the answer without an attempt; only Continue is offered. */
     fun onDontKnow() {
-        if (!::session.isInitialized) return
+        if (!::session.isInitialized || _uiState.value.celebrating) return
         if (session.current == null) return
         when (val r = session.submit("")) {
             is SubmitResult.Wrong -> {
                 logManager.track(Event.Answered(false))
                 _uiState.value = _uiState.value.copy(
-                    revealing = true, revealedAnswer = r.expected, lastTyped = "", canOverride = false,
+                    revealing = true, revealedAnswer = r.expected, lastTyped = "",
+                    canOverride = false, combo = session.currentCombo,
                 )
             }
             SubmitResult.Correct -> renderAdvance()   // unreachable (the typed side is never blank)
@@ -181,6 +209,9 @@ class TypePracticeViewModel(
             finished = session.isFinished,
             report = if (session.isFinished) session.report() else null,
             cardTick = prev.cardTick + 1,
+            combo = session.currentCombo,
+            total = poolTotal,
+            celebrating = false,
         )
     }
 
