@@ -1,12 +1,15 @@
 package nart.simpleanki.feature.typepractice
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
@@ -57,9 +60,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -250,7 +253,6 @@ private fun DirectionOption(title: String, subtitle: String, onClick: () -> Unit
     }
 }
 
-/** The upper zone: the prompt hero card, plus the char-diff when a wrong answer is revealed. */
 @Composable
 private fun PromptArea(state: TypePracticeUiState) {
     val card = state.current ?: return
@@ -269,10 +271,6 @@ private fun PromptArea(state: TypePracticeUiState) {
             label = "card",
         ) { _ ->
             PromptCard(card, typeFront, celebrating = state.celebrating)
-        }
-        if (state.revealing) {
-            Spacer(Modifier.height(20.dp))
-            RevealDiff(state)
         }
     }
 }
@@ -329,52 +327,8 @@ private fun DirectionPill(typeFront: Boolean) {
     }
 }
 
-/** The char-level diff shown in the upper zone on a wrong answer (buttons live in the bottom bar). */
-@Composable
-private fun RevealDiff(state: TypePracticeUiState) {
-    val diff = remember(state.revealedAnswer, state.lastTyped) {
-        AnswerDiff.diff(typed = state.lastTyped, expected = state.revealedAnswer)
-    }
-    val matchColor = RatingColors.Easy
-    val missColor = RatingColors.Again
-    val typedMatchColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Correct answer", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            buildAnnotatedString {
-                diff.expected.forEach { seg ->
-                    when (seg.kind) {
-                        AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = matchColor)) { append(seg.text) }
-                        AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = missColor, textDecoration = TextDecoration.Underline)) { append(seg.text) }
-                    }
-                }
-            },
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center,
-        )
-        if (state.lastTyped.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text("You typed", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(2.dp))
-            Text(
-                buildAnnotatedString {
-                    diff.typed.forEach { seg ->
-                        when (seg.kind) {
-                            AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = typedMatchColor)) { append(seg.text) }
-                            AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = missColor, textDecoration = TextDecoration.LineThrough)) { append(seg.text) }
-                        }
-                    }
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-/** The bottom thumb-rail: a persistent (always-focused) input + contextual actions, above the keyboard. */
+/** The bottom thumb-rail. While typing/celebrating: a persistent (always-focused) input + actions,
+ *  above the keyboard. On a wrong answer it is replaced by the ResultSheet (no field). */
 @Composable
 private fun AnswerBar(
     state: TypePracticeUiState,
@@ -386,13 +340,17 @@ private fun AnswerBar(
     onOverride: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.revealing) {
+        ResultSheet(state = state, onContinue = onContinue, onOverride = onOverride, modifier = modifier)
+        return
+    }
     Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Always mounted + focused so the IME stays open all session; the VM ignores input
-            // while celebrating/revealing, so it is effectively read-only then.
+            // Always mounted + focused while typing/celebrating so the IME stays open; the VM ignores
+            // input while celebrating, so it is effectively read-only then.
             OutlinedTextField(
                 value = state.input,
                 onValueChange = onInput,
@@ -403,33 +361,101 @@ private fun AnswerBar(
                 keyboardActions = KeyboardActions(onDone = { onSubmit() }),
             )
             Spacer(Modifier.height(10.dp))
-            when {
-                state.revealing -> {
-                    Button(
-                        onClick = onContinue,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = MaterialTheme.shapes.large,
-                    ) { Text("Continue") }
-                    Spacer(Modifier.height(4.dp))
-                    if (state.canOverride) {
-                        TextButton(onClick = onOverride, modifier = Modifier.fillMaxWidth()) { Text("I was right") }
-                    } else {
-                        Spacer(Modifier.height(36.dp))
+            if (state.celebrating) {
+                Text("Correct!", style = MaterialTheme.typography.titleMedium, color = RatingColors.Easy)
+                Spacer(Modifier.height(58.dp))
+            } else {
+                Button(
+                    onClick = onSubmit,
+                    enabled = state.input.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = MaterialTheme.shapes.large,
+                ) { Text("Check") }
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onDontKnow, modifier = Modifier.fillMaxWidth()) { Text("Don't know") }
+            }
+        }
+    }
+}
+
+/** Wrong-answer result sheet: rises into the space freed by the dismissed keyboard, showing the
+ *  correct answer vs. what the user typed (char-diff), with Continue / "I was right". */
+@Composable
+private fun ResultSheet(
+    state: TypePracticeUiState,
+    onContinue: () -> Unit,
+    onOverride: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val pink = RatingColors.Again
+    val mint = RatingColors.Easy
+    val typedMatch = MaterialTheme.colorScheme.onSurfaceVariant
+    val diff = remember(state.revealedAnswer, state.lastTyped) {
+        AnswerDiff.diff(typed = state.lastTyped, expected = state.revealedAnswer)
+    }
+    // Starts false then targets true, so the slide-in replays on every wrong answer. This relies on
+    // ResultSheet being unmounted between reveals (via AnswerBar's early-return), which re-inits the
+    // remembered state — keep that gating if this is ever refactored, or the entrance won't replay.
+    val enter = remember { MutableTransitionState(false) }.apply { targetState = true }
+    AnimatedVisibility(
+        visibleState = enter,
+        enter = slideInVertically(tween(250)) { it } + fadeIn(tween(250)),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = pink.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, pink.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(26.dp).clip(CircleShape).background(pink),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     }
+                    Spacer(Modifier.width(8.dp))
+                    Text("Correct answer", style = MaterialTheme.typography.titleSmall, color = pink)
                 }
-                state.celebrating -> {
-                    Text("Correct!", style = MaterialTheme.typography.titleMedium, color = RatingColors.Easy)
-                    Spacer(Modifier.height(58.dp))
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    buildAnnotatedString {
+                        diff.expected.forEach { seg ->
+                            when (seg.kind) {
+                                AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = mint)) { append(seg.text) }
+                                AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = pink, textDecoration = TextDecoration.Underline)) { append(seg.text) }
+                            }
+                        }
+                    },
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                if (state.lastTyped.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("You typed", style = MaterialTheme.typography.labelMedium, color = typedMatch)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        buildAnnotatedString {
+                            diff.typed.forEach { seg ->
+                                when (seg.kind) {
+                                    AnswerDiff.Kind.Match -> withStyle(SpanStyle(color = typedMatch)) { append(seg.text) }
+                                    AnswerDiff.Kind.Mismatch -> withStyle(SpanStyle(color = pink, textDecoration = TextDecoration.LineThrough)) { append(seg.text) }
+                                }
+                            }
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
-                else -> {
-                    Button(
-                        onClick = onSubmit,
-                        enabled = state.input.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = MaterialTheme.shapes.large,
-                    ) { Text("Check") }
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = onContinue,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = MaterialTheme.shapes.large,
+                ) { Text("Continue") }
+                if (state.canOverride) {
                     Spacer(Modifier.height(4.dp))
-                    TextButton(onClick = onDontKnow, modifier = Modifier.fillMaxWidth()) { Text("Don't know") }
+                    TextButton(onClick = onOverride, modifier = Modifier.fillMaxWidth()) { Text("I was right") }
                 }
             }
         }
@@ -516,6 +542,12 @@ private fun TypeCelebratingPreview() = PreviewWrap(previewState(input = "How are
 @Composable
 private fun TypeRevealPreview() = PreviewWrap(
     previewState(revealing = true, revealedAnswer = "How are you?", lastTyped = "how is you", canOverride = true),
+)
+
+@Preview(name = "Type · revealed (blank)", showBackground = true)
+@Composable
+private fun TypeRevealBlankPreview() = PreviewWrap(
+    previewState(revealing = true, revealedAnswer = "How are you?", lastTyped = "", canOverride = false),
 )
 
 @Preview(name = "Type · direction chooser", showBackground = true)
