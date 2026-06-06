@@ -18,6 +18,7 @@ import nart.simpleanki.core.data.repository.TypingLogRepository
 import nart.simpleanki.core.domain.model.Card
 import nart.simpleanki.core.domain.model.CardState
 import nart.simpleanki.core.domain.model.Deck
+import nart.simpleanki.core.domain.typing.TypeDirection
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -32,8 +33,8 @@ class TypePracticeViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun card(id: String, back: String) = Card(
-        id = id, front = "f-$id", back = back, deckId = "A",
+    private fun card(id: String, back: String, front: String = "f-$id") = Card(
+        id = id, front = front, back = back, deckId = "A",
         dateCreated = now, lastModified = now, fsrsDue = now, fsrsState = CardState.New.value,
     )
 
@@ -46,6 +47,10 @@ class TypePracticeViewModelTest {
         val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
         val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
         backgroundScope.launch { model.uiState.collect {} }
+        runCurrent()
+
+        assertTrue(model.uiState.value.awaitingDirection)
+        model.chooseDirection(TypeDirection.TypeBack)
         runCurrent()
 
         assertFalse(model.uiState.value.loading)
@@ -71,6 +76,10 @@ class TypePracticeViewModelTest {
         val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
         val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
         backgroundScope.launch { model.uiState.collect {} }
+        runCurrent()
+
+        assertTrue(model.uiState.value.awaitingDirection)
+        model.chooseDirection(TypeDirection.TypeBack)
         runCurrent()
 
         model.onInput("nope")
@@ -100,6 +109,10 @@ class TypePracticeViewModelTest {
         backgroundScope.launch { model.uiState.collect {} }
         runCurrent()
 
+        assertTrue(model.uiState.value.awaitingDirection)
+        model.chooseDirection(TypeDirection.TypeBack)
+        runCurrent()
+
         assertTrue(model.uiState.value.finished)
         assertEquals(0, model.uiState.value.report!!.completed)
     }
@@ -115,6 +128,10 @@ class TypePracticeViewModelTest {
         backgroundScope.launch { model.uiState.collect {} }
         runCurrent()
 
+        assertTrue(model.uiState.value.awaitingDirection)
+        model.chooseDirection(TypeDirection.TypeBack)
+        runCurrent()
+
         model.onInput("nope")
         model.onSubmit()
         runCurrent()
@@ -126,5 +143,48 @@ class TypePracticeViewModelTest {
         val logs = logRepo.observeLogs().first()
         assertEquals(1, logs.size)
         assertTrue(logs.single().correct)
+    }
+
+    @Test
+    fun typeFront_typesTheFront_appendsCorrectLog() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
+        cardRepo.upsert(card("c1", back = "definition"))            // front is "f-c1"
+        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
+        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
+        backgroundScope.launch { model.uiState.collect {} }
+        runCurrent()
+
+        model.chooseDirection(TypeDirection.TypeFront)
+        runCurrent()
+        assertEquals("c1", model.uiState.value.current!!.id)
+
+        model.onInput("f-c1")                                      // typing the FRONT clears it
+        model.onSubmit()
+        runCurrent()
+
+        assertTrue(model.uiState.value.finished)
+        val logs = logRepo.observeLogs().first()
+        assertEquals(1, logs.size)
+        assertTrue(logs.single().correct)
+    }
+
+    @Test
+    fun blankFrontCard_excludedInTypeFront() = runTest {
+        val deckRepo = DeckRepository(FakeDeckDao(), now = { now })
+        val cardRepo = CardRepository(FakeCardDao(), now = { now })
+        deckRepo.upsert(Deck(id = "A", name = "A", dateCreated = now, lastModified = now))
+        cardRepo.upsert(card("c1", back = "b", front = "   "))     // blank front -> not typeable in TypeFront
+        val logRepo = TypingLogRepository(FakeTypingLogDao(), newId = { java.util.UUID.randomUUID().toString() })
+        val model = TypePracticeViewModel("A", cardRepo, deckRepo, logRepo, now = { now })
+        backgroundScope.launch { model.uiState.collect {} }
+        runCurrent()
+
+        model.chooseDirection(TypeDirection.TypeFront)
+        runCurrent()
+
+        assertTrue(model.uiState.value.finished)
+        assertEquals(0, model.uiState.value.report!!.completed)
     }
 }

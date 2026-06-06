@@ -30,6 +30,7 @@ class TypePracticeSession(
     pool: List<Card>,
     private val previouslyMastered: Set<String> = emptySet(),
     private val onFinalize: (card: Card, correct: Boolean, typed: String) -> Unit = { _, _, _ -> },
+    private val direction: TypeDirection = TypeDirection.TypeBack,
 ) {
     private val queue = ArrayDeque(pool)
     private val firstTry = LinkedHashMap<String, Boolean>()   // finalized first-try outcome per card
@@ -41,6 +42,9 @@ class TypePracticeSession(
     private var awaitingFirstAttempt = false
     private var awaitingTyped = ""
 
+    private fun answerOf(card: Card): String =
+        if (direction == TypeDirection.TypeFront) card.front else card.back
+
     val current: Card? get() = queue.firstOrNull()
     val remaining: Int get() = queue.size
     val isFinished: Boolean get() = queue.isEmpty()
@@ -51,9 +55,9 @@ class TypePracticeSession(
 
     fun submit(answer: String): SubmitResult {
         val card = current ?: return SubmitResult.Correct
-        if (awaiting) return SubmitResult.Wrong(card.back)        // UI gates this; be safe
+        if (awaiting) return SubmitResult.Wrong(answerOf(card))   // UI gates this; be safe
         val firstAttempt = card.id !in firstTry
-        return if (AnswerMatcher.matches(answer, card.back)) {
+        return if (AnswerMatcher.matches(answer, answerOf(card))) {
             if (firstAttempt) {
                 firstTry[card.id] = true
                 combo += 1
@@ -67,7 +71,7 @@ class TypePracticeSession(
             awaiting = true
             awaitingFirstAttempt = firstAttempt
             awaitingTyped = answer
-            SubmitResult.Wrong(card.back)
+            SubmitResult.Wrong(answerOf(card))
         }
     }
 

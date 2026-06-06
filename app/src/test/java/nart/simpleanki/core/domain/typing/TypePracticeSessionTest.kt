@@ -102,4 +102,18 @@ class TypePracticeSessionTest {
         assertEquals(1, rec.entries.count { it.cardId == "c1" })  // exactly one log for c1
         assertFalse(rec.entries.single { it.cardId == "c1" }.correct)
     }
+
+    @Test fun typeFrontDirection_comparesAgainstTheFront() {
+        val rec = Recorder()
+        val s = TypePracticeSession(
+            listOf(card("c1", back = "back-ignored")),
+            onFinalize = rec.sink,
+            direction = TypeDirection.TypeFront,
+        )
+        // In TypeFront, the answer is the FRONT ("f-c1"), not the back.
+        assertEquals(SubmitResult.Wrong("f-c1"), s.submit("nope"))
+        s.override()
+        assertEquals(Recorder.Entry("c1", true, "nope"), rec.entries.single())
+        assertTrue(s.isFinished)
+    }
 }
