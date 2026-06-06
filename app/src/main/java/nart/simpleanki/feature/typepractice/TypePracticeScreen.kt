@@ -38,8 +38,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
+import nart.simpleanki.core.domain.typing.AnswerDiff
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -246,21 +251,54 @@ private fun PracticeCard(
 
 @Composable
 private fun RevealPanel(state: TypePracticeUiState, onContinue: () -> Unit, onOverride: () -> Unit) {
+    val diff = remember(state.revealedAnswer, state.lastTyped) {
+        AnswerDiff.diff(typed = state.lastTyped, expected = state.revealedAnswer)
+    }
+    val matchColor = MaterialTheme.colorScheme.primary
+    val missColor = MaterialTheme.colorScheme.error
+    val typedMatchColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Correct answer", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "Correct answer",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(Modifier.height(4.dp))
         Text(
-            state.revealedAnswer,
+            buildAnnotatedString {
+                diff.expected.forEach { seg ->
+                    when (seg.kind) {
+                        AnswerDiff.Kind.Match ->
+                            withStyle(SpanStyle(color = matchColor)) { append(seg.text) }
+                        AnswerDiff.Kind.Mismatch ->
+                            withStyle(SpanStyle(color = missColor, textDecoration = TextDecoration.Underline)) { append(seg.text) }
+                    }
+                }
+            },
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
         )
         if (state.lastTyped.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(
-                "You typed: ${state.lastTyped}",
+                "You typed",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                buildAnnotatedString {
+                    diff.typed.forEach { seg ->
+                        when (seg.kind) {
+                            AnswerDiff.Kind.Match ->
+                                withStyle(SpanStyle(color = typedMatchColor)) { append(seg.text) }
+                            AnswerDiff.Kind.Mismatch ->
+                                withStyle(SpanStyle(color = missColor, textDecoration = TextDecoration.LineThrough)) { append(seg.text) }
+                        }
+                    }
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
             )
         }
