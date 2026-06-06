@@ -25,7 +25,7 @@ import nart.simpleanki.core.domain.typing.TypePracticeSession
 import nart.simpleanki.core.domain.typing.TypingMastery
 
 /** How long the mint success flash holds before auto-advancing. */
-private const val CELEBRATE_MS = 400L
+private const val CELEBRATE_MS = 700L
 
 data class TypePracticeUiState(
     val loading: Boolean = true,
