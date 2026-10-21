@@ -59,7 +59,6 @@ fun ApkgImportScreen(uri: Uri, deckName: String, onClose: () -> Unit) {
 
     state.error?.let { msg ->
         AlertDialog(
-            // Realistic errors are unrecoverable file/parse errors; any dismissal ejects to Library.
             onDismissRequest = { vm.clearError(); onClose() },
             confirmButton = { TextButton(onClick = { vm.clearError(); onClose() }) { Text("OK") } },
             title = { Text("Import error") },
@@ -70,10 +69,19 @@ fun ApkgImportScreen(uri: Uri, deckName: String, onClose: () -> Unit) {
     Scaffold(topBar = {
         TopAppBar(
             title = { Text("Import deck") },
-            navigationIcon = { IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") } },
+            navigationIcon = {
+                IconButton(onClick = onClose) {
+                    Icon(
+                        Icons.Default.Close,
+                        "Close"
+                    )
+                }
+            },
         )
     }) { pad ->
-        Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+        Box(Modifier
+            .fillMaxSize()
+            .padding(pad), contentAlignment = Alignment.Center) {
             when (state.step) {
                 ImportStep.Parsing, ImportStep.Importing -> CircularProgressIndicator()
                 ImportStep.NoteTypeSelection -> NoteTypeStep(state, vm::selectNoteType)
@@ -86,7 +94,12 @@ fun ApkgImportScreen(uri: Uri, deckName: String, onClose: () -> Unit) {
 
 @Composable
 private fun NoteTypeStep(state: ApkgImportUiState, onSelect: (AnkiNoteType) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         items(state.noteTypes) { nt ->
             ListItem(
                 headlineContent = { Text(nt.name) },
@@ -121,7 +134,12 @@ private fun FieldMappingStep(state: ApkgImportUiState, vm: ApkgImportViewModel) 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FieldDropdown(label: String, options: List<String>, selected: String?, onSelect: (String) -> Unit) {
+private fun FieldDropdown(
+    label: String,
+    options: List<String>,
+    selected: String?,
+    onSelect: (String) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
@@ -136,7 +154,9 @@ private fun FieldDropdown(label: String, options: List<String>, selected: String
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { opt ->
-                DropdownMenuItem(text = { Text(opt) }, onClick = { onSelect(opt); expanded = false })
+                DropdownMenuItem(
+                    text = { Text(opt) },
+                    onClick = { onSelect(opt); expanded = false })
             }
         }
     }
@@ -145,13 +165,22 @@ private fun FieldDropdown(label: String, options: List<String>, selected: String
 @Composable
 private fun PreviewStep(state: ApkgImportUiState, vm: ApkgImportViewModel, onClose: () -> Unit) {
     val selectedCount = state.previewCards.count { it.selected }
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("$selectedCount of ${state.previewCards.size} selected", style = MaterialTheme.typography.titleMedium)
+    Column(Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
+        Text(
+            "$selectedCount of ${state.previewCards.size} selected",
+            style = MaterialTheme.typography.titleMedium
+        )
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             itemsIndexed(state.previewCards) { i, card ->
                 ListItem(
-                    leadingContent = { Checkbox(checked = card.selected, onCheckedChange = { vm.toggleCard(i) }) },
+                    leadingContent = {
+                        Checkbox(
+                            checked = card.selected,
+                            onCheckedChange = { vm.toggleCard(i) })
+                    },
                     headlineContent = { Text(card.front, maxLines = 1) },
                     supportingContent = { Text(card.back, maxLines = 1) },
                 )
